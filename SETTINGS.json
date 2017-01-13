@@ -1,0 +1,10 @@
+{
+  "DATA_PATH":"/data/kaggle-seizure/",
+  "MODEL_PATH":"/mnt/storage/metadata/kaggle-seizure/models/",
+  "MODEL_PREDICTIONS_PATH":"/mnt/storage/metadata/kaggle-seizure/model-predictions/",
+  "ANALYSIS_PATH":"/mnt/storage/metadata/kaggle-seizure/analysis/",
+  "SUBMISSION_PATH":"/mnt/storage/metadata/kaggle-seizure/submissions/",
+  "LOGS_PATH":"/mnt/storage/metadata/kaggle-seizure/logs/",
+  "PREDICTIONS_PATH":"/mnt/storage/metadata/kaggle-seizure/predictions/",
+  "ENSEMBLE_WEIGHTS_PATH":"/mnt/storage/metadata/kaggle-seizure/ensemble-weights/"
+}
