@@ -1,10 +1,10 @@
 {
-  "DATA_PATH":"/data/kaggle-seizure/",
-  "MODEL_PATH":"/mnt/storage/metadata/kaggle-seizure/models/",
-  "MODEL_PREDICTIONS_PATH":"/mnt/storage/metadata/kaggle-seizure/model-predictions/",
-  "ANALYSIS_PATH":"/mnt/storage/metadata/kaggle-seizure/analysis/",
-  "SUBMISSION_PATH":"/mnt/storage/metadata/kaggle-seizure/submissions/",
-  "LOGS_PATH":"/mnt/storage/metadata/kaggle-seizure/logs/",
-  "PREDICTIONS_PATH":"/mnt/storage/metadata/kaggle-seizure/predictions/",
-  "ENSEMBLE_WEIGHTS_PATH":"/mnt/storage/metadata/kaggle-seizure/ensemble-weights/"
+  "TRAIN_DATA_PATH": "/mnt/sda3/data/kaggle-lung/sample_images",
+  "VALIDATE_DATA_PATH": "/mnt/sda3/data/kaggle-lung/sample_images",
+  "PKL_TRAIN_DATA_PATH": "/mnt/sda3/data/kaggle-lung/pkl_sample_images",
+  "PKL_VALIDATE_DATA_PATH": "/mnt/sda3/data/kaggle-lung/pkl_sample_images",
+  "MODEL_PATH": "/home/ikorshun/metadata",
+  "TRAIN_LABELS_PATH": "/mnt/sda3/data/kaggle-lung/stage1_labels.csv",
+  "PREDICTIONS_PATH": "/mnt/storage/metadata/kaggle-heart/predictions",
+  "SAMPLE_SUBMISSION_PATH": "/mnt/sda3/data/kaggle-lung/stage1_sample_submission.csv"
 }

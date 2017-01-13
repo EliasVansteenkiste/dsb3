@@ -11,27 +11,32 @@ import utils
 import logger
 import theano.tensor as T
 import buffering
-from configuration import config, set_configuration
+from configuration import config, set_configuration, set_subconfiguration
 import pathfinder
 
 if len(sys.argv) < 2:
-    sys.exit("Usage: train.py <configuration_name>")
+    sys.exit("Usage: train.py <meta_configuration_name>")
 
 config_name = sys.argv[1]
+
+subconfig_name = config_name.replace('meta_', '')
+metadata_dir = utils.get_dir_path('train', pathfinder.MODEL_PATH)
+submodel_metadata_path = utils.find_model_metadata(metadata_dir, subconfig_name)
+submodel_metadata = utils.load_pkl(submodel_metadata_path)
+
+assert subconfig_name == submodel_metadata['configuration']
+set_subconfiguration(subconfig_name)
 set_configuration(config_name)
+
 expid = utils.generate_expid(config_name)
 print
 print "Experiment ID: %s" % expid
 print
 
-# metadata
-metadata_dir = utils.get_dir_path('train', pathfinder.MODEL_PATH)
+# meta metadata and logs paths
 metadata_path = metadata_dir + '/%s.pkl' % expid
-
-# logs
 logs_dir = utils.get_dir_path('logs', pathfinder.MODEL_PATH)
 sys.stdout = logger.Logger(logs_dir + '/%s.log' % expid)
-sys.stderr = sys.stdout
 
 print 'Build model'
 model = config().build_model()
@@ -47,6 +52,8 @@ for layer in all_layers[:-1]:
     num_param = sum([np.prod(p.get_value().shape) for p in layer.get_params()])
     num_param = string.ljust(num_param.__str__(), 10)
     print '    %s %s %s' % (name, num_param, layer.output_shape)
+
+nn.layers.set_all_param_values(model.submodel.l_top, submodel_metadata['param_values'])
 
 train_loss = config().build_objective(model)
 
@@ -71,7 +78,7 @@ for l_in, x in izip(model.l_ins, xs_shared):
 # theano functions
 iter_train = theano.function([idx], train_loss, givens=givens_train, updates=updates, on_unused_input='ignore')
 iter_validate = theano.function([], [nn.layers.get_output(l, deterministic=True) for l in model.l_outs],
-                                givens=givens_valid,on_unused_input='warn')
+                                givens=givens_valid, on_unused_input='ignore')
 
 if config().restart_from_save:
     print 'Load model parameters for resuming'
@@ -108,9 +115,9 @@ start_time = time.time()
 prev_time = start_time
 tmp_losses_train = []
 
-# use buffering.buffered_gen_threaded()
-for chunk_idx, (xs_chunk, ys_chunk, _) in izip(chunk_idxs,
-                                               buffering.buffered_gen_threaded(train_data_iterator.generate())):
+for chunk_idx, (xs_chunk, ys_chunk, patient_idx) in izip(chunk_idxs,
+                                                         buffering.buffered_gen_threaded(
+                                                             train_data_iterator.generate())):
     if chunk_idx in learning_rate_schedule:
         lr = np.float32(learning_rate_schedule[chunk_idx])
         print '  setting learning rate to %.7f' % lr
@@ -148,10 +155,6 @@ for chunk_idx, (xs_chunk, ys_chunk, _) in izip(chunk_idxs,
             batch_valid_ids.append(ids_batch)
 
         # calculate validation loss across validation set
-        valid_loss = config().get_mean_validation_loss(batch_valid_predictions, batch_valid_targets)
-        print 'Validation loss: ', valid_loss
-        losses_eval_valid.append(valid_loss)
-
         valid_crps = config().get_mean_crps_loss(batch_valid_predictions, batch_valid_targets, batch_valid_ids)
         print 'Validation CRPS: ', valid_crps, np.mean(valid_crps)
         crps_eval_valid.append(valid_crps)
@@ -174,6 +177,7 @@ for chunk_idx, (xs_chunk, ys_chunk, _) in izip(chunk_idxs,
         with open(metadata_path, 'w') as f:
             pickle.dump({
                 'configuration': config_name,
+                'subconfiguration': subconfig_name,
                 'git_revision_hash': utils.get_git_revision_hash(),
                 'experiment_id': expid,
                 'chunks_since_start': chunk_idx,

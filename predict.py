@@ -1,214 +1,172 @@
-"""Script for generating predictions for a given trained model.
-
-The script loads the specified configuration file. All parameters are defined
-in that file.
-
-Usage:
-> python predict.py -c CONFIG_NAME
-"""
-import argparse
-import cPickle as pickle
-import csv
-import itertools
-import string
-import time
-
-import datetime
-from functools import partial
-from itertools import izip
-
-import lasagne
+import sys
 import numpy as np
 import theano
-import theano.tensor as T
-from interfaces.data_loader import IDS
-
-from theano_utils import theano_printer
-import os
-from utils import buffering
+from itertools import izip
+import lasagne as nn
 import utils
-import math
+import buffering
+import utils_lung
+from configuration import config, set_configuration, set_subconfiguration
+import pathfinder
 
-from utils.configuration import config, set_configuration
-from utils.paths import MODEL_PATH, MODEL_PREDICTIONS_PATH, SUBMISSION_PATH
+if not (3 <= len(sys.argv) <= 5):
+    sys.exit("Usage: predict.py <config_name> <set: train|valid|test> <n_tta_iterations> "
+             "<average: arithmetic|geometric>")
 
-def predict_model(expid, mfile=None):
-    metadata_path = MODEL_PATH + "%s.pkl" % (expid if not mfile else mfile)
-    prediction_path = MODEL_PREDICTIONS_PATH + "%s.pkl" % expid
-    submission_path = SUBMISSION_PATH + "%s.csv" % expid
+config_name = sys.argv[1]
+set = sys.argv[2] if len(sys.argv) >= 3 else 'valid'
+n_tta_iterations = int(sys.argv[3]) if len(sys.argv) >= 4 else 1
+mean = sys.argv[4] if len(sys.argv) >= 5 else 'geometric'
 
-    if theano.config.optimizer != "fast_run":
-        print "WARNING: not running in fast mode!"
+print 'Make %s tta predictions for %s set using %s mean' % (n_tta_iterations, set, mean)
 
-    print "Using"
-    print "  %s" % metadata_path
-    print "To generate"
-    print "  %s" % prediction_path
+metadata_dir = utils.get_dir_path('train', pathfinder.MODEL_PATH)
+metadata_path = utils.find_model_metadata(metadata_dir, config_name)
+metadata = utils.load_pkl(metadata_path)
 
-    print "Build model"
-    interface_layers = config.build_model()
+assert config_name == metadata['configuration']
+if 'subconfiguration' in metadata:
+    set_subconfiguration(metadata['subconfiguration'])
+set_configuration(config_name)
 
-    output_layers = interface_layers["outputs"]
-    input_layers = interface_layers["inputs"]
-    top_layer = lasagne.layers.MergeLayer(
-        incomings=output_layers.values()
-    )
-    all_layers = lasagne.layers.get_all_layers(top_layer)
-    all_params = lasagne.layers.get_all_params(top_layer, trainable=True)
+# predictions paths
+prediction_dir = utils.get_dir_path('predictions', pathfinder.MODEL_PATH)
+prediction_path = prediction_dir + "/%s-%s-%s-%s.pkl" % (metadata['experiment_id'], set, n_tta_iterations, mean)
 
-    num_params = sum([np.prod(p.get_value().shape) for p in all_params])
+# submissions paths
+submission_dir = utils.get_dir_path('submissions', pathfinder.MODEL_PATH)
+submission_path = submission_dir + "/%s-%s-%s-%s.csv" % (metadata['experiment_id'], set, n_tta_iterations, mean)
 
-    print string.ljust("  layer output shapes:",34),
-    print string.ljust("#params:",10),
-    print string.ljust("#data:",10),
-    print "output shape:"
-    for layer in all_layers[:-1]:
-        name = string.ljust(layer.__class__.__name__, 30)
-        num_param = sum([np.prod(p.get_value().shape) for p in layer.get_params()])
-        num_param = string.ljust(int(num_param).__str__(), 10)
-        num_size = string.ljust(np.prod(layer.output_shape[1:]).__str__(), 10)
-        print "    %s %s %s %s" % (name,  num_param, num_size, layer.output_shape)
-    print "  number of parameters: %d" % num_params
+print "Build model"
+model = config().build_model()
+all_layers = nn.layers.get_all_layers(model.l_top)
+all_params = nn.layers.get_all_params(model.l_top)
+num_params = nn.layers.count_params(model.l_top)
+print '  number of parameters: %d' % num_params
+nn.layers.set_all_param_values(model.l_top, metadata['param_values'])
 
-    xs_shared = {
-        key: lasagne.utils.shared_empty(dim=len(l_in.output_shape), dtype='float32')
-        for (key, l_in) in input_layers.iteritems()
-    }
+xs_shared = [nn.utils.shared_empty(dim=len(l.shape)) for l in model.l_ins]
+givens_in = {}
+for l_in, x in izip(model.l_ins, xs_shared):
+    givens_in[l_in.input_var] = x
 
-    idx = T.lscalar('idx')
+iter_test_det = theano.function([], [nn.layers.get_output(l, deterministic=True) for l in model.l_outs],
+                                givens=givens_in, on_unused_input='warn')
 
-    givens = dict()
+if set == 'train':
+    train_data_iterator = config().train_data_iterator
+    if n_tta_iterations == 1:
+        train_data_iterator.transformation_params = config().valid_transformation_params
+    else:
+        train_data_iterator.transformation_params = config().train_transformation_params
 
-    for (key, l_in) in input_layers.iteritems():
-        givens[l_in.input_var] = xs_shared[key][idx*config.batch_size:(idx+1)*config.batch_size]
+    train_data_iterator.transformation_params['zoom_range'] = (1., 1.)
+    train_data_iterator.full_batch = False
+    train_data_iterator.random = False
+    train_data_iterator.infinite = False
 
-    network_outputs = [
-        lasagne.layers.helper.get_output(network_output_layer, deterministic=True)
-        for network_output_layer in output_layers.values()
-    ]
+    print
+    print 'n train: %d' % train_data_iterator.nsamples
+    print 'tta iteration:',
 
-    print "Compiling..."
-    iter_test = theano.function([idx],
-                                 network_outputs + theano_printer.get_the_stuff_to_print(),
-                                 givens=givens, on_unused_input="ignore",
-                                 # mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=True)
-                                 )
+    batch_predictions, batch_targets, batch_ids = [], [], []
+    for i in xrange(n_tta_iterations):
+        print i,
+        sys.stdout.flush()
+        for xs_batch_valid, ys_batch_valid, ids_batch in buffering.buffered_gen_threaded(
+                train_data_iterator.generate()):
+            for x_shared, x in zip(xs_shared, xs_batch_valid):
+                x_shared.set_value(x)
 
-    required_input = {
-        key: l_in.output_shape
-        for (key, l_in) in input_layers.iteritems()
-    }
+            batch_targets.append(ys_batch_valid)
+            batch_predictions.append(iter_test_det())
+            batch_ids.append(ids_batch)
 
-    print "Preparing dataloaders"
-    config.test_data.prepare()
-    chunk_size = config.batches_per_chunk * config.batch_size
+    avg_patient_predictions = config().get_avg_patient_predictions(batch_predictions, batch_ids, mean=mean)
+    patient_targets = utils_lung.get_patient_average_heaviside_predictions(batch_targets, batch_ids)
 
-    test_data_generator = buffering.buffered_gen_threaded(
-        config.test_data.generate_batch(
-            chunk_size = chunk_size,
-            required_input = required_input,
-            required_output = {},
-        )
-    )
+    assert avg_patient_predictions.viewkeys() == patient_targets.viewkeys()
+    crpss_sys, crpss_dst = [], []
+    for id in avg_patient_predictions.iterkeys():
+        crpss_sys.append(utils_lung.crps(avg_patient_predictions[id][0], patient_targets[id][0]))
+        crpss_dst.append(utils_lung.crps(avg_patient_predictions[id][1], patient_targets[id][1]))
+        print id, 0.5 * (crpss_sys[-1] + crpss_dst[-1]), crpss_sys[-1], crpss_dst[-1]
 
+    crps0, crps1 = np.mean(crpss_sys), np.mean(crpss_dst)
 
-    print "Load model parameters for resuming"
-    resume_metadata = np.load(metadata_path)
-    lasagne.layers.set_all_param_values(top_layer, resume_metadata['param_values'])
+    print '\n Train CRPS:', config().get_mean_crps_loss(batch_predictions, batch_targets, batch_ids)
+    print 'Train CRPS', 0.5 * (crps0 + crps1)
 
-    chunks_test_idcs = itertools.count(0)
-    num_chunks_test = math.ceil(1.0 * config.test_data.epochs * config.test_data.number_of_samples / (config.batch_size * config.batches_per_chunk))
-
-    start_time,prev_time = None,None
-    all_predictions = dict()
-
-
-    print "Loading first chunks"
-    for e, test_data in izip(chunks_test_idcs, test_data_generator):
-
-        if start_time is None:
-            start_time = time.time()
-            prev_time = start_time
-        print
-
-        print "Chunk %d/%d" % (e + 1, num_chunks_test)
-        print "=============="
-
-        if config.dump_network_loaded_data:
-            pickle.dump(test_data, open("data_loader_dump_test_%d.pkl" % e, "wb"))
-
-        for key in xs_shared:
-            xs_shared[key].set_value(test_data["input"][key])
-
-        sample_ids = test_data[IDS]
-
-        for b in xrange(config.batches_per_chunk):
-            th_result = iter_test(b)
-
-            predictions = th_result[:len(network_outputs)]
-
-            for output_idx, key in enumerate(output_layers.keys()):
-                for sample_idx in xrange(b*config.batch_size, (b+1)*config.batch_size):
-                    prediction_pos = sample_idx % config.batch_size
-                    sample_id = sample_ids[sample_idx]
-                    if sample_id is not None:
-                        if sample_id not in all_predictions:
-                            all_predictions[sample_id] = dict()
-                        if key not in all_predictions[sample_id]:
-                            all_predictions[sample_id][key] = predictions[output_idx][prediction_pos]
-                        else:
-                            all_predictions[sample_id][key] = np.concatenate((all_predictions[sample_id][key],predictions[output_idx][prediction_pos]),axis=0)
-
-
-        now = time.time()
-        time_since_start = now - start_time
-        time_since_prev = now - prev_time
-        prev_time = now
-        print "  %s since start (+%.2f s)" % (utils.hms(time_since_start), time_since_prev)
-        try:
-            if num_chunks_test:
-                est_time_left = time_since_start * (float(num_chunks_test - (e + 1)) / float(e + 1))
-                eta = datetime.datetime.now() + datetime.timedelta(seconds=est_time_left)
-                eta_str = eta.strftime("%c")
-                print "  estimated %s to go"  % utils.hms(est_time_left)
-                print "  (ETA: %s)" % eta_str
-        except OverflowError:
-            print "  This will take really long, like REALLY long."
-
-        print "  %dms per testing sample" % (1000.*time_since_start / ((e+1) * config.batch_size * config.batches_per_chunk))
-
-
-    with open(prediction_path, 'w') as f:
-        pickle.dump({
-            'metadata_path': metadata_path,
-            'prediction_path': prediction_path,
-            'configuration_file': config.__name__,
-            'git_revision_hash': utils.get_git_revision_hash(),
-            'experiment_id': expid,
-            'predictions': all_predictions,
-        }, f, pickle.HIGHEST_PROTOCOL)
-
-    print "  saved to %s" % prediction_path
+    utils.save_pkl(avg_patient_predictions, prediction_path)
+    print ' predictions saved to %s' % prediction_path
     print
 
-    return
+if set == 'valid':
+    valid_data_iterator = config().valid_data_iterator
+    if n_tta_iterations > 1:
+        valid_data_iterator.transformation_params = config().train_transformation_params
+        valid_data_iterator.transformation_params['zoom_range'] = (1., 1.)
 
+    print
+    print 'n valid: %d' % valid_data_iterator.nsamples
+    print 'tta iteration:',
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description=__doc__)
-    required = parser.add_argument_group('required arguments')
-    required.add_argument('-c', '--config',
-                          help='configuration to run',
-                          required=True)
-    optional = parser.add_argument_group('optional arguments')
-    optional.add_argument('-m', '--metadata',
-                          help='metadatafile to use',
-                          required=False)
+    batch_predictions, batch_targets, batch_ids = [], [], []
+    for i in xrange(n_tta_iterations):
+        print i,
+        sys.stdout.flush()
+        for xs_batch_valid, ys_batch_valid, ids_batch in buffering.buffered_gen_threaded(
+                valid_data_iterator.generate()):
+            for x_shared, x in zip(xs_shared, xs_batch_valid):
+                x_shared.set_value(x)
 
-    args = parser.parse_args()
-    set_configuration(args.config)
+            batch_targets.append(ys_batch_valid)
+            batch_predictions.append(iter_test_det())
+            batch_ids.append(ids_batch)
 
-    expid = utils.generate_expid(args.config)
-    mfile = args.metadata
+    avg_patient_predictions = config().get_avg_patient_predictions(batch_predictions, batch_ids, mean=mean)
+    patient_targets = utils_lung.get_patient_average_heaviside_predictions(batch_targets, batch_ids)
 
-    predict_model(expid, mfile)
+    assert avg_patient_predictions.viewkeys() == patient_targets.viewkeys()
+    crpss_sys, crpss_dst = [], []
+    for id in avg_patient_predictions.iterkeys():
+        crpss_sys.append(utils_lung.crps(avg_patient_predictions[id][0], patient_targets[id][0]))
+        crpss_dst.append(utils_lung.crps(avg_patient_predictions[id][1], patient_targets[id][1]))
+        print id, 0.5 * (crpss_sys[-1] + crpss_dst[-1]), crpss_sys[-1], crpss_dst[-1]
+
+    crps0, crps1 = np.mean(crpss_sys), np.mean(crpss_dst)
+
+    print '\n Validation CRPS:', config().get_mean_crps_loss(batch_predictions, batch_targets, batch_ids)
+    print 'Validation CRPS: ', crps0, crps1, 0.5 * (crps0 + crps1)
+
+    utils.save_pkl(avg_patient_predictions, prediction_path)
+    print ' predictions saved to %s' % prediction_path
+    print
+
+if set == 'test':
+    test_data_iterator = config().test_data_iterator
+
+    if n_tta_iterations == 1:
+        test_data_iterator.transformation_params = config().valid_transformation_params
+    else:
+        test_data_iterator.transformation_params['zoom_range'] = (1., 1.)
+
+    print 'n test: %d' % test_data_iterator.nsamples
+    print 'tta iteration:',
+
+    batch_predictions, batch_ids = [], []
+    for i in xrange(n_tta_iterations):
+        print i,
+        sys.stdout.flush()
+        for xs_batch_test, _, ids_batch in buffering.buffered_gen_threaded(test_data_iterator.generate()):
+            for x_shared, x in zip(xs_shared, xs_batch_test):
+                x_shared.set_value(x)
+            batch_predictions.append(iter_test_det())
+            batch_ids.append(ids_batch)
+
+    avg_patient_predictions = config().get_avg_patient_predictions(batch_predictions, batch_ids, mean=mean)
+    utils.save_pkl(avg_patient_predictions, prediction_path)
+    print ' predictions saved to %s' % prediction_path
+
+    utils.save_submission(avg_patient_predictions, submission_path)
+    print ' submission saved to %s' % submission_path
