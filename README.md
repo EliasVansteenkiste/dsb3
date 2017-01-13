@@ -6,6 +6,12 @@
 3. ???
 4. Profit
 
+## The Data
+
+Downloaded. Awaiting deployment to machines and preparation.
+
+## The Framework
+
 * *application/*: In the folder application goes the stuff which is specific for this competition, stuff which cannot ever be used for other competitions.
 * *configurations/*: In the folder configuration go the configuration files of your models
 * *deep_learning/*: In the folder deep_learning go special and new deep learning layers
@@ -16,4 +22,11 @@
 
 In the main folder only go a couple of basic scripts! Scripts which are needed to interact with in order to regenerate our results, go here. NOTHING ELSE.
 
+## ?
+
 TO BE CONTINUED
+
+## Profit
+
+Everyone has a share + 1 extra share for the lab.
+We will need to sit down on a system to split the profits afterwards.
