@@ -1,135 +1,83 @@
 import glob
-import re
-from StringIO import StringIO
 import csv
 import random
+from os import path
+import dicom
 
-import skimage
 import numpy as np
 
-from interfaces.data_loader import StandardDataLoader, TRAINING, VALIDATION, TEST, INPUT, OUTPUT, UNSUPERVISED, compress_data
-from utils import paths, varname, put_in_the_middle, put_randomly
-import cPickle as pickle
-#import h5py
-#import bcolz
-import time
-from scipy.io import loadmat
+from interfaces.data_loader import StandardDataLoader, TRAINING, VALIDATION, TEST, INPUT, OUTPUT, TRAIN
+from utils import paths
 
+VALIDATION_SET_SIZE = 0.2
 
-AUC_TRAINING = "auc training"
+class PatientDataLoader(StandardDataLoader):
 
-class SeizureDataLoader(StandardDataLoader):
+    def filter_samples(self):
+        pass
 
     OUTPUT_DATA_SIZE_TYPE = {
-        "kaggle-seizure:class":     ((), "uint8"),
-        "kaggle-seizure:sample_id": ((), "uint32")
+        "kaggle-dsb3:class":     ((), "uint8"),
+        "kaggle-dsb3:sample_id": ((), "uint32")
     }
 
+    # These are shared between all objects of this type
     labels = dict()
     names = dict()
 
-    datasets = [TRAINING, AUC_TRAINING, VALIDATION, TEST]
+    datasets = [TRAIN, VALIDATION, TEST]
 
-    def __init__(self, location=paths.DATA_PATH, estimated_labels_path=None, *args, **kwargs):
-        super(SeizureDataLoader,self).__init__(location=location, *args, **kwargs)
-        self.estimated_labels_path = estimated_labels_path
-
-    def mat_to_data(self, path):
-        mat = loadmat(path)
-        names = mat['dataStruct'].dtype.names
-        ndata = {n: mat['dataStruct'][n][0, 0] for n in names}
-        return ndata
+    def __init__(self, location=paths.DATA_PATH, *args, **kwargs):
+        super(PatientDataLoader,self).__init__(location=location, *args, **kwargs)
 
     def prepare(self):
-        #import bcolz
-        #bcolz.defaults.out_flavor = "numpy"
-        #bcolz.cparams(clevel=9, shuffle=1, cname="blosclz", quantize=1)
-
         # step 0: load only when not loaded yet
-
         if TRAINING in self.data \
-            and AUC_TRAINING in self.data \
             and VALIDATION in self.data \
             and TEST in self.data:
             return
 
-        print "pre-loading data to RAM"
-        try:
-            print "loading data as pickle... ",
-            self.load_as_pickle()
-            print "success!"
-            for set in self.datasets:
-                print set, len(self.indices[set]), "samples"
-            return
-        except:
-            print "failed!"
-        # step 1: load the data
-        data_filenames = sorted(glob.glob(self.location+'/train_?/?_*_?.mat'))
+        # step 1: load the file names
+        patients = sorted(glob.glob(self.location+'/*/'))
 
-        #balance datasets:
-        import random
-        np.random.seed(317070)
+        labels = dict()
+        with open(paths.LABELS_PATH, 'rb') as csvfile:
+            reader = csv.reader(csvfile, delimiter=',', quotechar='|')
+            next(reader)  # skip the header
+            for row in reader:
+                labels[row[0]] = int(row[1])
+
         random.seed(317070)
-        random.shuffle(data_filenames)
-        # SPEED UP
-        data_filenames = data_filenames[:100]
-        validation_split = np.random.choice([TRAINING, AUC_TRAINING, VALIDATION], p=[0.8, 0.1, 0.1], replace=True, size=(len(data_filenames),))
-
-
+        ids_per_label = [[patient_id for patient_id,label in labels.iteritems() if label==l] for l in [0,1]]
+        validation_patients = sum([random.sample(sorted(ids), int(VALIDATION_SET_SIZE*len(ids))) for ids in ids_per_label],[])
 
         for s in self.datasets:
-            self.data[s] = {}
-            for k in ["sample_rate", "data", "patient", "sample"]:
-                self.data[s][k] = []
+            self.data[s] = []
             self.labels[s] = []
             self.names[s] = []
 
-        for i, (dataset, data_file_name) in enumerate(zip(validation_split, data_filenames)):
-            print "Loading", i+1, "/",len(data_filenames), ":", data_file_name
+        for i, patient_folder in enumerate(patients):
+            patient_id = patient_folder.split(path.sep)[-2]
+            if patient_id in labels:
+                if patient_id in validation_patients:
+                    dataset = VALIDATION
+                else:
+                    dataset = TRAIN
+            else:
+                dataset = TEST
 
-            I,J,K = data_file_name.split('/')[-1].split('.')[0].split('_')
 
-            data = self.mat_to_data(data_file_name)
-            # /2 for downsampling
-            self.data[dataset]["sample_rate"].append(data['iEEGsamplingRate'][0,0].astype('float32') / 2)
-            #d = bcolz.carray(data['data'][::2,:].T.astype('float16'),
-            #                    expectedlen=16*120000,
-            #                    #cparams=bcolz.cparams(clevel=9, quantize=0, cname='lz4hc', shuffle=bcolz.NOSHUFFLE))
-            #                    cparams=bcolz.cparams(clevel=9, quantize=0, cname='snappy', shuffle=bcolz.NOSHUFFLE))
-            d = data['data'].T[:,::2].astype('float16')
-            import sys
-            self.data[dataset]["data"].append(d)
-            self.data[dataset]["patient"].append(int(I))
-            self.data[dataset]["sample"].append(int(J))
-            self.names[dataset].append(data_file_name)
-            self.labels[dataset].append(int(K))
+            self.data[dataset].append(patient_folder)
+            if patient_id in labels:
+                self.labels[dataset].append(labels[patient_id])
+            self.names[dataset].append(patient_id)
 
         last_index = -1
         for set in self.datasets:
-            self.indices[set] = range(last_index+1,last_index+1+len(self.labels[set]))
+            self.indices[set] = range(last_index+1,last_index+1+len(self.data[set]))
             if len(self.indices[set]) > 0:
                 last_index = self.indices[set][-1]
             print set, len(self.indices[set]), "samples"
-        self.dump_as_pickle()
-
-
-    #DUMP_FILENAME = 'datadump-micro.pkl'
-    DUMP_FILENAME = 'datadump.pkl'
-    def dump_as_pickle(self):
-        pickle.dump({
-            "data": self.data,
-            "names": self.names,
-            "labels": self.labels,
-            "indices": self.indices
-        }, open(self.location+self.DUMP_FILENAME, 'wb'),
-        protocol=2)
-
-    def load_as_pickle(self):
-        d = pickle.load(open(self.location+self.DUMP_FILENAME, 'rb'))
-        self.data.update(d["data"])
-        self.names.update(d["names"])
-        self.labels.update(d["labels"])
-        self.indices.update(d["indices"])
 
 
     def load_sample(self, sample_id, input_keys_to_do, output_keys_to_do):
@@ -148,7 +96,6 @@ class SeizureDataLoader(StandardDataLoader):
 
         assert sample_id in set_indices, "Sample ID %d is not known in any of the sets?" % sample_id
 
-
         sample_index = set_indices.index(sample_id)
 
         sample = dict()
@@ -158,21 +105,24 @@ class SeizureDataLoader(StandardDataLoader):
         # Iterate over input tags
         for tag in input_keys_to_do:
             tags = tag.split(':')
-            if "kaggle-seizure" not in tags:
+            if "dsb3" not in tags:
                 continue
+
+            if "filename" in tags:
+                sample[INPUT][tag] = self.data[set][sample_index]
+
+            if "all" in tags:
+                sample[INPUT][tag] = self.load_patient_data(self.data[set][sample_index])
+
+            if "3d" in tags:
+                sample[INPUT][tag] = self.get_raw_3d_data(self.data[set][sample_index]).astype('float32')
 
             if "default" in tags:
                 sample[INPUT][tag] = self.data[set]["data"][sample_index].astype('float32')
 
-            if "sample-rate" in tags:
-                sample[INPUT][tag] = np.float32(self.data[set]["sample_rate"][sample_index])
-
-            if "patient" in tags:
-                sample[INPUT][tag] = np.float32(self.data[set]["patient"][sample_index])
-
         for tag in output_keys_to_do:
             tags = tag.split(':')
-            if "kaggle-seizure" not in tags:
+            if "dsb3" not in tags:
                 continue
 
             if "class" in tags:
@@ -182,3 +132,87 @@ class SeizureDataLoader(StandardDataLoader):
                 sample[OUTPUT][tag] = sample_id
 
         return sample
+
+
+    def get_raw_3d_data(self, path):
+        slices = self.load_patient_data(path)
+        d = []
+        for sl in slices.itervalues():
+            d.append( (sl["InstanceNumber"], sl["PixelData"]) )
+        d.sort()
+        result = np.stack([item[1] for item in d])
+        return result
+
+
+    def load_patient_data(self, path):
+        images = sorted(glob.glob(path+'*.dcm'))
+        result = dict()
+        for image in images:
+            result[image] = self.read_dicom(image)
+
+        # remove the ones which errored
+        result = dict((k, v) for k, v in result.iteritems() if v)
+        return result
+
+
+    def read_dicom(self,filename):
+        d = dicom.read_file(filename, force=True)
+        data = {}
+        try:
+            for attr in dir(d):
+                if attr[0].isupper() and attr != 'PixelData':
+                    try:
+                        data[attr] = getattr(d, attr)
+                    except AttributeError:
+                        pass
+                data["PixelData"] = np.array(d.pixel_array)
+            data = self.clean_dicom_data(data)
+        except:
+            print "Failed to load the data in %s" % filename
+            return None
+        return data
+
+
+    def clean_dicom_data(self, data):
+        for key,value in data.iteritems():
+            try:
+                if key == 'AcquisitionNumber':
+                    data[key] = int(value) if value != '' else value
+                elif key == 'BitsAllocated' or key=="BitsStored":
+                    data[key] = int(value)
+                elif key == 'BurnedInAnnotation':
+                    data[key] = False if value=="NO" else True
+                elif key == "Columns":
+                    data[key] = int(value)
+                elif key == "HighBit":
+                    data[key] = int(value)
+                elif key == "ImageOrientationPatient" or key=="ImagePositionPatient":
+                    data[key] = [float(v) for v in value]
+                elif key == "InstanceNumber":
+                    data[key] = int(value)
+                elif key == "PixelData":
+                    pass
+                elif key == 'PixelRepresentation':
+                    data[key] = int(value)
+                elif key == "PixelSpacing":
+                    data[key] = [float(v) for v in value]
+                elif key == 'RescaleIntercept' or key == "RescaleSlope" or key == "Rows":
+                    data[key] = int(value)
+                elif key == 'SamplesPerPixel':
+                    data[key] = int(value)
+                elif key == 'SeriesNumber':
+                    data[key] = int(value)
+                elif key == 'SliceLocation':
+                    data[key] = float(value)
+                elif key == 'WindowCenter' or key == 'WindowWidth':
+                    try:
+                        data[key] = [int(v) for v in value]
+                    except:
+                        data[key] = int(value)
+                else:
+                    data[key] = str(value)
+            except:
+                print "Could not clean key %s with value %s"%(key,value)
+        return data
+
+

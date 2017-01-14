@@ -1,10 +1,11 @@
 {
-  "DATA_PATH":"/data/kaggle-seizure/",
-  "MODEL_PATH":"/mnt/storage/metadata/kaggle-seizure/models/",
-  "MODEL_PREDICTIONS_PATH":"/mnt/storage/metadata/kaggle-seizure/model-predictions/",
-  "ANALYSIS_PATH":"/mnt/storage/metadata/kaggle-seizure/analysis/",
-  "SUBMISSION_PATH":"/mnt/storage/metadata/kaggle-seizure/submissions/",
-  "LOGS_PATH":"/mnt/storage/metadata/kaggle-seizure/logs/",
-  "PREDICTIONS_PATH":"/mnt/storage/metadata/kaggle-seizure/predictions/",
-  "ENSEMBLE_WEIGHTS_PATH":"/mnt/storage/metadata/kaggle-seizure/ensemble-weights/"
+  "DATA_PATH":"/mnt/storage/data/dsb3/stage1/",
+  "LABELS_PATH":"/mnt/storage/data/dsb3/stage1_labels.csv",
+  "MODEL_PATH":"/mnt/storage/metadata/dsb3/models/",
+  "MODEL_PREDICTIONS_PATH":"/mnt/storage/metadata/dsb3/model-predictions/",
+  "ANALYSIS_PATH":"/mnt/storage/metadata/dsb3/analysis/",
+  "SUBMISSION_PATH":"/mnt/storage/metadata/dsb3/submissions/",
+  "LOGS_PATH":"/mnt/storage/metadata/dsb3/logs/",
+  "PREDICTIONS_PATH":"/mnt/storage/metadata/dsb3/predictions/",
+  "ENSEMBLE_WEIGHTS_PATH":"/mnt/storage/metadata/dsb3/ensemble-weights/"
 }
