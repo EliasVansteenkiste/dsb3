@@ -15,6 +15,14 @@ class CrossEntropyObjective(TargetVarDictObjective):
     """
 
     def get_loss_from_lists(self, predicted, expected, *args, **kwargs):
+        """
+        Return an error where predicted and expected are numpy arrays (and not Theano)
+        :param predicted:
+        :param expected:
+        :param args:
+        :param kwargs:
+        :return:
+        """
         predicted = np.clip(np.array(predicted), np.float32(1e-15), np.float32(1-1e-15))
         return -np.mean(expected*np.log(predicted) + (1-expected)*np.log(1-predicted))
 
@@ -25,6 +33,12 @@ class CrossEntropyObjective(TargetVarDictObjective):
         self.prediction = input_layers["predicted_probability"]
 
     def get_loss(self, *args, **kwargs):
+        """
+        Return the theano loss.
+        :param args:
+        :param kwargs:
+        :return:
+        """
         network_predictions = lasagne.layers.helper.get_output(self.prediction, *args, **kwargs)
         target_values = self.target_vars[self.target_key].astype('float32')  # convert from int
         log_loss = lasagne.objectives.binary_crossentropy(network_predictions, target_values.flatten())

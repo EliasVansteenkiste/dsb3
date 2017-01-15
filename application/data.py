@@ -11,10 +11,16 @@ from utils import paths
 
 VALIDATION_SET_SIZE = 0.2
 
-class PatientDataLoader(StandardDataLoader):
+"""
+This class is responsible for loading the data in your config
 
-    def filter_samples(self):
-        pass
+It extends from StandardDataLoader, which does the fancy stuff, like being deterministic, loading and preprocessing multithreaded,
+The data loader is first prepared, and load_sample then returns data for each requested tag for a specific patient
+
+Note that every patient, independent on its set, gets a unique number.
+Every time that number is requested, exactly the same data needs to be returned
+"""
+class PatientDataLoader(StandardDataLoader):
 
     OUTPUT_DATA_SIZE_TYPE = {
         "kaggle-dsb3:class":     ((), "uint8"),
@@ -31,6 +37,11 @@ class PatientDataLoader(StandardDataLoader):
         super(PatientDataLoader,self).__init__(location=location, *args, **kwargs)
 
     def prepare(self):
+        """
+        Prepare the dataloader, by storing values to static fields of this class
+        In this case, only filenames are loaded prematurely
+        :return:
+        """
         # step 0: load only when not loaded yet
         if TRAINING in self.data \
             and VALIDATION in self.data \
@@ -47,15 +58,19 @@ class PatientDataLoader(StandardDataLoader):
             for row in reader:
                 labels[row[0]] = int(row[1])
 
+        # make a stratified validation set
+        # note, the seed decides the validation set, but it is deterministic in the file_names and labels
         random.seed(317070)
         ids_per_label = [[patient_id for patient_id,label in labels.iteritems() if label==l] for l in [0,1]]
         validation_patients = sum([random.sample(sorted(ids), int(VALIDATION_SET_SIZE*len(ids))) for ids in ids_per_label],[])
 
+        # make the static data empty
         for s in self.datasets:
             self.data[s] = []
             self.labels[s] = []
             self.names[s] = []
 
+        # load the filenames and put into the right dataset
         for i, patient_folder in enumerate(patients):
             patient_id = patient_folder.split(path.sep)[-2]
             if patient_id in labels:
@@ -72,6 +87,7 @@ class PatientDataLoader(StandardDataLoader):
                 self.labels[dataset].append(labels[patient_id])
             self.names[dataset].append(patient_id)
 
+        # give every patient a unique number
         last_index = -1
         for set in self.datasets:
             self.indices[set] = range(last_index+1,last_index+1+len(self.data[set]))
@@ -98,11 +114,12 @@ class PatientDataLoader(StandardDataLoader):
 
         sample_index = set_indices.index(sample_id)
 
+        # prepare empty dicts which will contain the result
         sample = dict()
         sample[INPUT] = dict()
         sample[OUTPUT] = dict()
 
-        # Iterate over input tags
+        # Iterate over input tags and return a dict with the requested tags filled
         for tag in input_keys_to_do:
             tags = tag.split(':')
             if "dsb3" not in tags:
@@ -135,6 +152,12 @@ class PatientDataLoader(StandardDataLoader):
 
 
     def get_raw_3d_data(self, path):
+        """
+        Messy method which loads the 3d data of a patient.
+        Note that the order of slices might be off!
+        :param path:
+        :return:
+        """
         slices = self.load_patient_data(path)
         d = []
         for sl in slices.itervalues():
@@ -145,6 +168,11 @@ class PatientDataLoader(StandardDataLoader):
 
 
     def load_patient_data(self, path):
+        """
+        Load all the data a patient has and return as dict of dicts
+        :param path:
+        :return:
+        """
         images = sorted(glob.glob(path+'*.dcm'))
         result = dict()
         for image in images:
@@ -156,16 +184,21 @@ class PatientDataLoader(StandardDataLoader):
 
 
     def read_dicom(self,filename):
+        """
+        Load 1 dicom file and return as dict
+        :param filename:
+        :return:
+        """
         d = dicom.read_file(filename, force=True)
         data = {}
         try:
             for attr in dir(d):
-                if attr[0].isupper() and attr != 'PixelData':
+                   if attr[0].isupper() and attr != 'PixelData':
                     try:
                         data[attr] = getattr(d, attr)
                     except AttributeError:
                         pass
-                data["PixelData"] = np.array(d.pixel_array)
+            data["PixelData"] = np.array(d.pixel_array)
             data = self.clean_dicom_data(data)
         except:
             print "Failed to load the data in %s" % filename
@@ -174,6 +207,12 @@ class PatientDataLoader(StandardDataLoader):
 
 
     def clean_dicom_data(self, data):
+        """
+        clean the dicom file, such that no dicom-specific data-types (or numbers as strings) are let through
+        Note: this needs to be very robust. Fuck dicom.
+        :param data:
+        :return:
+        """
         for key,value in data.iteritems():
             try:
                 if key == 'AcquisitionNumber':
@@ -201,7 +240,7 @@ class PatientDataLoader(StandardDataLoader):
                 elif key == 'SamplesPerPixel':
                     data[key] = int(value)
                 elif key == 'SeriesNumber':
-                    data[key] = int(value)
+                    data[key] = int(value) if value else -1
                 elif key == 'SliceLocation':
                     data[key] = float(value)
                 elif key == 'WindowCenter' or key == 'WindowWidth':

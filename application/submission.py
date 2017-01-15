@@ -11,6 +11,13 @@ import re
 __author__ = 'jonas'
 
 def generate_submission(expid):
+    """
+    Generate a submission file for this contest, using a specific model predictions path
+    :param expid:
+    :return:
+    """
+    raise NotImplementedError()
+
     prediction_path = MODEL_PREDICTIONS_PATH + "%s.pkl" % expid
     submission_path = SUBMISSION_PATH + "%s.csv" % expid
 

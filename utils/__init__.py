@@ -1,5 +1,6 @@
 """
 This folder is for all scripts which do not import Theano
+Basic small functions which can be reused
 """
 
 import gzip

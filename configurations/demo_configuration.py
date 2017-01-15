@@ -15,9 +15,13 @@ from deep_learning.deep_learning_layers import ConvolutionLayer, PoolLayer
 #####################
 from interfaces.preprocess import NormalizeInput
 
+"This is the number of samples in each batch"
 batch_size = 3
+"This is the number of batches in each chunk. Computation speeds up if this is as big as possible."
 batches_per_chunk = 4
+"Reload the parameters from last time and continue, or start anew when you run this config file again"
 restart_from_save = False
+"After how many chunks should you save parameters. Keep this number high for better performance. It will always store at end anyway"
 save_every_chunks = 1
 
 
@@ -25,6 +29,8 @@ save_every_chunks = 1
 #   preprocessing   #
 #####################
 
+"Put in here the preprocessors for your data. " \
+"They will be run consequently on the datadict of the dataloader in the order of your list."
 preprocessors = [
     Put_In_The_Middle(tag="3d",output_shape=(256,512,512))
 ]
@@ -33,7 +39,8 @@ preprocessors = [
 #####################
 #     training      #
 #####################
-
+"This is the train dataloader. We will train until this one stops loading data."
+"You can set the number of epochs, the datasets and if you want it multiprocessed"
 training_data = PatientDataLoader(sets=TRAINING,
                                   epochs=10.0,
                                   preprocessors=preprocessors,
@@ -41,18 +48,22 @@ training_data = PatientDataLoader(sets=TRAINING,
                                  crash_on_exception=True,
                                   )
 
+"Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate."
 learning_rate_schedule = {
     0.0: 0.001,
     9.0: 0.0001,
 }
+"The function to build updates."
 build_updates = lasagne.updates.adam
 
 
 #####################
 #    validation     #
 #####################
-
+"We validate every x epochs of training data"
 epochs_per_validation = 1.0
+
+"Which data do we want to validate on. We will run all validation objectives on each validation data set."
 validation_data = {
     "validation set": PatientDataLoader(sets=VALIDATION,
                                         epochs=1,
@@ -74,7 +85,7 @@ validation_data = {
 #####################
 #      testing      #
 #####################
-
+"This is the data which will be used for testing."
 test_data = PatientDataLoader(sets=[TEST, VALIDATION, TRAINING],
                               epochs=1,
                               preprocessors=preprocessors,
@@ -85,6 +96,9 @@ test_data = PatientDataLoader(sets=[TEST, VALIDATION, TRAINING],
 #####################
 #     debugging     #
 #####################
+
+"Here we return a dict with the Theano objectives we are interested in. Both for the train and validation set."
+"On both sets, you may request multiple objectives! Only the one called 'objective' is used to optimize on."
 
 def build_objectives(interface_layers):
     obj = CrossEntropyObjective(interface_layers["outputs"], target_name="dsb3")
@@ -97,6 +111,9 @@ def build_objectives(interface_layers):
         }
     }
 
+"Here we build a model. The model returns a dict with the requested inputs for each layer:" \
+"And with the outputs it generates. You may generate multiple outputs (for analysis or for some other objectives, etc)" \
+"Unused outputs don't cost in performance"
 def build_model():
 
     #################
