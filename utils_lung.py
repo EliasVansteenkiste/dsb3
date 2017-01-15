@@ -3,6 +3,7 @@ import pathfinder
 import csv
 import dicom
 import os
+import re
 
 
 def read_dicom(path):
@@ -27,31 +28,37 @@ def read_dicom(path):
     return np.array(d.pixel_array), metadata
 
 
+def extract_pid(patient_data_path):
+    return patient_data_path.split('/')[-1]
+
+
 def get_patient_data(patient_data_path):
-    patient_data = []
-    pid = patient_data_path.split('/')[-1]
     slice_paths = os.listdir(patient_data_path)
+    sid2data = {}
+    sid2metadata = {}
     for s in slice_paths:
         slice_id = s.split('.')[0]
         data, metadata = read_dicom(patient_data_path + '/' + s)
-        patient_data.append({'data': data, 'metadata': metadata,
-                             'slice_id': slice_id, 'patient_id': pid})
-    return patient_data
+        sid2data[slice_id] = data
+        sid2metadata[slice_id] = metadata
+    return sid2data, sid2metadata
 
 
-def sort_slices(patient_data):
-    # TODO: maybe make inplace?
-    return sorted(patient_data, key=lambda x: x['metadata']['InstanceNumber'])
-
-
-def sort_slices_slicelocation(patient_data):
-    # TODO: maybe make inplace?
-    return sorted(patient_data, key=lambda x: x['metadata']['SliceLocation'])
+def sort_slices_intance_number(sid2metadata):
+    return sorted(sid2metadata.keys(), key=lambda x: sid2metadata[x]['InstanceNumber'])
 
 
 def sort_slices_position(patient_data):
-    # TODO: maybe make inplace?
     return sorted(patient_data, key=lambda x: thru_plane_position(x['metadata']))
+
+
+def sort_slices_plane(sid2metadata):
+    return sorted(sid2metadata.keys(), key=lambda x: thru_plane_position(sid2metadata[x]))
+
+
+def sort_slices_jonas(sid2metadata):
+    sid2position = slice_location_finder(sid2metadata)
+    return sorted(sid2metadata.keys(), key=lambda x: sid2position[x])
 
 
 def thru_plane_position(slice_metadata):
@@ -64,6 +71,62 @@ def thru_plane_position(slice_metadata):
     normal_vector = np.cross(rowvec, colvec)
     slice_pos = np.dot(position, normal_vector)
     return slice_pos
+
+
+def slice_location_finder(sid2metadata):
+    """
+    :param slicepath2metadata: dict with arbitrary keys, and metadata values
+    :return:
+    """
+
+    sid2midpix = {}
+    sid2position = {}
+
+    for sid in sid2metadata:
+        metadata = sid2metadata[sid]
+        image_orientation = metadata["ImageOrientationPatient"]
+        image_position = metadata["ImagePositionPatient"]
+        pixel_spacing = metadata["PixelSpacing"]
+        rows = metadata['Rows']
+        columns = metadata['Columns']
+
+        # calculate value of middle pixel
+        F = np.array(image_orientation).reshape((2, 3))
+        # reversed order, as per http://nipy.org/nibabel/dicom/dicom_orientation.html
+        i, j = columns / 2.0, rows / 2.0
+        im_pos = np.array([[i * pixel_spacing[0], j * pixel_spacing[1]]], dtype='float32')
+        pos = np.array(image_position).reshape((1, 3))
+        position = np.dot(im_pos, F) + pos
+        sid2midpix[sid] = position[0, :]
+
+    if len(sid2midpix) <= 1:
+        for sp, midpix in sid2midpix.iteritems():
+            sid2position[sp] = 0.
+    else:
+        # find the keys of the 2 points furthest away from each other
+        max_dist = -1.0
+        max_dist_keys = []
+        for sp1, midpix1 in sid2midpix.iteritems():
+            for sp2, midpix2 in sid2midpix.iteritems():
+                if sp1 == sp2:
+                    continue
+                distance = np.sqrt(np.sum((midpix1 - midpix2) ** 2))
+                if distance > max_dist:
+                    max_dist_keys = [sp1, sp2]
+                    max_dist = distance
+        # project the others on the line between these 2 points
+        # sort the keys, so the order is more or less the same as they were
+        # max_dist_keys.sort(key=lambda x: int(re.search(r'/sax_(\d+)\.pkl$', x).group(1)))
+        p_ref1 = sid2midpix[max_dist_keys[0]]
+        p_ref2 = sid2midpix[max_dist_keys[1]]
+        v1 = p_ref2 - p_ref1
+        v1 /= np.linalg.norm(v1)
+
+        for sp, midpix in sid2midpix.iteritems():
+            v2 = midpix - p_ref1
+            sid2position[sp] = np.inner(v1, v2)
+
+    return sid2position
 
 
 def get_patient_data_paths(data_dir):
