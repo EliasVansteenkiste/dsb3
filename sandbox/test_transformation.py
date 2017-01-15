@@ -1,14 +1,14 @@
 import matplotlib
 # matplotlib.use('Qt4Agg')
 
-import data
+import data_transforms
 import numpy as np
 import glob
 import re
 from matplotlib import animation
 import matplotlib.pyplot as plt
 import utils
-import data as data_test
+import data_transforms as data_test
 from configuration import set_configuration, config
 
 set_configuration('test_config')
@@ -72,7 +72,7 @@ for p in patient_path:
         plt.show()
 
 
-    slicepath2location = data.slice_location_finder(slicepath2metadata)
+    slicepath2location = data_transforms.slice_location_finder(slicepath2metadata)
     slice_paths = sorted(slicepath2location.keys(), key=slicepath2location.get)
     for s in slice_paths:
         print  s, slicepath2location[s]

@@ -4,7 +4,7 @@ from matplotlib import animation
 import matplotlib.pyplot as plt
 import glob
 import re
-import data as data_test
+import data_transforms as data_test
 import utils
 
 

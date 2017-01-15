@@ -1,4 +1,4 @@
-import data
+import data_transforms
 import glob
 import re
 import itertools
@@ -10,7 +10,7 @@ import utils
 class SliceNormRescaleDataGenerator(object):
     def __init__(self, data_path, batch_size, transform_params, patient_ids=None, labels_path=None,
                  slice2roi_path=None, full_batch=False, random=True, infinite=False, view='sax',
-                 data_prep_fun=data.transform_norm_rescale, **kwargs):
+                 data_prep_fun=data_transforms.transform_norm_rescale, **kwargs):
 
         if patient_ids:
             self.patient_paths = []
@@ -31,7 +31,7 @@ class SliceNormRescaleDataGenerator(object):
         self.full_batch = full_batch
         self.random = random
         self.infinite = infinite
-        self.id2labels = data.read_labels(labels_path) if labels_path else None
+        self.id2labels = data_transforms.read_labels(labels_path) if labels_path else None
         self.transformation_params = transform_params
         self.data_prep_fun = data_prep_fun
         self.slice2roi = utils.load_pkl(slice2roi_path) if slice2roi_path else None
@@ -57,8 +57,8 @@ class SliceNormRescaleDataGenerator(object):
                     slice_roi = self.slice2roi[str(patient_id)][
                         utils.get_slice_id(slicepath)] if self.slice2roi else None
 
-                    slice_data = data.read_slice(slicepath)
-                    metadata = data.read_metadata(slicepath)
+                    slice_data = data_transforms.read_slice(slicepath)
+                    metadata = data_transforms.read_metadata(slicepath)
                     x_batch[i], targets_zoom = self.data_prep_fun(slice_data, metadata, self.transformation_params,
                                                                   roi=slice_roi)
 
@@ -78,7 +78,7 @@ class SliceNormRescaleDataGenerator(object):
 class PatientsDataGenerator(object):
     def __init__(self, data_path, batch_size, transform_params, patient_ids=None, labels_path=None,
                  slice2roi_path=None, full_batch=False, random=True, infinite=True, min_slices=0,
-                 data_prep_fun=data.transform_norm_rescale,
+                 data_prep_fun=data_transforms.transform_norm_rescale,
                  **kwargs):
 
         if patient_ids:
@@ -105,7 +105,7 @@ class PatientsDataGenerator(object):
         self.nsamples = len(self.patient_ids)
 
         self.data_path = data_path
-        self.id2labels = data.read_labels(labels_path) if labels_path else None
+        self.id2labels = data_transforms.read_labels(labels_path) if labels_path else None
         self.batch_size = batch_size
         self.rng = np.random.RandomState(42)
         self.full_batch = full_batch
@@ -142,18 +142,18 @@ class PatientsDataGenerator(object):
                     # fill metadata dict for linefinder code and sort slices
                     slicepath2metadata = {}
                     for sp in slice_paths:
-                        slicepath2metadata[sp] = data.read_metadata(sp)
-                    slicepath2location = data.slice_location_finder(slicepath2metadata)
+                        slicepath2metadata[sp] = data_transforms.read_metadata(sp)
+                    slicepath2location = data_transforms.slice_location_finder(slicepath2metadata)
                     slice_paths = sorted(slicepath2location.keys(), key=slicepath2location.get)
 
                     # sample augmentation params per patient
-                    random_params = data.sample_augmentation_parameters(self.transformation_params)
+                    random_params = data_transforms.sample_augmentation_parameters(self.transformation_params)
 
                     for j, sp in enumerate(slice_paths):
                         slice_roi = self.slice2roi[str(pid)][
                             utils.get_slice_id(sp)] if self.slice2roi else None
 
-                        slice_data = data.read_slice(sp)
+                        slice_data = data_transforms.read_slice(sp)
 
                         x_batch[i, j], targets_zoom = self.data_prep_fun(slice_data, slicepath2metadata[sp],
                                                                          self.transformation_params,

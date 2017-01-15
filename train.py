@@ -71,7 +71,7 @@ for l_in, x in izip(model.l_ins, xs_shared):
 # theano functions
 iter_train = theano.function([idx], train_loss, givens=givens_train, updates=updates, on_unused_input='ignore')
 iter_validate = theano.function([], [nn.layers.get_output(l, deterministic=True) for l in model.l_outs],
-                                givens=givens_valid,on_unused_input='warn')
+                                givens=givens_valid, on_unused_input='warn')
 
 if config().restart_from_save:
     print 'Load model parameters for resuming'
@@ -173,15 +173,13 @@ for chunk_idx, (xs_chunk, ys_chunk, _) in izip(chunk_idxs,
 
         with open(metadata_path, 'w') as f:
             pickle.dump({
-                'configuration': config_name,
+                'configuration_file': config_name,
                 'git_revision_hash': utils.get_git_revision_hash(),
                 'experiment_id': expid,
                 'chunks_since_start': chunk_idx,
                 'losses_train': losses_train,
                 'losses_eval_valid': losses_eval_valid,
-                'crps_eval_valid': crps_eval_valid,
                 'param_values': nn.layers.get_all_param_values(model.l_top)
             }, f, pickle.HIGHEST_PROTOCOL)
-
             print '  saved to %s' % metadata_path
             print

@@ -1,5 +1,4 @@
 import re
-import cPickle as pickle
 from collections import namedtuple
 import numpy as np
 import skimage.transform
@@ -7,31 +6,14 @@ from scipy.fftpack import fftn, ifftn
 from skimage.feature import peak_local_max, canny
 from skimage.transform import hough_circle
 import skimage.draw
-# import compressed_cache
 from configuration import config
-import utils
 import skimage.exposure, skimage.filters
 
 
-# @compressed_cache.memoize()
-def read_slice(path):
-    return pickle.load(open(path))['data']
-
-
-# @compressed_cache.memoize()
-def read_metadata(path):
-    d = pickle.load(open(path))['metadata'][0]
-    metadata = {k: d[k] for k in ['PixelSpacing', 'ImageOrientationPatient', 'ImagePositionPatient', 'SliceLocation',
-                                  'PatientSex', 'PatientAge', 'Rows', 'Columns']}
-    metadata['PixelSpacing'] = np.float32(metadata['PixelSpacing'])
-    metadata['ImageOrientationPatient'] = np.float32(metadata['ImageOrientationPatient'])
-    metadata['SliceLocation'] = np.float32(metadata['SliceLocation'])
-    metadata['ImagePositionPatient'] = np.float32(metadata['ImagePositionPatient'])
-    metadata['PatientSex'] = 1 if metadata['PatientSex'] == 'F' else -1
-    metadata['PatientAge'] = utils.get_patient_age(metadata['PatientAge'])
-    metadata['Rows'] = int(metadata['Rows'])
-    metadata['Columns'] = int(metadata['Columns'])
-    return metadata
+def ct2hu(x, metadata):
+    x[x < 0.] = 0.
+    x = metadata['RescaleSlope'] * x + metadata['RescaleIntercept']
+    return x
 
 
 def sample_augmentation_parameters(transformation):

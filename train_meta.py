@@ -24,7 +24,7 @@ metadata_dir = utils.get_dir_path('train', pathfinder.MODEL_PATH)
 submodel_metadata_path = utils.find_model_metadata(metadata_dir, subconfig_name)
 submodel_metadata = utils.load_pkl(submodel_metadata_path)
 
-assert subconfig_name == submodel_metadata['configuration']
+assert subconfig_name == submodel_metadata['configuration_file']
 set_subconfiguration(subconfig_name)
 set_configuration(config_name)
 
@@ -176,14 +176,13 @@ for chunk_idx, (xs_chunk, ys_chunk, patient_idx) in izip(chunk_idxs,
 
         with open(metadata_path, 'w') as f:
             pickle.dump({
-                'configuration': config_name,
+                'configuration_file': config_name,
                 'subconfiguration': subconfig_name,
                 'git_revision_hash': utils.get_git_revision_hash(),
                 'experiment_id': expid,
                 'chunks_since_start': chunk_idx,
                 'losses_train': losses_train,
                 'losses_eval_valid': losses_eval_valid,
-                'crps_eval_valid': crps_eval_valid,
                 'param_values': nn.layers.get_all_param_values(model.l_top)
             }, f, pickle.HIGHEST_PROTOCOL)
 

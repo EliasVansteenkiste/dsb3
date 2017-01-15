@@ -4,8 +4,6 @@ import pwd
 import subprocess
 import time
 import numpy as np
-# import dicom2pkl
-import create_validation_split
 import glob
 import os
 
@@ -30,19 +28,15 @@ def find_model_metadata(metadata_dir, config_name):
 
 def get_train_valid_split(train_data_path):
     filename = 'valid_split.pkl'
-    if not os.path.isfile(filename):
-        print 'Making validation split'
-        create_validation_split.save_train_validation_ids(filename, train_data_path)
+    # if not os.path.isfile(filename):
+    #     print 'Making validation split'
+    #     create_validation_split.save_train_validation_ids(filename, train_data_path)
     return load_pkl(filename)
 
 
-def check_data_paths(data_path, pkl_data_path):
+def check_data_paths(data_path):
     if not os.path.isdir(data_path):
         raise ValueError('wrong path to DICOM data')
-    if not os.path.isdir(pkl_data_path):
-        print ' converting DICOM to pkl'
-        dicom2pkl.preprocess(data_path, pkl_data_path)
-        print ' Saved in', pkl_data_path
 
 
 def get_dir_path(dir_name, root_dir):

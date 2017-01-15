@@ -1,8 +1,6 @@
 {
   "TRAIN_DATA_PATH": "/mnt/sda3/data/kaggle-lung/sample_images",
   "VALIDATE_DATA_PATH": "/mnt/sda3/data/kaggle-lung/sample_images",
-  "PKL_TRAIN_DATA_PATH": "/mnt/sda3/data/kaggle-lung/pkl_sample_images",
-  "PKL_VALIDATE_DATA_PATH": "/mnt/sda3/data/kaggle-lung/pkl_sample_images",
   "MODEL_PATH": "/home/ikorshun/metadata",
   "TRAIN_LABELS_PATH": "/mnt/sda3/data/kaggle-lung/stage1_labels.csv",
   "PREDICTIONS_PATH": "/mnt/storage/metadata/kaggle-heart/predictions",
