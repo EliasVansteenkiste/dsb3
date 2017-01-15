@@ -1,3 +1,7 @@
+"""
+Run with:
+python train.py myconfigfile
+"""
 import argparse
 from functools import partial
 from itertools import izip

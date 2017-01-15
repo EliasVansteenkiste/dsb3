@@ -8,7 +8,7 @@
 
 ## The Data
 
-Downloaded. Awaiting deployment to machines and preparation.
+Downloaded. Awaiting deployment to machines and preparation. Did not unzip correctly the first time.
 
 ## The Framework
 
@@ -23,6 +23,16 @@ Downloaded. Awaiting deployment to machines and preparation.
 In the main folder only go a couple of basic scripts! Scripts which are needed to interact with in order to regenerate our results, go here. NOTHING ELSE.
 
 ## ?
+
+### TODOS
+
+* look at the data
+* 
+* write more config files
+* ensemble
+* create submissions
+* load the data as fast as possible
+  * Cache?
 
 TO BE CONTINUED
 
