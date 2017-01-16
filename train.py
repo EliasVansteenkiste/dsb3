@@ -216,58 +216,6 @@ def train_model(expid):
         if config.dump_network_loaded_data:
             pickle.dump(train_data, open("data_loader_dump_train_%d.pkl" % e, "wb"))
 
-        if epoch >= last_auc_epoch+1:
-            last_auc_epoch = epoch
-            print
-            for key,ob in objectives["train"].iteritems():
-                ob.remove_all_points()
-
-            auc_chunk_generator = config.auc_training_data.generate_batch(
-                    chunk_size = chunk_size,
-                    required_input = required_input,
-                    required_output = required_output,
-                )
-
-            print "  AUC-points (%d/%d samples)" % (config.auc_training_data.number_of_used_samples, config.auc_training_data.number_of_samples)
-            print "  -----------------------"
-
-            if config.auc_training_data.number_of_samples == 0:
-                continue
-
-            chunk_outputs = np.zeros((len(network_outputs),0))
-            chunk_labels = np.zeros((0,))
-            data_load_time.start()
-            for auc_data in buffering.buffered_gen_threaded(auc_chunk_generator):
-                data_load_time.stop()
-                num_batches_chunk_eval = config.batches_per_chunk
-
-                for key in xs_shared:
-                    xs_shared[key].set_value(auc_data["input"][key])
-
-                chunk_labels = np.concatenate((chunk_labels, auc_data["output"]['kaggle-seizure:class']), axis=0)
-
-                for b in xrange(num_batches_chunk_eval):
-                    gpu_time.start()
-                    th_result = iter_predict(b)
-                    gpu_time.stop()
-                    resulting_outputs = np.stack(th_result[:len(network_outputs)], axis=0)
-                    chunk_outputs = np.concatenate((chunk_outputs, resulting_outputs), axis=1)
-                data_load_time.start()
-            data_load_time.stop()
-            utils.detect_nans(chunk_outputs, xs_shared, ys_shared, all_params)
-
-            for key,ob in objectives["train"].iteritems():
-                try:
-                    l = config.auc_training_data.number_of_samples
-                    ob.add_points(chunk_outputs[0,:l], chunk_labels[:l])
-                    print "  Points: %d" % (len(ob.time_added)-2)
-                    print "  Current estimated AUC score: %.4f" % ob.current_auc
-                    print
-                    #ob.print_status()
-                except:
-                    pass
-
-
         for key, rate in learning_rate_schedule.iteritems():
             if epoch >= key:
                 lr = np.float32(rate)
