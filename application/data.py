@@ -23,8 +23,8 @@ Every time that number is requested, exactly the same data needs to be returned
 class PatientDataLoader(StandardDataLoader):
 
     OUTPUT_DATA_SIZE_TYPE = {
-        "kaggle-dsb3:class":     ((), "uint8"),
-        "kaggle-dsb3:sample_id": ((), "uint32")
+        "dsb3:class":     ((), "uint8"),
+        "dsb3:sample_id": ((), "uint32")
     }
 
     # These are shared between all objects of this type

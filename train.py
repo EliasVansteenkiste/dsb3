@@ -232,7 +232,7 @@ def train_model(expid):
 
         for key in ys_shared:
             if key not in train_data["output"]:
-                raise Exception("You forgot to add key %s to OUTPUT_DATA_SIZE_TYPE in your data loader")
+                raise Exception("You forgot to add key %s to OUTPUT_DATA_SIZE_TYPE in your data loader"%key)
             ys_shared[key].set_value(train_data["output"][key])
 
         chunk_losses = np.zeros((len(train_losses_theano),0))
