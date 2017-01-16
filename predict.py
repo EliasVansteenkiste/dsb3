@@ -1,10 +1,11 @@
-"""Script for generating predictions for a given trained model.
+"""
+Script for generating predictions for a given trained model.
 
 The script loads the specified configuration file. All parameters are defined
 in that file.
 
 Usage:
-> python predict.py -c CONFIG_NAME
+python predict.py myconfigfile
 """
 import argparse
 import cPickle as pickle

@@ -1,3 +1,7 @@
+"""
+This has a static object, which can be used to print theano variables.
+Call the print_me_this() on your variable, and it will be printed during training.
+"""
 import theano
 import theano.tensor as T
 

@@ -8,11 +8,13 @@ confusion_indices = []
 
 def analyze(id,analysis_path,**kwargs):
     """
-    kaggle-petri:default
-    kaggle-petri:class
-    analysis_path
-    predicted_class
+    Run some analysis on the output of your network (for visualization or what have you).
+    Store your analysis (images, plots) in analysis_path
+
+    The kwargs contain all the output of your network, as computed numpy tensors.
+    The id is the respective id of this patient
     """
+    raise NotImplementedError()
     print kwargs.keys()
     data = kwargs["kaggle-petri:nonzero-random-section"]
     estimate = np.argmax(kwargs["predicted_class"], axis=-1)

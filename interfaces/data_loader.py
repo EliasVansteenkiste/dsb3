@@ -10,9 +10,12 @@ INPUT = "input"
 OUTPUT = "output"
 IDS = "ids"
 
+TRAIN = "training"
 TRAINING = "training"
+VALIDATE = "validation"
 VALIDATION = "validation"
 TEST = "test"
+TESTING = "test"
 UNSUPERVISED = "unsupervised"
 
 
@@ -42,7 +45,7 @@ class BaseDataLoader(object):
     def number_of_samples(self):
         raise NotImplementedError()
     @property
-    def number_of_used_samples(self):
+    def number_of_samples_in_iterator(self):
         raise NotImplementedError()
 
     def generate_batch(self, chunk_size, required_input, required_output):
@@ -98,7 +101,7 @@ class StandardDataLoader(BaseDataLoader):
         return sum([len(self.indices[s]) for s in self.sets])
 
     @property
-    def number_of_used_samples(self):
+    def number_of_samples_in_iterator(self):
         if self.epochs is None:
             return None
         return int(self.epochs * self.number_of_samples)

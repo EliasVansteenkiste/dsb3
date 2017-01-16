@@ -1,3 +1,9 @@
+"""
+For running analysis on the outputs of your model (see also application/analyze.py)
+
+Usage:
+python analyze.py myconfigfile [-f analysis_function_to_run]
+"""
 from application.analyze import analyze
 import argparse
 from functools import partial

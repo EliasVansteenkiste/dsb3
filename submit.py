@@ -1,9 +1,14 @@
+"""
+Run with:
+python submit.py [-p mypredictions] [-c myconfigfile]
+"""
 import argparse
 from application.submission import generate_submission
 from utils.configuration import set_configuration
 import utils
 
 if __name__ == "__main__":
+    NotImplementedError()
     parser = argparse.ArgumentParser(description=__doc__)
     required = parser.add_argument_group('required arguments')
     required.add_argument('-c', '--config',
