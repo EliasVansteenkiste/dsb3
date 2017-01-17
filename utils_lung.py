@@ -4,6 +4,34 @@ import csv
 import dicom
 import os
 import re
+import SimpleITK as sitk
+import numpy as np
+import csv
+import os
+from PIL import Image
+
+
+def read_mhd(path):
+    itk_data = sitk.ReadImage(path.encode('utf-8'))
+    pixel_data = sitk.GetArrayFromImage(itk_data)
+    origin = np.array(list(reversed(itk_data.GetOrigin())))
+    spacing = np.array(list(reversed(itk_data.GetSpacing())))
+    return pixel_data, origin, spacing
+
+
+def world2voxel(world_coord, origin, spacing):
+    stretched_voxel_coord = np.absolute(world_coord - origin)
+    voxel_coord = stretched_voxel_coord / spacing
+    return voxel_coord
+
+
+def normalize_planes(npzarray):
+    maxHU = 400.
+    minHU = -1000.
+    npzarray = (npzarray - minHU) / (maxHU - minHU)
+    npzarray[npzarray > 1] = 1.
+    npzarray[npzarray < 0] = 0.
+    return npzarray
 
 
 def read_dicom(path):
@@ -19,7 +47,10 @@ def read_dicom(path):
     metadata['InstanceNumber'] = int(metadata['InstanceNumber'])
     metadata['PixelSpacing'] = np.float32(metadata['PixelSpacing'])
     metadata['ImageOrientationPatient'] = np.float32(metadata['ImageOrientationPatient'])
-    metadata['SliceLocation'] = np.float32(metadata['SliceLocation'])
+    try:
+        metadata['SliceLocation'] = np.float32(metadata['SliceLocation'])
+    except:
+        metadata['SliceLocation'] = None
     metadata['ImagePositionPatient'] = np.float32(metadata['ImagePositionPatient'])
     metadata['Rows'] = int(metadata['Rows'])
     metadata['Columns'] = int(metadata['Columns'])
@@ -144,8 +175,22 @@ def read_labels(file_path):
             i = 1
             continue
         id, label = item.replace('\n', '').split(',')
-        id2labels[id] = int(float(label))
+        id2labels[id] = int(label)
     return id2labels
+
+
+def read_luna_labels(file_path):
+    id2xyzd = {}
+    train_csv = open(file_path)
+    lines = train_csv.readlines()
+    i = 0
+    for item in lines:
+        if i == 0:
+            i = 1
+            continue
+        id, x, y, z, d = item.replace('\n', '').split(',')
+        id2xyzd[id] = [float(x), float(y), float(x), float(d)]
+    return id2xyzd
 
 
 def write_submission(patient_predictions, submission_path):

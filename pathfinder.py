@@ -2,22 +2,33 @@ import json
 import utils
 import os
 
-with open('SETTINGS.json') as data_file:
-    paths = json.load(data_file)
+if utils.hostname() == 'user':
+    with open('SETTINGS_local.json') as data_file:
+        paths = json.load(data_file)
+else:
+    with open('SETTINGS.json') as data_file:
+        paths = json.load(data_file)
 
-MODEL_PATH = paths["MODEL_PATH"]
-PREDICTIONS_PATH = paths["PREDICTIONS_PATH"]
+DATA_PATH = paths["DATA_PATH"]
+utils.check_data_paths(DATA_PATH)
 
-TRAIN_DATA_PATH = paths["TRAIN_DATA_PATH"]
-utils.check_data_paths(TRAIN_DATA_PATH)
+LUNA_DATA_PATH = paths["LUNA_DATA_PATH"]
+utils.check_data_paths(LUNA_DATA_PATH)
 
-VALIDATE_DATA_PATH = paths["VALIDATE_DATA_PATH"]
-utils.check_data_paths(VALIDATE_DATA_PATH)
-
-TRAIN_LABELS_PATH = paths["TRAIN_LABELS_PATH"]
-if not os.path.isfile(TRAIN_LABELS_PATH):
+LABELS_PATH = paths["LABELS_PATH"]
+if not os.path.isfile(LABELS_PATH):
     raise ValueError('no file with train labels')
+
+LUNA_LABELS_PATH = paths["LUNA_LABELS_PATH"]
+if not os.path.isfile(LUNA_LABELS_PATH):
+    raise ValueError('no file with luna annotations')
 
 SAMPLE_SUBMISSION_PATH = paths["SAMPLE_SUBMISSION_PATH"]
 if not os.path.isfile(SAMPLE_SUBMISSION_PATH):
     raise ValueError('no sample submission file')
+
+VALIDATION_SPLIT_PATH = paths["VALIDATION_SPLIT_PATH"]
+# if not os.path.isfile(VALIDATION_SPLIT_PATH):
+#     raise ValueError('no validation file')
+
+METADATA_PATH = paths["METADATA_PATH"]

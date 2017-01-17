@@ -7,7 +7,7 @@ import nn_lung
 from configuration import subconfig
 import utils_lung
 import utils
-from pathfinder import PKL_TRAIN_DATA_PATH, TRAIN_LABELS_PATH, PKL_VALIDATE_DATA_PATH
+from pathfinder import PKL_TRAIN_DATA_PATH, LABELS_PATH, PKL_VALIDATE_DATA_PATH
 
 caching = None
 restart_from_save = None
@@ -29,7 +29,7 @@ train_data_iterator = data_iterators.PatientsDataGenerator(data_path=PKL_TRAIN_D
                                                            batch_size=chunk_size,
                                                            transform_params=train_transformation_params,
                                                            patient_ids=train_valid_ids['train'],
-                                                           labels_path=TRAIN_LABELS_PATH,
+                                                           labels_path=LABELS_PATH,
                                                            slice2roi_path='pkl_train_slice2roi_10.pkl',
                                                            full_batch=True, random=True, infinite=True, min_slices=5,
                                                            data_prep_fun=data_prep_fun)
@@ -38,7 +38,7 @@ valid_data_iterator = data_iterators.PatientsDataGenerator(data_path=PKL_TRAIN_D
                                                            batch_size=chunk_size,
                                                            transform_params=valid_transformation_params,
                                                            patient_ids=train_valid_ids['valid'],
-                                                           labels_path=TRAIN_LABELS_PATH,
+                                                           labels_path=LABELS_PATH,
                                                            slice2roi_path='pkl_train_slice2roi_10.pkl',
                                                            full_batch=False, random=False, infinite=False,
                                                            min_slices=5, data_prep_fun=data_prep_fun)

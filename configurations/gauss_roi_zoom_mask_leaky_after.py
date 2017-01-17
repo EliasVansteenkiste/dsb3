@@ -7,7 +7,7 @@ import theano.tensor as T
 from functools import partial
 import utils_lung
 import nn_lung
-from pathfinder import PKL_TRAIN_DATA_PATH, TRAIN_LABELS_PATH, PKL_VALIDATE_DATA_PATH
+from pathfinder import PKL_TRAIN_DATA_PATH, LABELS_PATH, PKL_VALIDATE_DATA_PATH
 import utils
 import data_transforms
 
@@ -63,7 +63,7 @@ train_data_iterator = data_iterators.SliceNormRescaleDataGenerator(data_path=PKL
                                                                    batch_size=chunk_size,
                                                                    transform_params=train_transformation_params,
                                                                    patient_ids=train_valid_ids['train'],
-                                                                   labels_path=TRAIN_LABELS_PATH,
+                                                                   labels_path=LABELS_PATH,
                                                                    slice2roi_path='pkl_train_slice2roi.pkl',
                                                                    full_batch=True, random=True, infinite=True,
                                                                    data_prep_fun=data_prep_fun)
@@ -72,7 +72,7 @@ valid_data_iterator = data_iterators.SliceNormRescaleDataGenerator(data_path=PKL
                                                                    batch_size=chunk_size,
                                                                    transform_params=valid_transformation_params,
                                                                    patient_ids=train_valid_ids['valid'],
-                                                                   labels_path=TRAIN_LABELS_PATH,
+                                                                   labels_path=LABELS_PATH,
                                                                    slice2roi_path='pkl_train_slice2roi.pkl',
                                                                    full_batch=False, random=False, infinite=False,
                                                                    data_prep_fun=data_prep_fun)

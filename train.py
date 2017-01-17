@@ -25,11 +25,11 @@ print "Experiment ID: %s" % expid
 print
 
 # metadata
-metadata_dir = utils.get_dir_path('train', pathfinder.MODEL_PATH)
+metadata_dir = utils.get_dir_path('train', pathfinder.METADATA_PATH)
 metadata_path = metadata_dir + '/%s.pkl' % expid
 
 # logs
-logs_dir = utils.get_dir_path('logs', pathfinder.MODEL_PATH)
+logs_dir = utils.get_dir_path('logs', pathfinder.METADATA_PATH)
 sys.stdout = logger.Logger(logs_dir + '/%s.log' % expid)
 sys.stderr = sys.stdout
 

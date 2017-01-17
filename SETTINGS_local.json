@@ -1,0 +1,9 @@
+{
+  "DATA_PATH": "/mnt/sda3/data/kaggle-lung/sample_images",
+  "LABELS_PATH": "/mnt/sda3/data/kaggle-lung/stage1_labels.csv",
+  "METADATA_PATH": "/mnt/sda3/data/kaggle-lung/metadata",
+  "SAMPLE_SUBMISSION_PATH": "/mnt/sda3/data/kaggle-lung/stage1_sample_submission.csv",
+  "VALIDATION_SPLIT_PATH": "/mnt/sda3/data/kaggle-lung/stage1_sample_submission.csv",
+  "LUNA_DATA_PATH": "/mnt/sda3/data/kaggle-lung/seg-lungs-LUNA16",
+  "LUNA_LABELS_PATH": "/mnt/sda3/data/kaggle-lung/annotations.csv"
+}

@@ -10,10 +10,11 @@ from configuration import config
 import skimage.exposure, skimage.filters
 
 
-def ct2hu(x, metadata):
-    x[x < 0.] = 0.
-    x = metadata['RescaleSlope'] * x + metadata['RescaleIntercept']
-    return x
+def ct2HU(x, metadata):
+    x_hu = np.copy(x)
+    x_hu[x_hu < 0.] = 0.
+    x_hu = metadata['RescaleSlope'] * x_hu + metadata['RescaleIntercept']
+    return x_hu
 
 
 def sample_augmentation_parameters(transformation):
@@ -378,9 +379,6 @@ def normalize_contrast_zmuv(data, z=2):
         img = data[i]
         img = ((img - mean) / (2 * std * z) + 0.5)
         data[i] = np.clip(img, -0.0, 1.0)
-
-
-
 
 
 def extract_roi(data, pixel_spacing, minradius_mm=25, maxradius_mm=45, kernel_width=5, center_margin=8, num_peaks=10,
