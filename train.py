@@ -1,4 +1,7 @@
 """
+This is the script which trains your model on the dataset according to a configuration file
+The resulting parameters are consequently stored, and can be used by other scripts.
+
 Run with:
 python train.py myconfigfile
 """
@@ -28,41 +31,57 @@ from utils import buffering
 from utils.timer import Timer
 
 import warnings
+# this removes some annoying messages from being printed
 warnings.simplefilter("error")
 import sys
+# because python does not like recursion, but we do
 sys.setrecursionlimit(10000)
 
+
 def train_model(expid):
+    """
+    This function trains the model, and will use the name expid to store and report the results
+    :param expid: the name
+    :return:
+    """
     metadata_path = MODEL_PATH + "%s.pkl" % expid
 
+    # Fast_run is very slow, but might be better of debugging.
+    # Make sure you don't leave it on accidentally!
     if theano.config.optimizer != "fast_run":
         print "WARNING: not running in fast mode!"
 
     print "Build model"
+    # Get the input and output layers of our model
     interface_layers = config.build_model()
 
     output_layers = interface_layers["outputs"]
     input_layers = interface_layers["inputs"]
+
+    # merge all output layers into a fictional dummy layer which is not actually used
     top_layer = lasagne.layers.MergeLayer(
         incomings=output_layers.values()
     )
+    # get all the trainable parameters from the model
     all_layers = lasagne.layers.get_all_layers(top_layer)
     all_params = lasagne.layers.get_all_params(top_layer, trainable=True)
 
+    # do not train beyond the layers in cutoff_gradients. Remove all their parameters from the optimization process
     if "cutoff_gradients" in interface_layers:
         submodel_params = [param for value in interface_layers["cutoff_gradients"] for param in lasagne.layers.get_all_params(value)]
         all_params = [p for p in all_params if p not in submodel_params]
 
+    # some parameters might already be pretrained! Load their values from the requested configuration name.
     if "pretrained" in interface_layers:
         for config_name, layers_dict in interface_layers["pretrained"].iteritems():
-            pretrained_metadata_path = MODEL_PATH + "%s.pkl" % config_name.split('.')[1]
+            pretrained_metadata_path = MODEL_PATH + "%s.pkl" % config_name
             pretrained_resume_metadata = np.load(pretrained_metadata_path)
             pretrained_top_layer = lasagne.layers.MergeLayer(
                 incomings = layers_dict.values()
             )
             lasagne.layers.set_all_param_values(pretrained_top_layer, pretrained_resume_metadata['param_values'])
 
-    num_params = sum([np.prod(p.get_value().shape) for p in all_params])
+    # Count all the parameters we are actually optimizing, and visualize what the model looks like.
 
     print string.ljust("  layer output shapes:",26),
     print string.ljust("#params:",10),
@@ -77,33 +96,42 @@ def train_model(expid):
         num_param = string.ljust(comma_seperator(num_param), 10)
         num_size = string.ljust(comma_seperator(np.prod(layer.output_shape[1:])), 10)
         print "    %s %s %s %s" % (name,  num_param, num_size, layer.output_shape)
+
+    num_params = sum([np.prod(p.get_value().shape) for p in all_params])
     print "  number of parameters:", comma_seperator(num_params)
 
+    # Build all the objectives requested by the configuration
     objectives = config.build_objectives(interface_layers)
 
-    train_losses_theano      = {key:ob.get_loss()
+    train_losses_theano    = {key:ob.get_loss()
                                 for key,ob in objectives["train"].iteritems()}
 
     validate_losses_theano = {key:ob.get_loss(deterministic=True)
                                 for key,ob in objectives["validate"].iteritems()}
 
+    # Create the Theano variables necessary to interface with the models
+    # the input:
     xs_shared = {
         key: lasagne.utils.shared_empty(dim=len(l_in.output_shape), dtype='float32')
         for (key, l_in) in input_layers.iteritems()
     }
 
+    # the output:
     ys_shared = {
         key: lasagne.utils.shared_empty(dim=target_var.ndim, dtype=target_var.dtype)
         for (_,ob) in itertools.chain(objectives["train"].iteritems(), objectives["validate"].iteritems())
         for (key, target_var) in ob.target_vars.iteritems()
     }
 
+    # Set up the learning rate schedule
     learning_rate_schedule = config.learning_rate_schedule
     learning_rate = theano.shared(np.float32(learning_rate_schedule[0]))
-    idx = T.lscalar('idx')
+
+
+    # We only work on one batch at the time on our chunk. Set up the Theano code which does this
+    idx = T.lscalar('idx')  # the value representing the number of the batch we are currently into our chunk of data
 
     givens = dict()
-
     for (_,ob) in itertools.chain(objectives["train"].iteritems(), objectives["validate"].iteritems()):
         for (key, target_var) in ob.target_vars.iteritems():
             givens[target_var] = ys_shared[key][idx*config.batch_size : (idx+1)*config.batch_size]
@@ -111,11 +139,14 @@ def train_model(expid):
     for (key, l_in) in input_layers.iteritems():
         givens[l_in.input_var] = xs_shared[key][idx*config.batch_size:(idx+1)*config.batch_size]
 
+    # sum over the losses of the objective we optimize. We will optimize this sum (either minimize or maximize)
     # sum makes the learning rate independent of batch size!
     train_loss_theano = T.sum(train_losses_theano["objective"]) * (-1 if objectives["train"]["objective"].optimize == MAXIMIZE else 1)
 
+    # build the update step for Theano
     updates = config.build_updates(train_loss_theano, all_params, learning_rate)
 
+    # Compile the Theano function of your model+objective
     print "Compiling..."
     iter_train = theano.function([idx],
                                  train_losses_theano.values() + theano_printer.get_the_stuff_to_print(),
@@ -123,6 +154,7 @@ def train_model(expid):
                                  # mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=True)
                                  )
 
+    # For validation, we also like to have something which returns the output of our model without the objective
     network_outputs = [
         lasagne.layers.helper.get_output(network_output_layer, deterministic=True)
         for network_output_layer in output_layers.values()
@@ -131,6 +163,8 @@ def train_model(expid):
                                     network_outputs + theano_printer.get_the_stuff_to_print(),
                                     givens=givens, on_unused_input="ignore")
 
+    # The data loader will need to know which kinds of data it actually needs to load
+    # collect all the necessary tags for the model.
     required_input = {
         key: l_in.output_shape
         for (key, l_in) in input_layers.iteritems()
@@ -141,11 +175,15 @@ def train_model(expid):
         for (key, target_var) in ob.target_vars.iteritems()
     }
 
+    # The data loaders need to prepare before they should start
+    # This is usually where the data is loaded from disk onto memory
     print "Preparing dataloaders"
     config.training_data.prepare()
     for validation_data in config.validation_data.values():
         validation_data.prepare()
 
+    # Make a data generator which returns preprocessed chunks of data which are fed to the model
+    # Note that this is a generator object! It is a special kind of iterator.
     chunk_size = config.batches_per_chunk * config.batch_size
 
     training_data_generator = buffering.buffered_gen_threaded(
@@ -156,10 +194,10 @@ def train_model(expid):
         )
     )
 
-    last_auc_epoch = -1
-
     print "Will train for %s epochs" % config.training_data.epochs
 
+    # If this is the second time we run this configuration, we might need to load the results of the previous
+    # optimization. Check if this is the case, and load the parameters and stuff. If not, start from zero.
     if config.restart_from_save and os.path.isfile(metadata_path):
         print "Load model parameters for resuming"
         resume_metadata = np.load(metadata_path)
@@ -185,18 +223,22 @@ def train_model(expid):
                 losses[VALIDATION][dataset_name][loss_name] = list()
 
 
+    # Estimate the number of batches we will train for.
     chunks_train_idcs = itertools.count(start_chunk_idx)
     if config.training_data.epochs:
         num_chunks_train = int(1.0 * config.training_data.epochs * config.training_data.number_of_samples / (config.batch_size * config.batches_per_chunk))
     else:
         num_chunks_train = None
 
-
+    # Start the timer objects
     start_time,prev_time = None,None
     print "Loading first chunks"
     data_load_time = Timer()
     gpu_time = Timer()
 
+    #========================#
+    # This is the train loop #
+    #========================#
     data_load_time.start()
     for e, train_data in izip(chunks_train_idcs, training_data_generator):
         data_load_time.stop()
@@ -211,22 +253,26 @@ def train_model(expid):
             print "Chunk %d" % (e + 1)
         print "=============="
         print "  %s" % config.__name__
+
+        # Estimate the current epoch we are at
         epoch = (1.0 * config.batch_size * config.batches_per_chunk * (e+1) / config.training_data.number_of_samples)
         if epoch>=0.1:
             print "  Epoch %.1f/%s" % (epoch, str(config.training_data.epochs))
         else:
             print "  Epoch %.0e/%s" % (epoch, str(config.training_data.epochs))
 
+        # for debugging the data loader, it might be useful to dump everything it loaded and analyze it.
         if config.dump_network_loaded_data:
             pickle.dump(train_data, open("data_loader_dump_train_%d.pkl" % e, "wb"))
 
+        # Update the learning rate with the new epoch the number
         for key, rate in learning_rate_schedule.iteritems():
             if epoch >= key:
                 lr = np.float32(rate)
                 learning_rate.set_value(lr)
         print "  learning rate %.0e" % lr
 
-
+        # Move this data from the data loader onto the Theano variables
         for key in xs_shared:
             xs_shared[key].set_value(train_data["input"][key])
 
@@ -235,8 +281,8 @@ def train_model(expid):
                 raise Exception("You forgot to add key %s to OUTPUT_DATA_SIZE_TYPE in your data loader"%key)
             ys_shared[key].set_value(train_data["output"][key])
 
+        # loop over all the batches in one chunk, and keep the losses
         chunk_losses = np.zeros((len(train_losses_theano),0))
-
         for b in xrange(config.batches_per_chunk):
             gpu_time.start()
             th_result = iter_train(b)
@@ -248,21 +294,27 @@ def train_model(expid):
             # stuff_to_print = th_result[-len(theano_printer.get_the_stuff_to_print()):]
             chunk_losses = np.concatenate((chunk_losses, resulting_losses), axis=1)
 
+        # check if we found NaN's. When there are NaN's we might as well exit.
         utils.detect_nans(chunk_losses, xs_shared, ys_shared, all_params)
 
+        # Average our losses, and print them.
         mean_train_loss = np.mean(chunk_losses, axis=1)
         for loss_name, loss in zip(train_losses_theano.keys(), mean_train_loss):
             losses[TRAINING][loss_name].append(loss)
             print string.rjust(loss_name+":",15), "%.6f" % loss
 
+        # Now, we will do validation. We do this about every config.epochs_per_validation epochs.
+        # We also always validate at the end of every training!
         validate_every = max(int((config.epochs_per_validation * config.training_data.number_of_samples) / (config.batch_size * config.batches_per_chunk)),1)
 
         if ((e + 1) % validate_every) == 0 or (num_chunks_train and e+1>=num_chunks_train):
             print
             print "  Validating "
+
+            # We might test on multiple datasets, such as the Train set, Validation set, ...
             for dataset_name, dataset_generator in config.validation_data.iteritems():
 
-
+                # Start loading the validation data!
                 validation_chunk_generator = dataset_generator.generate_batch(
                         chunk_size = chunk_size,
                         required_input = required_input,
@@ -272,22 +324,28 @@ def train_model(expid):
                 print "  %s (%d/%d samples)" % (dataset_name, dataset_generator.number_of_used_samples, dataset_generator.number_of_samples)
                 print "  -----------------------"
 
+                # If there are no validation samples, don't bother validating.
                 if dataset_generator.number_of_samples == 0:
                     continue
 
                 chunk_losses = np.zeros((len(network_outputs),0))
                 chunk_labels = np.zeros((0,))
 
+                # loop over all validation data chunks
                 data_load_time.start()
                 for validation_data in buffering.buffered_gen_threaded(validation_chunk_generator):
                     data_load_time.stop()
                     num_batches_chunk_eval = config.batches_per_chunk
 
+                    # set the validation data to the required Theano variables. Note, there is no
+                    # use setting the output variables, as we do not have labels of the validation set!
                     for key in xs_shared:
                         xs_shared[key].set_value(validation_data["input"][key])
 
-                    chunk_labels = np.concatenate((chunk_labels, validation_data["output"]['kaggle-seizure:class']), axis=0)
+                    # Keep the labels of the validation data for later.
+                    chunk_labels = np.concatenate((chunk_labels, validation_data["output"]['dsb3:class']), axis=0)
 
+                    # loop over the batches of one chunk, and keep the predictions
                     for b in xrange(num_batches_chunk_eval):
                         gpu_time.start()
                         th_result = iter_predict(b)
@@ -297,15 +355,17 @@ def train_model(expid):
                     data_load_time.start()
                 data_load_time.stop()
 
+                # Check for NaN's. Panic if there are NaN's during validation.
                 utils.detect_nans(chunk_losses, xs_shared, ys_shared, all_params)
 
+                # Compare the predictions with the actual labels and print them.
                 for key,ob in objectives["validate"].iteritems():
                     loss = ob.score_lists(chunk_losses[0,:], chunk_labels)
                     losses[VALIDATION][dataset_name][loss_name].append(loss)
                     print string.rjust(loss_name+":",17), "%.6f" % loss
                 print
 
-
+        # Good, we did one chunk. Let us check how much time this took us. Print out some stats.
         now = time.time()
         time_since_start = now - start_time
         time_since_prev = now - prev_time
@@ -320,10 +380,14 @@ def train_model(expid):
                 print "  estimated %s to go"  % utils.hms(est_time_left)
                 print "  (ETA: %s)" % eta_str
         except OverflowError:
+            # Shit happens
             print "  This will take really long, like REALLY long."
 
+        # This is the most useful stat of all! Keep this number low, and your total optimization time will be low too.
         print "  on average %dms per training sample" % (1000.*time_since_start / ((e+1 - start_chunk_idx) * config.batch_size * config.batches_per_chunk))
 
+        # Save the data every config.save_every_chunks chunks. Or at the end of the training.
+        # We should make it config.save_every_epochs epochs sometimes. Consistency
         if ((e + 1) % config.save_every_chunks) == 0 or (num_chunks_train and e+1>=num_chunks_train):
             print
             print "Saving metadata, parameters"
@@ -343,6 +407,8 @@ def train_model(expid):
             print "  saved to %s" % metadata_path
             print
 
+        # reset the timers for next round. This needs to happen here, because at the end of the big for loop
+        # we already want te get a chunk immediately for the next loop. The iterator is an argument of the for loop.
         gpu_time.reset()
         data_load_time.reset()
         data_load_time.start()

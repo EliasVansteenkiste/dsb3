@@ -17,7 +17,8 @@ from interfaces.preprocess import NormalizeInput
 
 "This is the number of samples in each batch"
 batch_size = 1
-"This is the number of batches in each chunk. Computation speeds up if this is as big as possible."
+"This is the number of batches in each chunk. Computation speeds up if this is as big as possible." \
+"However, when too big, the GPU will run out of memory"
 batches_per_chunk = 1
 "Reload the parameters from last time and continue, or start anew when you run this config file again"
 restart_from_save = False
@@ -29,7 +30,7 @@ save_every_chunks = 1
 #   preprocessing   #
 #####################
 
-"Put in here the preprocessors for your data. " \
+"Put in here the preprocessors for your data." \
 "They will be run consequently on the datadict of the dataloader in the order of your list."
 preprocessors = [
     Put_In_The_Middle(tag="3d",output_shape=(256,512,512))
@@ -50,8 +51,8 @@ training_data = PatientDataLoader(sets=TRAINING,
 
 "Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate."
 learning_rate_schedule = {
-    0.0: 0.001,
-    9.0: 0.0001,
+    0.0: 0.0001,
+    9.0: 0.00001,
 }
 "The function to build updates."
 build_updates = lasagne.updates.adam
@@ -60,7 +61,7 @@ build_updates = lasagne.updates.adam
 #####################
 #    validation     #
 #####################
-"We validate every x epochs of training data"
+"We do our validation after every x epochs of training"
 epochs_per_validation = 1.0
 
 "Which data do we want to validate on. We will run all validation objectives on each validation data set."
@@ -111,14 +112,14 @@ def build_objectives(interface_layers):
         }
     }
 
+#################
+# Regular model #
+#################
+
 "Here we build a model. The model returns a dict with the requested inputs for each layer:" \
 "And with the outputs it generates. You may generate multiple outputs (for analysis or for some other objectives, etc)" \
 "Unused outputs don't cost in performance"
 def build_model():
-
-    #################
-    # Regular model #
-    #################
 
     l0 = lasagne.layers.InputLayer(shape=(None,256,512,512))
 

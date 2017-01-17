@@ -2,7 +2,7 @@
 """
 
 import importlib
-
+import os
 
 _CONFIG_DIR = "configurations"
 DEFAULT = "default"
@@ -12,7 +12,14 @@ _config = None
 def set_configuration(configuration):
     """Imports and initialises the configuration module."""
     global _config
-    _config = importlib.import_module("%s.%s" % (_CONFIG_DIR, configuration))
+    if configuration.endswith('.py'):
+        configuration = configuration[:-3]
+    if os.sep in configuration:
+        configuration = os.path.relpath(configuration)
+        configuration = configuration.replace(os.sep, '.')
+        _config = importlib.import_module(configuration)
+    else:
+        _config = importlib.import_module("%s.%s" % (_CONFIG_DIR, configuration))
     if configuration != DEFAULT:
         print "loaded", _config
 
