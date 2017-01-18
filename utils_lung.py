@@ -172,7 +172,7 @@ def read_labels(file_path):
 
 
 def read_luna_labels(file_path):
-    id2zyxd = defaultdict(list)
+    id2xyzd = defaultdict(list)
     train_csv = open(file_path)
     lines = train_csv.readlines()
     i = 0
@@ -181,8 +181,8 @@ def read_luna_labels(file_path):
             i = 1
             continue
         id, x, y, z, d = item.replace('\n', '').split(',')
-        id2zyxd[id].append([float(z), float(y), float(x), float(d)])
-    return id2zyxd
+        id2xyzd[id].append([float(z), float(y), float(x), float(d)])
+    return id2xyzd
 
 
 def write_submission(patient_predictions, submission_path):

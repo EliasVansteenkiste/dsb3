@@ -8,6 +8,7 @@ import utils
 import utils_lung
 import logger
 import sys
+import collections
 
 
 def resample(image, spacing, new_spacing=[1, 1, 1]):
@@ -90,5 +91,28 @@ def test1():
             print 'exception!!!', pid
 
 
+def test2():
+    patient_data_paths = utils_lung.get_patient_data_paths(pathfinder.DATA_PATH)
+    print len(patient_data_paths)
+    pixel_spacings_xy = []
+    n_slices = []
+
+    for k, p in enumerate(patient_data_paths):
+        pid = utils_lung.extract_pid(p)
+        sid2data, sid2metadata = utils_lung.get_patient_data(p)
+        mtd = sid2metadata.itervalues().next()
+
+        assert mtd['PixelSpacing'][0] == mtd['PixelSpacing'][1]
+        pixel_spacings_xy.append(mtd['PixelSpacing'][0])
+        n_slices.append(len(sid2metadata))
+        print pid, pixel_spacings_xy[-1], n_slices[-1]
+
+    print 'nslices', np.max(n_slices), np.min(n_slices), np.mean(n_slices)
+    counts = collections.Counter(pixel_spacings_xy)
+    new_list = sorted(pixel_spacings_xy, key=counts.get, reverse=True)
+    print 'spacing', new_list
+
+
+
 if __name__ == '__main__':
-    test1()
+    test2()

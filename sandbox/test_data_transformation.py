@@ -42,6 +42,23 @@ def plot_2d(img, mask, pid, img_dir):
     plt.close('all')
 
 
+def plot_2d_3dimg(image3d, axis, pid, img_dir):
+    fig = plt.figure()
+    fig.canvas.set_window_title(pid)
+    ax = fig.add_subplot(111)
+    idx = image3d.shape[axis] / 2
+    if axis == 0:  # sax
+        ax.imshow(image3d[idx, :, :], cmap=plt.cm.gray)
+    if axis == 1:  # 2 lungs
+        ax.imshow(image3d[:, idx, :], cmap=plt.cm.gray)
+    if axis == 2:  # side view
+        ax.imshow(image3d[:, :, idx], cmap=plt.cm.gray)
+    plt.show()
+    fig.savefig(img_dir + '/%s.png' % pid, bbox_inches='tight')
+    fig.clf()
+    plt.close('all')
+
+
 def test1():
     image_dir = utils.get_dir_path('analysis', pathfinder.METADATA_PATH)
     image_dir = image_dir + '/test_luna/'
@@ -61,46 +78,12 @@ def test1():
         img, origin, spacing = utils_lung.read_mhd(p)
         img = data_transforms.hu2normHU(img)
         id = os.path.basename(p).replace('.mhd', '')
-        for roi in id2zyxd[id]:
-            zyx = np.array(roi[:3])
-            voxel_coords = utils_lung.world2voxel(zyx, origin, spacing)
-            print spacing
-            radius_mm = roi[-1] / 2.
-            radius_px = radius_mm / spacing[1]
-            print 'r in pixels =', radius_px
-            # roi_radius = (32.5, 32.5)
-            roi_radius = (radius_px, radius_px)
-            slice = img[voxel_coords[0], :, :]
-            roi_center_yx = (voxel_coords[1], voxel_coords[2])
-            # print slice.shape, slice_resample.shape
-            mask = make_circular_mask(slice.shape, roi_center_yx, roi_radius)
-            plot_2d(slice, mask, id, image_dir)
 
-            slice_mm, _ = resample(slice, spacing[1:])
-            roi_center_mm = tuple(int(r * ps) for r, ps in zip(roi_center_yx, spacing[1:]))
-            mask_mm = make_circular_mask(slice_mm.shape, roi_center_mm, (radius_mm, radius_mm))
-            plot_2d(slice_mm, mask_mm, id, image_dir)
-
-
-def test2():
-    luna_data_paths = utils_lung.get_patient_data_paths(pathfinder.LUNA_DATA_PATH)
-    luna_data_paths = [p for p in luna_data_paths if '.mhd' in p]
-    print len(luna_data_paths)
-    pixel_spacings_xy = []
-    n_slices = []
-
-    for k, p in enumerate(luna_data_paths):
-        img, origin, spacing = utils_lung.read_mhd(p)
-        id = os.path.basename(p).replace('.mhd', '')
-        assert spacing[1] == spacing[2]
-        pixel_spacings_xy.append(spacing[1])
-        n_slices.append(img.shape[0])
-        print id, pixel_spacings_xy[-1], n_slices[-1]
-
-    print 'nslices', np.max(n_slices), np.min(n_slices), np.mean(n_slices)
-    counts = collections.Counter(pixel_spacings_xy)
-    new_list = sorted(pixel_spacings_xy, key=counts.get, reverse=True)
-    print 'spacing', new_list
+        data_mm = data_transforms.transform_3d_rescale(img, spacing, transformation={'patch_size': (512, 512, 512)})
+        print data_mm.shape
+        plot_2d_3dimg(data_mm, 0, id, image_dir)
+        plot_2d_3dimg(data_mm, 1, id, image_dir)
+        plot_2d_3dimg(data_mm, 2, id, image_dir)
 
 
 if __name__ == '__main__':
