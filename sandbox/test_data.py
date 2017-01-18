@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-import numpy as np  # linear algebra
+import numpy as np
 import scipy
 import scipy.ndimage
 import data_transforms
@@ -75,8 +75,9 @@ def test1():
                 s = np.abs(sid2position[sids_sorted_jonas[i + 1]] - sid2position[sids_sorted_jonas[i]])
                 jonas_slicethick.append(s)
 
-            full_img = np.stack([data_transforms.ct2HU(sid2data[sid], sid2metadata[sid]) for sid in sids_sorted])
+            full_img = np.stack([data_transforms.ct2normHU(sid2data[sid], sid2metadata[sid]) for sid in sids_sorted])
             del sid2data, sid2metadata
+            print np.min(full_img), np.max(full_img)
             # spacing = sid2metadata[sids_sorted[0]]['PixelSpacing']
             # spacing = [slice_thickness, spacing[0], spacing[1]]
             # resampled_image, _ = resample(full_img, spacing)
@@ -85,7 +86,6 @@ def test1():
             plot_2d(full_img, axis=2, pid=pid + 'ax2', img_dir=image_dir)
             print k, pid, full_img.shape, slice_thickness_pos, slice_thickness_loc, set(jonas_slicethick)
             del full_img
-            # utils.save_pkl(data_dict, image_dir + '/test1_log.pkl')
         except:
             print 'exception!!!', pid
 

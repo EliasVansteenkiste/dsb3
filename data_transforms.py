@@ -9,12 +9,28 @@ import skimage.draw
 from configuration import config
 import skimage.exposure, skimage.filters
 
+MAX_HU = 400.
+MIN_HU = -1000.
 
-def ct2HU(x, metadata):
+
+def ct2normHU(x, metadata):
+    # TODO: maybe no copy
     x_hu = np.copy(x)
     x_hu[x_hu < 0.] = 0.
     x_hu = metadata['RescaleSlope'] * x_hu + metadata['RescaleIntercept']
+    x_hu = (x_hu - MIN_HU) / (MAX_HU - MIN_HU)
+    x_hu[x_hu < 0.] = 0.
+    x_hu[x_hu > 1.] = 1.
     return x_hu
+
+
+def hu2normHU(x):
+    # TODO: maybe no copy
+    x_norm = np.copy(x)
+    x_norm = (x_norm - MIN_HU) / (MAX_HU - MIN_HU)
+    x_norm[x_norm < 0.] = 0.
+    x_norm[x_norm > 1.] = 1.
+    return x_norm
 
 
 def sample_augmentation_parameters(transformation):

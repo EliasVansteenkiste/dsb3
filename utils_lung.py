@@ -9,6 +9,7 @@ import numpy as np
 import csv
 import os
 from PIL import Image
+from collections import defaultdict
 
 
 def read_mhd(path):
@@ -23,15 +24,6 @@ def world2voxel(world_coord, origin, spacing):
     stretched_voxel_coord = np.absolute(world_coord - origin)
     voxel_coord = stretched_voxel_coord / spacing
     return voxel_coord
-
-
-def normalize_planes(npzarray):
-    maxHU = 400.
-    minHU = -1000.
-    npzarray = (npzarray - minHU) / (maxHU - minHU)
-    npzarray[npzarray > 1] = 1.
-    npzarray[npzarray < 0] = 0.
-    return npzarray
 
 
 def read_dicom(path):
@@ -180,7 +172,7 @@ def read_labels(file_path):
 
 
 def read_luna_labels(file_path):
-    id2xyzd = {}
+    id2zyxd = defaultdict(list)
     train_csv = open(file_path)
     lines = train_csv.readlines()
     i = 0
@@ -189,8 +181,8 @@ def read_luna_labels(file_path):
             i = 1
             continue
         id, x, y, z, d = item.replace('\n', '').split(',')
-        id2xyzd[id] = [float(x), float(y), float(x), float(d)]
-    return id2xyzd
+        id2zyxd[id].append([float(z), float(y), float(x), float(d)])
+    return id2zyxd
 
 
 def write_submission(patient_predictions, submission_path):
