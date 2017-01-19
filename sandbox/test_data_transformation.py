@@ -17,7 +17,7 @@ def make_circular_mask(img_shape, roi_center, roi_radii):
     return mask
 
 
-def resample(image, spacing, new_spacing=[1, 1]):
+def resample(image, spacing, new_spacing=[1, 1, 1]):
     # Determine current pixel spacing
     spacing = np.array(spacing)
     resize_factor = spacing / new_spacing
@@ -78,6 +78,12 @@ def test1():
         img, origin, spacing = utils_lung.read_mhd(p)
         img = data_transforms.hu2normHU(img)
         id = os.path.basename(p).replace('.mhd', '')
+
+        data_mm, _ = resample(img, spacing)
+        print data_mm.shape
+        plot_2d_3dimg(data_mm, 0, id, image_dir)
+        plot_2d_3dimg(data_mm, 1, id, image_dir)
+        plot_2d_3dimg(data_mm, 2, id, image_dir)
 
         data_mm = data_transforms.transform_3d_rescale(img, spacing, transformation={'patch_size': (512, 512, 512)})
         print data_mm.shape
