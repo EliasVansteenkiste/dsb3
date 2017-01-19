@@ -1,5 +1,5 @@
 {
-  "DATA_PATH":"/mnt/storage/data/dsb3/stage1/",
+  "DATA_PATH":"/media/lio/Elements/dsb3",
   "LABELS_PATH":"/mnt/storage/data/dsb3/stage1_labels.csv",
   "MODEL_PATH":"/mnt/storage/metadata/dsb3/models/",
   "MODEL_PREDICTIONS_PATH":"/mnt/storage/metadata/dsb3/model-predictions/",
