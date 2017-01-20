@@ -105,7 +105,7 @@ def resample(image, spacing, new_spacing=[1, 1, 1], fixed_size=None):
     return img, new_spacing
 
 
-def plot_3d(img, theshold=-300, cut=True):
+def plot_3d(img, threshold=-300, cut=True, spacing=[1,1,1]):
     from mayavi import mlab
     import mayavi
     # img = img.transpose((0,2,1))
@@ -116,6 +116,7 @@ def plot_3d(img, theshold=-300, cut=True):
 
     # src = mlab.contour3d(img, contours=[theshold])
     src = mlab.pipeline.scalar_field(img)
+    src.spacing = spacing
     src.update_image_data = True
 
     # blur = mlab.pipeline.user_defined(src, filter='ImageGaussianSmooth')
@@ -126,7 +127,7 @@ def plot_3d(img, theshold=-300, cut=True):
                 z_min=0, z_max=img.shape[2]-1)
     else: voi = src
 
-    mlab.pipeline.iso_surface(voi, contours=[theshold,], color=(1, 1, 1))
+    mlab.pipeline.iso_surface(voi, contours=[threshold,], color=(1, 1, 1))
 
 
     # thr = mlab.pipeline.threshold(src, low=1120)
