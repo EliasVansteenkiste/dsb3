@@ -6,39 +6,40 @@ import cv2
 
 from utils.transformation3D import affine_transform, apply_affine_transform, rescale_transform
 
-PREVIEW_SHAPE = 600,600
-cv2.namedWindow("Image", cv2.CV_WINDOW_AUTOSIZE)
-cv2.moveWindow("Image", 1800, 300)
-cv2.resizeWindow("Image", *PREVIEW_SHAPE)
+
 
 input_shape = np.asarray((160., 512., 512.))
 img = np.zeros(input_shape.astype("int"))
 pixel_spacing = np.asarray([2., 0.7, 0.7])
 output_shape =  np.asarray((100., 100., 100.))
+norm_patch_size = np.asarray((130, 430 ,430), np.float)
 
 img[:, 50:450, 250:450] = 100 #make cubish thing
 
 
 norm_shape = input_shape*pixel_spacing
-scale = output_shape / (input_shape * pixel_spacing)
-fixed_real_shape = input_shape * pixel_spacing * np.min(scale)
+patch_shape = norm_shape * np.min(output_shape/norm_patch_size)
+
 
 
 shift_center = affine_transform(translation=-input_shape/2.)
 normscale = affine_transform(scale=norm_shape/input_shape)
-augment = affine_transform(translation=(0, 30, 0), rotation=(10, 0, 0))
-fixedscale = affine_transform(scale=fixed_real_shape/norm_shape)
-unshift_center = affine_transform(translation=fixed_real_shape/2.)
+augment = affine_transform(translation=(20, 100, 10), rotation=(20, 0, 0))
+patchscale = affine_transform(scale=patch_shape/norm_shape)
+unshift_center = affine_transform(translation=patch_shape/2.)
 
-m = shift_center.dot(normscale).dot(augment).dot(fixedscale).dot(unshift_center)
+matrix = shift_center.dot(normscale).dot(augment).dot(patchscale).dot(unshift_center)
 
 
-
+PREVIEW_SHAPE = 600,600
+cv2.namedWindow("Image", cv2.CV_WINDOW_AUTOSIZE)
+cv2.moveWindow("Image", 1800, 300)
+cv2.resizeWindow("Image", *PREVIEW_SHAPE)
 _img = cv2.resize(img[img.shape[0]//2], PREVIEW_SHAPE, interpolation=cv2.INTER_NEAREST)
 cv2.imshow("Image", _img)
 cv2.waitKey(0)
 
-img = apply_affine_transform(img, m, order=1, output_shape=output_shape.astype("int"))
+img = apply_affine_transform(img, matrix, order=1, output_shape=output_shape.astype("int"))
 
 
 print img.shape
