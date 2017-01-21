@@ -76,37 +76,36 @@ def test1():
         img, origin, pixel_spacing = utils_lung.read_mhd(p)
         img = data_transforms.hu2normHU(img)
         id = os.path.basename(p).replace('.mhd', '')
-        img = np.swapaxes(img, 0, -1)
-        pixel_spacing = np.array([pixel_spacing[-1], pixel_spacing[1], pixel_spacing[0]])
-        print img.shape
-        print pixel_spacing
         img = draw_circles(img)
 
         input_shape = np.asarray(img.shape)
         mm_shape = input_shape * pixel_spacing
-        output_shape = np.asarray((128, 128, 128))
+        output_shape = np.asarray((256, 256, 256))
         print mm_shape
 
-        mm_patch_size = np.asarray((256, 256, 256), np.float)
+        mm_patch_size = np.asarray((360, 360, 360), np.float)
         mm_patch_origin = np.array((mm_shape[0] / 2 - mm_patch_size[0] / 2,
                                     mm_shape[1] / 2 - mm_patch_size[1] / 2,
                                     mm_shape[2] / 2 - mm_patch_size[2] / 2))
 
         mm_scale_tf = affine_transform(scale=mm_shape / input_shape)
         shift_center = affine_transform(translation=(-mm_shape[0] / 2, -mm_shape[1] / 2, -mm_shape[2] / 2))
-        augment = affine_transform(rotation=(0, 0, 45))
-        shift_uncenter = affine_transform(translation=(mm_shape[0] / 2, mm_shape[1] / 2, mm_shape[2] / 2))
-        shift_uncenter2 = affine_transform(translation=-mm_patch_origin)
+        augment = affine_transform(rotation=None)
+        shift_uncenter = affine_transform(
+            translation=(mm_patch_size[0] / 2, mm_patch_size[1] / 2, mm_patch_size[2] / 2))
+
+        # shift_uncenter = affine_transform(translation=(mm_shape[0] / 2, mm_shape[1] / 2, mm_shape[2] / 2)) \
+        #     .dot(affine_transform(translation=-mm_patch_origin))
+
         patch_scale_tf = affine_transform(scale=output_shape / mm_patch_size)
 
-        matrix = mm_scale_tf.dot(shift_center).dot(augment).dot(shift_uncenter).dot(shift_uncenter2).dot(patch_scale_tf)
-        # matrix = normscale.dot(shift_center).dot(augment).dot(shift_uncenter)
+        matrix = mm_scale_tf.dot(shift_center).dot(augment).dot(shift_uncenter).dot(patch_scale_tf)
 
         img_rescale = apply_affine_transform(img, matrix, order=1, output_shape=output_shape)
 
-        plot_2d_3dimg(img_rescale, 2, id, image_dir)
-        plot_2d_3dimg(img_rescale, 1, id, image_dir)
         plot_2d_3dimg(img_rescale, 0, id, image_dir)
+        plot_2d_3dimg(img_rescale, 1, id, image_dir)
+        plot_2d_3dimg(img_rescale, 2, id, image_dir)
 
 
 if __name__ == '__main__':

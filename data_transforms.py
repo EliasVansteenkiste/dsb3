@@ -5,6 +5,7 @@ import skimage.draw
 from configuration import config
 import skimage.exposure, skimage.filters
 import scipy.ndimage
+import math
 
 MAX_HU = 400.
 MIN_HU = -1000.
@@ -31,45 +32,62 @@ def hu2normHU(x):
 
 
 def sample_augmentation_parameters(transformation):
-    shift_x = config().rng.uniform(*transformation.get('translation_range_x', [0., 0.]))
+    shift_z = config().rng.uniform(*transformation.get('translation_range_z', [0., 0.]))
     shift_y = config().rng.uniform(*transformation.get('translation_range_y', [0., 0.]))
-    translation = (shift_x, shift_y)
-    rotation = config().rng.uniform(*transformation.get('rotation_range', [0., 0.]))
-    shear = config().rng.uniform(*transformation.get('shear_range', [0., 0.]))
-    roi_scale = config().rng.uniform(*transformation.get('roi_scale_range', [1., 1.]))
-    z = config().rng.uniform(*transformation.get('zoom_range', [1., 1.]))
-    zoom = (z, z)
+    shift_x = config().rng.uniform(*transformation.get('translation_range_x', [0., 0.]))
+    translation = (shift_z, shift_y, shift_x)
 
-    if 'do_flip' in transformation:
-        if type(transformation['do_flip']) == tuple:
-            flip_x = config().rng.randint(2) > 0 if transformation['do_flip'][0] else False
-            flip_y = config().rng.randint(2) > 0 if transformation['do_flip'][1] else False
-        else:
-            flip_x = config().rng.randint(2) > 0 if transformation['do_flip'] else False
-            flip_y = False
+    rotation_z = config().rng.uniform(*transformation.get('rotation_range_z', [0., 0.]))
+    rotation_y = config().rng.uniform(*transformation.get('rotation_range_y', [0., 0.]))
+    rotation_x = config().rng.uniform(*transformation.get('rotation_range_x', [0., 0.]))
+    rotation = (rotation_z, rotation_y, rotation_x)
+
+    return namedtuple('Params', ['translation', 'rotation'])(translation, rotation)
+
+
+def luna_transform_scan3d(data, mask, pixel_spacing, p_transform,
+                          p_transform_augment=None,
+                          p_augment_sample=None,
+                          mm_patch_size=(512, 512, 512),
+                          out_pixel_spacing=(1., 1., 1.)):
+    mm_patch_size = p_transform.get('mm_patch_size', mm_patch_size)
+    mm_patch_size = np.asarray(mm_patch_size, dtype='float32')
+
+    out_pixel_spacing = p_transform.get('pixel_spacing', out_pixel_spacing)
+    out_pixel_spacing = np.asarray(out_pixel_spacing)
+
+    input_shape = np.asarray(data.shape)
+    mm_shape = input_shape * pixel_spacing / out_pixel_spacing
+    output_shape = p_transform['patch_size']
+
+    if not p_augment_sample and p_transform_augment:
+        p_augment_sample = sample_augmentation_parameters(p_transform_augment)
+
+    # here we give parameters to affine transform as if it's T in
+    # output = T.dot(input)
+    # https://www.cs.mtu.edu/~shene/COURSES/cs3621/NOTES/geometry/geo-tran.html
+    # but the affine_transform() makes it reversed for scipy
+    tf_mm_scale = affine_transform(scale=mm_shape / input_shape)
+    tf_shift_center = affine_transform(translation=-mm_shape / 2.)
+
+    tf_shift_uncenter = affine_transform(translation=mm_patch_size / 2.)
+    tf_output_scale = affine_transform(scale=output_shape / mm_patch_size)
+
+    if p_augment_sample:
+        print p_augment_sample
+        tf_augment = affine_transform(translation=p_augment_sample.translation, rotation=p_augment_sample.rotation)
+        tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_augment).dot(tf_shift_uncenter).dot(tf_output_scale)
     else:
-        flip_x, flip_y = False, False
+        tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_shift_uncenter).dot(tf_output_scale)
 
-    return namedtuple('Params', ['translation', 'rotation', 'shear', 'zoom',
-                                 'roi_scale',
-                                 'flip_x', 'flip_y'])(translation, rotation, shear, zoom,
-                                                      roi_scale,
-                                                      flip_x, flip_y)
+    data_out = apply_affine_transform(data, tf_total, order=1, output_shape=output_shape)
+    mask_out = apply_affine_transform(mask, tf_total, order=1, output_shape=output_shape)
+    return data_out, mask_out
 
 
-def luna_transform_rescale_scan(data, pixel_spacing, p_transform,
-                                mm_patch_size=(512, 512, 512),
-                                mm_center_location=(0.5, 0.5, 0.5),
-                                out_pixel_spacing=(1., 1., 1.)):
-    mm_scale_factor = np.array(pixel_spacing) / out_pixel_spacing
-    mm_shape = data.shape * mm_scale_factor
-    data_mm = scipy.ndimage.interpolation.zoom(data, mm_shape / data.shape)
-    return data_mm
-
-
-def luna_transform_rescale_slice(data, annotations, pixel_spacing, p_transform, p_transform_augment,
-                                 p_augment_sample=None,
-                                 mm_center_location=(.5, .5)):
+def luna_transform_slice(data, annotations, pixel_spacing, p_transform, p_transform_augment,
+                         p_augment_sample=None,
+                         mm_center_location=(.5, .5)):
     """
 
     :param data: one slice (y,x)
@@ -268,3 +286,54 @@ def build_shift_center_transform(image_shape, center_location, patch_size):
     return (
         skimage.transform.SimilarityTransform(translation=translation_center[::-1]),
         skimage.transform.SimilarityTransform(translation=translation_uncenter[::-1]))
+
+
+def affine_transform(scale=None, rotation=None, translation=None, shear=None, origin=None, output_shape=None):
+    """
+    rotation and shear in degrees
+    """
+    matrix = np.eye(4)
+
+    if translation is not None:
+        matrix[:3, 3] = -np.asarray(translation, np.float)
+
+    if scale is not None:
+        matrix[0, 0] = 1. / scale[0]
+        matrix[1, 1] = 1. / scale[1]
+        matrix[2, 2] = 1. / scale[2]
+
+    if rotation is not None:
+        rotation = np.asarray(rotation, np.float)
+        rotation = map(math.radians, rotation)
+        cos = map(math.cos, rotation)
+        sin = map(math.sin, rotation)
+
+        mx = np.eye(4)
+        mx[1, 1] = cos[0]
+        mx[2, 1] = sin[0]
+        mx[1, 2] = -sin[0]
+        mx[2, 2] = cos[0]
+
+        my = np.eye(4)
+        my[0, 0] = cos[1]
+        my[0, 2] = -sin[1]
+        my[2, 0] = sin[1]
+        my[2, 2] = cos[1]
+
+        mz = np.eye(4)
+        mz[0, 0] = cos[2]
+        mz[0, 1] = sin[2]
+        mz[1, 0] = -sin[2]
+        mz[1, 1] = cos[2]
+
+        matrix = matrix.dot(mx).dot(my).dot(mz)
+
+    return matrix
+
+
+def apply_affine_transform(_input, matrix, order=1, output_shape=None):
+    # output.dot(T) + s = input
+    T = matrix[:3, :3]
+    s = matrix[:3, 3]
+    return scipy.ndimage.interpolation.affine_transform(
+        _input, matrix=T, offset=s, order=order, output_shape=output_shape)

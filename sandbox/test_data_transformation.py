@@ -85,7 +85,7 @@ def test1():
         # plot_2d_3dimg(data_mm, 1, id, image_dir)
         # plot_2d_3dimg(data_mm, 2, id, image_dir)
 
-        data_mm = data_transforms.luna_transform_rescale_scan(img, spacing, p_transform={'patch_size': (256, 256, 256)})
+        data_mm = data_transforms.luna_transform_scan3d(img, spacing, p_transform={'patch_size': (256, 256, 256)})
         print data_mm.shape
         plot_2d_3dimg(data_mm, 0, id, image_dir)
         plot_2d_3dimg(data_mm, 1, id, image_dir)

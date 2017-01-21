@@ -1,14 +1,30 @@
 import matplotlib.pyplot as plt
-import numpy as np  # linear algebra
+import numpy as np
 import pathfinder
 import utils
 import utils_lung
 import os
 import data_transforms
-import skimage.draw
-import scipy
-import collections
-from collections import defaultdict
+from configuration import set_configuration, config
+
+set_configuration('test_config')
+
+
+def plot_2d_3dimg(image3d, axis, pid, img_dir):
+    fig = plt.figure()
+    fig.canvas.set_window_title(pid)
+    ax = fig.add_subplot(111)
+    idx = image3d.shape[axis] / 2
+    if axis == 0:  # sax
+        ax.imshow(image3d[idx, :, :], cmap=plt.cm.gray)
+    if axis == 1:  # 2 lungs
+        ax.imshow(image3d[:, idx, :], cmap=plt.cm.gray)
+    if axis == 2:  # side view
+        ax.imshow(image3d[:, :, idx], cmap=plt.cm.gray)
+    plt.show()
+    fig.savefig(img_dir + '/%s.png' % pid, bbox_inches='tight')
+    fig.clf()
+    plt.close('all')
 
 
 def plot_2d(img, mask, pid, img_dir):
@@ -73,10 +89,35 @@ def test1():
             a = [{'center': roi_center_yx, 'diameter_mm': diameter_mm}]
             p_transform = {'patch_size': (256, 256),
                            'mm_patch_size': (360, 360)}
-            slice_patch, mask_patch = data_transforms.luna_transform_rescale_slice(slice, a, pixel_spacing[1:],
-                                                                                   p_transform, None)
+            slice_patch, mask_patch = data_transforms.luna_transform_slice(slice, a, pixel_spacing[1:],
+                                                                           p_transform, None)
             plot_2d(slice_patch, mask_patch, id, image_dir)
 
 
+def test2():
+    image_dir = utils.get_dir_path('analysis', pathfinder.METADATA_PATH)
+    image_dir = image_dir + '/test_luna/'
+    utils.automakedir(image_dir)
+
+    id2zyxd = utils_lung.read_luna_labels(pathfinder.LUNA_LABELS_PATH)
+
+    luna_data_paths = utils_lung.get_patient_data_paths(pathfinder.LUNA_DATA_PATH)
+    luna_data_paths = [p for p in luna_data_paths if '.mhd' in p]
+    print len(luna_data_paths)
+    print id2zyxd.keys()
+
+    for k, p in enumerate(luna_data_paths):
+        img, origin, pixel_spacing = utils_lung.read_mhd(p)
+        img = data_transforms.hu2normHU(img)
+        id = os.path.basename(p).replace('.mhd', '')
+
+        scan, _ = data_transforms.luna_transform_scan3d(img, img, pixel_spacing,
+                                                        p_transform=config().p_transform,
+                                                        p_transform_augment=config().p_transform_augment)
+        plot_2d_3dimg(scan, 0, id, image_dir)
+        plot_2d_3dimg(scan, 1, id, image_dir)
+        plot_2d_3dimg(scan, 2, id, image_dir)
+
+
 if __name__ == '__main__':
-    test1()
+    test2()

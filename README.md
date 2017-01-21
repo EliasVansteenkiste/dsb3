@@ -1,8 +1,8 @@
 # TODO
 
+- find appropriate sizes of patches in mm
 - find slice thickness (done?)
 - ordering of slices (Jonas)
-- review the pixel norm transformations
 
 
 ssh -X -p 10001 ikorshun@localhost
