@@ -79,13 +79,13 @@ def test1():
         img = data_transforms.hu2normHU(img)
         id = os.path.basename(p).replace('.mhd', '')
 
-        data_mm, _ = resample(img, spacing)
-        print data_mm.shape
-        plot_2d_3dimg(data_mm, 0, id, image_dir)
-        plot_2d_3dimg(data_mm, 1, id, image_dir)
-        plot_2d_3dimg(data_mm, 2, id, image_dir)
+        # data_mm, _ = resample(img, spacing)
+        # print data_mm.shape
+        # plot_2d_3dimg(data_mm, 0, id, image_dir)
+        # plot_2d_3dimg(data_mm, 1, id, image_dir)
+        # plot_2d_3dimg(data_mm, 2, id, image_dir)
 
-        data_mm = data_transforms.transform_3d_rescale(img, spacing, transformation={'patch_size': (512, 512, 512)})
+        data_mm = data_transforms.luna_transform_rescale_scan(img, spacing, p_transform={'patch_size': (256, 256, 256)})
         print data_mm.shape
         plot_2d_3dimg(data_mm, 0, id, image_dir)
         plot_2d_3dimg(data_mm, 1, id, image_dir)

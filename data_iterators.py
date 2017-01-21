@@ -10,7 +10,7 @@ import utils
 class SliceNormRescaleDataGenerator(object):
     def __init__(self, data_path, batch_size, transform_params, patient_ids=None, labels_path=None,
                  slice2roi_path=None, full_batch=False, random=True, infinite=False, view='sax',
-                 data_prep_fun=data_transforms.transform_3d_rescale, **kwargs):
+                 data_prep_fun=data_transforms.luna_transform_rescale_scan, **kwargs):
 
         if patient_ids:
             self.patient_paths = []
@@ -78,7 +78,7 @@ class SliceNormRescaleDataGenerator(object):
 class PatientsDataGenerator(object):
     def __init__(self, data_path, batch_size, transform_params, patient_ids=None, labels_path=None,
                  slice2roi_path=None, full_batch=False, random=True, infinite=True, min_slices=0,
-                 data_prep_fun=data_transforms.transform_3d_rescale,
+                 data_prep_fun=data_transforms.luna_transform_rescale_scan,
                  **kwargs):
 
         if patient_ids:

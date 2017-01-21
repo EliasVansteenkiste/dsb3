@@ -55,16 +55,7 @@ def test1():
         img = data_transforms.hu2normHU(img)
         id = os.path.basename(p).replace('.mhd', '')
 
-        # find nodules with equal z coordinate
-        z2nodule_zyxd = defaultdict(list)
-        for i, nodule_zyxd in enumerate(id2zyxd[id]):
-            z = nodule_zyxd[0]
-            z2nodule_zyxd[z].append(nodule_zyxd)
-
-        for nodules_zyxd in z2nodule_zyxd.itervalues():
-            if len(nodules_zyxd) == 1:
-                nodule_zyxd = nodules_zyxd[0]
-
+        for nodule_zyxd in id2zyxd.itervalues():
             zyx = np.array(nodule_zyxd[:3])
             voxel_coords = utils_lung.world2voxel(zyx, origin, pixel_spacing)
             diameter_mm = nodule_zyxd[-1]

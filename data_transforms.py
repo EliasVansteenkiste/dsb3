@@ -4,6 +4,7 @@ import skimage.transform
 import skimage.draw
 from configuration import config
 import skimage.exposure, skimage.filters
+import scipy.ndimage
 
 MAX_HU = 400.
 MIN_HU = -1000.
@@ -56,72 +57,14 @@ def sample_augmentation_parameters(transformation):
                                                       flip_x, flip_y)
 
 
-def transform_3d_rescale(data, pixel_spacing, transformation,
-                         mm_patch_size=(512, 512, 512),
-                         mm_center_location=(0.5, 0.5, 0.5),
-                         out_pixel_spacing=(1., 1., 1.)):
-    """
-    TODO: BIG BUGS in ZY transformation
-    :param data:
-    :param pixel_spacing:
-    :param transformation:
-    :param mm_patch_size:
-    :param mm_center_location:
-    :param out_pixel_spacing:
-    :return:
-    """
-    patch_size = transformation['patch_size']
-    mm_patch_size = transformation.get('mm_patch_size', mm_patch_size)
-
-    # XY
-    print 'XY'
-    current_shape_yx = data.shape[1:]
-    pixel_rescaling_yx = (out_pixel_spacing[1] / pixel_spacing[1], out_pixel_spacing[2] / pixel_spacing[2])
-    mm_shape_yx = tuple(int(float(d) * ps) for d, ps in zip(current_shape_yx, pixel_rescaling_yx))
-    print 'mm_shape_yx', mm_shape_yx
-    mm_patch_size_yx = (mm_patch_size[1], mm_patch_size[2])
-    patch_size_yx = (patch_size[1], patch_size[2])
-    mm_center_location_yx = (mm_center_location[1], mm_center_location[2])
-
-    tform_normscale_yx = build_rescale_transform(scaling_factor=pixel_rescaling_yx,
-                                                 image_shape=current_shape_yx, target_shape=mm_shape_yx)
-
-    tform_shift_center_yx, tform_shift_uncenter_yx = build_shift_center_transform(image_shape=mm_shape_yx,
-                                                                                  center_location=mm_center_location_yx,
-                                                                                  patch_size=mm_patch_size_yx)
-
-    patch_scale_yx = (1. * mm_patch_size_yx[0] / patch_size_yx[0], 1. * mm_patch_size_yx[0] / patch_size_yx[0])
-    # tform_patch_scale_xy = build_rescale_transform(patch_scale_yx, mm_patch_size_yx, target_shape=patch_size)
-
-    out_data_yx_mm = np.zeros((data.shape[0],) + mm_shape_yx, dtype='float32')
-    for i in xrange(data.shape[0]):
-        out_data_yx_mm[i, :, :] = fast_warp(data[i, :, :], tform_normscale_yx, output_shape=mm_shape_yx)
-
-    print 'ZY'
-    current_shape_zy = (data.shape[0], out_data_yx_mm.shape[1])
-    print 'pixel_spacing', pixel_spacing
-    pixel_rescaling_zy = (out_pixel_spacing[0] / pixel_spacing[0], 1.)
-    mm_shape_zy = (pixel_rescaling_zy[0] * current_shape_zy[0], current_shape_zy[1])
-    print 'mm_shape_yx', mm_shape_zy
-    mm_patch_size_zy = (mm_patch_size[0], mm_patch_size_yx[0])
-    patch_size_zy = (patch_size[0], patch_size_yx[0])
-    mm_center_location_zy = (mm_center_location[0], mm_center_location_yx[0])
-
-    tform_normscale_zy = build_rescale_transform(scaling_factor=pixel_rescaling_zy,
-                                                 image_shape=current_shape_zy, target_shape=mm_shape_zy)
-
-    tform_shift_center_zy, tform_shift_uncenter_zy = build_shift_center_transform(image_shape=mm_shape_zy,
-                                                                                  center_location=mm_center_location_zy,
-                                                                                  patch_size=mm_patch_size_zy)
-
-    # patch_scale_yx = (1. * mm_patch_size_yx[0] / patch_size_yx[0], 1. * mm_patch_size_yx[0] / patch_size_yx[0])
-    # tform_patch_scale_xy = build_rescale_transform(patch_scale_yx, mm_patch_size_yx, target_shape=patch_size)
-
-    out_data_zy_mm = np.zeros(mm_shape_zy + (mm_shape_yx[1],), dtype='float32')
-    for i in xrange(out_data_zy_mm.shape[-1]):
-        out_data_zy_mm[:, :, i] = fast_warp(out_data_yx_mm[:, :, i], tform_normscale_zy, output_shape=mm_shape_zy)
-
-    return out_data_yx_mm
+def luna_transform_rescale_scan(data, pixel_spacing, p_transform,
+                                mm_patch_size=(512, 512, 512),
+                                mm_center_location=(0.5, 0.5, 0.5),
+                                out_pixel_spacing=(1., 1., 1.)):
+    mm_scale_factor = np.array(pixel_spacing) / out_pixel_spacing
+    mm_shape = data.shape * mm_scale_factor
+    data_mm = scipy.ndimage.interpolation.zoom(data, mm_shape / data.shape)
+    return data_mm
 
 
 def luna_transform_rescale_slice(data, annotations, pixel_spacing, p_transform, p_transform_augment,
