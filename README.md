@@ -1,8 +1,7 @@
 # TODO
 
 - find appropriate sizes of patches in mm
-- find slice thickness (done?)
-- ordering of slices (Jonas)
+- ordering of slices for kaggle data (Jonas)
 
 
 ssh -X -p 10001 ikorshun@localhost

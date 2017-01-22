@@ -6,29 +6,37 @@ from configuration import config
 import skimage.exposure, skimage.filters
 import scipy.ndimage
 import math
+import utils_lung
 
 MAX_HU = 400.
 MIN_HU = -1000.
 
 
 def ct2normHU(x, metadata):
-    # TODO: maybe no copy
-    x_hu = np.copy(x)
-    x_hu[x_hu < 0.] = 0.
-    x_hu = metadata['RescaleSlope'] * x_hu + metadata['RescaleIntercept']
-    x_hu = (x_hu - MIN_HU) / (MAX_HU - MIN_HU)
-    x_hu[x_hu < 0.] = 0.
-    x_hu[x_hu > 1.] = 1.
-    return x_hu
+    """
+    modifies input data
+    :param x:
+    :param metadata:
+    :return:
+    """
+    x[x < 0.] = 0.
+    x = metadata['RescaleSlope'] * x + metadata['RescaleIntercept']
+    x = (x - MIN_HU) / (MAX_HU - MIN_HU)
+    x[x < 0.] = 0.
+    x[x > 1.] = 1.
+    return x
 
 
 def hu2normHU(x):
-    # TODO: maybe no copy
-    x_norm = np.copy(x)
-    x_norm = (x_norm - MIN_HU) / (MAX_HU - MIN_HU)
-    x_norm[x_norm < 0.] = 0.
-    x_norm[x_norm > 1.] = 1.
-    return x_norm
+    """
+    Modifies input data
+    :param x:
+    :return:
+    """
+    x = (x - MIN_HU) / (MAX_HU - MIN_HU)
+    x[x < 0.] = 0.
+    x[x > 1.] = 1.
+    return x
 
 
 def sample_augmentation_parameters(transformation):
@@ -45,7 +53,7 @@ def sample_augmentation_parameters(transformation):
     return namedtuple('Params', ['translation', 'rotation'])(translation, rotation)
 
 
-def luna_transform_scan3d(data, mask, pixel_spacing, p_transform,
+def luna_transform_scan3d(data, annotations, origin, pixel_spacing, p_transform,
                           p_transform_augment=None,
                           p_augment_sample=None,
                           mm_patch_size=(512, 512, 512),
@@ -74,15 +82,34 @@ def luna_transform_scan3d(data, mask, pixel_spacing, p_transform,
     tf_output_scale = affine_transform(scale=output_shape / mm_patch_size)
 
     if p_augment_sample:
-        print p_augment_sample
         tf_augment = affine_transform(translation=p_augment_sample.translation, rotation=p_augment_sample.rotation)
         tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_augment).dot(tf_shift_uncenter).dot(tf_output_scale)
     else:
         tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_shift_uncenter).dot(tf_output_scale)
 
     data_out = apply_affine_transform(data, tf_total, order=1, output_shape=output_shape)
-    mask_out = apply_affine_transform(mask, tf_total, order=1, output_shape=output_shape)
-    return data_out, mask_out
+
+    annotatations_out = []
+    for zyxd in annotations:
+        zyx = np.array(zyxd[:3])
+        voxel_coords = utils_lung.world2voxel(zyx, origin, pixel_spacing)
+        voxel_coords = np.append(voxel_coords, [1])
+        voxel_coords_out = np.linalg.inv(tf_total).dot(voxel_coords)[:3]
+        diameter_mm = zyxd[-1]
+        diameter_out = diameter_mm * output_shape[1] / mm_patch_size[1]
+        zyxd_out = np.rint(np.append(voxel_coords_out, diameter_out))
+        annotatations_out.append(zyxd_out)
+
+    return data_out, annotatations_out
+
+
+def luna_transform_scan_annotations(annotations, origin, pixel_spacing, transform_matrix):
+    """
+    List of nodule annotations in zyxd format
+    :param annotations:
+    :param transform_matrix:
+    :return:
+    """
 
 
 def luna_transform_slice(data, annotations, pixel_spacing, p_transform, p_transform_augment,
@@ -167,6 +194,16 @@ def make_roi_mask(img_shape, roi_center, roi_radii, shape='circle', masked_value
         sx = slice(roi_center[0] - roi_radii[0], roi_center[0] + roi_radii[0])
         sy = slice(roi_center[1] - roi_radii[1], roi_center[1] + roi_radii[1])
         mask[sx, sy] = 1.
+    return mask
+
+
+def make_3d_mask(img_shape, roi_center, roi_radius, masked_value=0.):
+    mask = np.ones(img_shape) * masked_value
+    roi_radius = np.rint(roi_radius)
+    sz = slice(roi_center[0] - roi_radius, roi_center[0] + roi_radius)
+    sy = slice(roi_center[1] - roi_radius, roi_center[1] + roi_radius)
+    sx = slice(roi_center[2] - roi_radius, roi_center[2] + roi_radius)
+    mask[sz, sy, sx] = 1.
     return mask
 
 
@@ -308,11 +345,11 @@ def affine_transform(scale=None, rotation=None, translation=None, shear=None, or
         cos = map(math.cos, rotation)
         sin = map(math.sin, rotation)
 
-        mx = np.eye(4)
-        mx[1, 1] = cos[0]
-        mx[2, 1] = sin[0]
-        mx[1, 2] = -sin[0]
-        mx[2, 2] = cos[0]
+        mz = np.eye(4)
+        mz[1, 1] = cos[0]
+        mz[2, 1] = sin[0]
+        mz[1, 2] = -sin[0]
+        mz[2, 2] = cos[0]
 
         my = np.eye(4)
         my[0, 0] = cos[1]
@@ -320,11 +357,11 @@ def affine_transform(scale=None, rotation=None, translation=None, shear=None, or
         my[2, 0] = sin[1]
         my[2, 2] = cos[1]
 
-        mz = np.eye(4)
-        mz[0, 0] = cos[2]
-        mz[0, 1] = sin[2]
-        mz[1, 0] = -sin[2]
-        mz[1, 1] = cos[2]
+        mx = np.eye(4)
+        mx[0, 0] = cos[2]
+        mx[0, 1] = sin[2]
+        mx[1, 0] = -sin[2]
+        mx[1, 1] = cos[2]
 
         matrix = matrix.dot(mx).dot(my).dot(mz)
 

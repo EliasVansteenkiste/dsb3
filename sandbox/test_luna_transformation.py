@@ -10,17 +10,22 @@ from configuration import set_configuration, config
 set_configuration('test_config')
 
 
-def plot_2d_3dimg(image3d, axis, pid, img_dir):
-    fig = plt.figure()
+def plot_2d_3dimg(image3d, mask3d, axis, pid, img_dir, idx=None):
+    fig, ax = plt.subplots(2, 2, figsize=[8, 8])
     fig.canvas.set_window_title(pid)
-    ax = fig.add_subplot(111)
-    idx = image3d.shape[axis] / 2
+    idx = image3d.shape[axis] / 2 if idx is None else idx
     if axis == 0:  # sax
-        ax.imshow(image3d[idx, :, :], cmap=plt.cm.gray)
+        ax[0, 0].imshow(image3d[idx, :, :], cmap=plt.cm.gray)
+        ax[0, 1].imshow(mask3d[idx, :, :], cmap=plt.cm.gray)
+        ax[1, 0].imshow(image3d[idx, :, :] * mask3d[idx, :, :], cmap=plt.cm.gray)
     if axis == 1:  # 2 lungs
-        ax.imshow(image3d[:, idx, :], cmap=plt.cm.gray)
+        ax[0, 0].imshow(image3d[:, idx, :], cmap=plt.cm.gray)
+        ax[0, 1].imshow(mask3d[:, idx, :], cmap=plt.cm.gray)
+        ax[1, 0].imshow(image3d[:, idx, :] * mask3d[:, idx, :], cmap=plt.cm.gray)
     if axis == 2:  # side view
-        ax.imshow(image3d[:, :, idx], cmap=plt.cm.gray)
+        ax[0, 0].imshow(image3d[:, :, idx], cmap=plt.cm.gray)
+        ax[0, 1].imshow(mask3d[:, :, idx], cmap=plt.cm.gray)
+        ax[1, 0].imshow(image3d[:, :, idx] * mask3d[:, :, idx], cmap=plt.cm.gray)
     plt.show()
     fig.savefig(img_dir + '/%s.png' % pid, bbox_inches='tight')
     fig.clf()
@@ -111,12 +116,22 @@ def test2():
         img = data_transforms.hu2normHU(img)
         id = os.path.basename(p).replace('.mhd', '')
 
-        scan, _ = data_transforms.luna_transform_scan3d(img, img, pixel_spacing,
-                                                        p_transform=config().p_transform,
-                                                        p_transform_augment=config().p_transform_augment)
-        plot_2d_3dimg(scan, 0, id, image_dir)
-        plot_2d_3dimg(scan, 1, id, image_dir)
-        plot_2d_3dimg(scan, 2, id, image_dir)
+        annotations = id2zyxd[id]
+
+        img_out, annotations_out = data_transforms.luna_transform_scan3d(img, annotations, origin,
+                                                                         pixel_spacing,
+                                                                         p_transform=config().p_transform,
+                                                                         p_transform_augment=config().p_transform_augment)
+
+        mask = np.zeros_like(img_out)
+        for zyxd in annotations_out:
+            print zyxd
+            mask += data_transforms.make_3d_mask(img_out.shape, zyxd[:3], zyxd[-1] / 2, masked_value=0.1)
+
+        for zyxd in annotations_out:
+            plot_2d_3dimg(img_out, mask, 0, id, image_dir, idx=zyxd[0])
+            plot_2d_3dimg(img_out, mask, 1, id, image_dir, idx=zyxd[1])
+            plot_2d_3dimg(img_out, mask, 2, id, image_dir, idx=zyxd[2])
 
 
 if __name__ == '__main__':
