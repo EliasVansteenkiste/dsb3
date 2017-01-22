@@ -34,6 +34,7 @@ def plot_2d(image3d, axis, pid, img_dir):
         ax.imshow(image3d[:, idx, :], cmap=plt.cm.gray)
     if axis == 2:  # side view
         ax.imshow(image3d[:, :, idx], cmap=plt.cm.gray)
+    plt.show()
     fig.savefig(img_dir + '/%s.png' % pid, bbox_inches='tight')
     fig.clf()
     plt.close('all')
@@ -113,6 +114,5 @@ def test2():
     print 'spacing', new_list
 
 
-
 if __name__ == '__main__':
-    test2()
+    test1()

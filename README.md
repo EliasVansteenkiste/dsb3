@@ -1,6 +1,7 @@
 # TODO
 
 - find appropriate sizes of patches in mm
+- gaussian masks
 - ordering of slices for kaggle data (Jonas)
 
 

@@ -99,7 +99,7 @@ def test1():
             plot_2d(slice_patch, mask_patch, id, image_dir)
 
 
-def test2():
+def test_luna3d():
     image_dir = utils.get_dir_path('analysis', pathfinder.METADATA_PATH)
     image_dir = image_dir + '/test_luna/'
     utils.automakedir(image_dir)
@@ -118,21 +118,74 @@ def test2():
 
         annotations = id2zyxd[id]
 
-        img_out, annotations_out = data_transforms.luna_transform_scan3d(img, annotations, origin,
-                                                                         pixel_spacing,
-                                                                         p_transform=config().p_transform,
-                                                                         p_transform_augment=config().p_transform_augment)
+        img_out, annotations_out = data_transforms.transform_scan3d(img,
+                                                                    pixel_spacing=pixel_spacing,
+                                                                    p_transform=config().p_transform,
+                                                                    p_transform_augment=config().p_transform_augment,
+                                                                    luna_annotations=annotations,
+                                                                    luna_origin=origin)
 
-        mask = np.zeros_like(img_out)
-        for zyxd in annotations_out:
-            print zyxd
-            mask += data_transforms.make_3d_mask(img_out.shape, zyxd[:3], zyxd[-1] / 2, masked_value=0.1)
+        mask = data_transforms.make_3d_mask_from_annotations(img_out.shape, annotations_out, shape='sphere')
 
         for zyxd in annotations_out:
             plot_2d_3dimg(img_out, mask, 0, id, image_dir, idx=zyxd[0])
             plot_2d_3dimg(img_out, mask, 1, id, image_dir, idx=zyxd[1])
             plot_2d_3dimg(img_out, mask, 2, id, image_dir, idx=zyxd[2])
 
+            # plot_2d_3dimg(img_out, mask, 0, id, image_dir)
+            # plot_2d_3dimg(img_out, mask, 1, id, image_dir)
+            # plot_2d_3dimg(img_out, mask, 2, id, image_dir)
+
+
+def test_kaggle3d():
+    image_dir = utils.get_dir_path('analysis', pathfinder.METADATA_PATH)
+    image_dir = image_dir + '/test_1/'
+    utils.automakedir(image_dir)
+
+    patient_data_paths = utils_lung.get_patient_data_paths(pathfinder.DATA_PATH)
+    print len(patient_data_paths)
+
+    for k, p in enumerate(patient_data_paths):
+        pid = utils_lung.extract_pid(p)
+        sid2data, sid2metadata = utils_lung.get_patient_data(p)
+        sids_sorted = utils_lung.sort_slices_plane(sid2metadata)
+        sids_sorted_jonas = utils_lung.sort_slices_jonas(sid2metadata)
+        sid2position = utils_lung.slice_location_finder(sid2metadata)
+
+        try:
+            slice_thickness_pos = np.abs(sid2metadata[sids_sorted[0]]['ImagePositionPatient'][2] -
+                                         sid2metadata[sids_sorted[1]]['ImagePositionPatient'][2])
+        except:
+            print 'This patient has no ImagePosition!'
+            slice_thickness_pos = 0.
+        try:
+            slice_thickness_loc = np.abs(
+                sid2metadata[sids_sorted[0]]['SliceLocation'] - sid2metadata[sids_sorted[1]]['SliceLocation'])
+        except:
+            print 'This patient has no SliceLocation!'
+            slice_thickness_loc = 0.
+
+        jonas_slicethick = []
+        for i in xrange(len(sids_sorted_jonas) - 1):
+            s = np.abs(sid2position[sids_sorted_jonas[i + 1]] - sid2position[sids_sorted_jonas[i]])
+            jonas_slicethick.append(s)
+
+        img = np.stack([data_transforms.ct2normHU(sid2data[sid], sid2metadata[sid]) for sid in sids_sorted])
+        xx = (jonas_slicethick[0],
+              sid2metadata[sids_sorted[0]]['PixelSpacing'][0],
+              sid2metadata[sids_sorted[0]]['PixelSpacing'][1])
+        pixel_spacing = np.asarray(xx)
+
+        img_out = data_transforms.transform_scan3d(img,
+                                                   pixel_spacing=pixel_spacing,
+                                                   p_transform=config().p_transform,
+                                                   p_transform_augment=config().p_transform_augment)
+
+        # plot_2d_3dimg(img_out, img_out, axis=0, pid=pid + 'z', img_dir=image_dir)
+        plot_2d_3dimg(img_out, img_out, axis=1, pid=pid + 'y', img_dir=image_dir)
+        # plot_2d_3dimg(img_out, img_out, axis=2, pid=pid + 'x', img_dir=image_dir)
+
 
 if __name__ == '__main__':
-    test2()
+    # test_kaggle3d()
+    test_luna3d()

@@ -53,23 +53,16 @@ def sample_augmentation_parameters(transformation):
     return namedtuple('Params', ['translation', 'rotation'])(translation, rotation)
 
 
-def luna_transform_scan3d(data, annotations, origin, pixel_spacing, p_transform,
-                          p_transform_augment=None,
-                          p_augment_sample=None,
-                          mm_patch_size=(512, 512, 512),
-                          out_pixel_spacing=(1., 1., 1.)):
-    mm_patch_size = p_transform.get('mm_patch_size', mm_patch_size)
-    mm_patch_size = np.asarray(mm_patch_size, dtype='float32')
-
-    out_pixel_spacing = p_transform.get('pixel_spacing', out_pixel_spacing)
-    out_pixel_spacing = np.asarray(out_pixel_spacing)
+def transform_scan3d(data, pixel_spacing, p_transform,
+                     luna_annotations=None,
+                     luna_origin=None,
+                     p_transform_augment=None):
+    mm_patch_size = np.asarray(p_transform['mm_patch_size'], dtype='float32')
+    out_pixel_spacing = np.asarray(p_transform['pixel_spacing'])
 
     input_shape = np.asarray(data.shape)
     mm_shape = input_shape * pixel_spacing / out_pixel_spacing
     output_shape = p_transform['patch_size']
-
-    if not p_augment_sample and p_transform_augment:
-        p_augment_sample = sample_augmentation_parameters(p_transform_augment)
 
     # here we give parameters to affine transform as if it's T in
     # output = T.dot(input)
@@ -81,35 +74,30 @@ def luna_transform_scan3d(data, annotations, origin, pixel_spacing, p_transform,
     tf_shift_uncenter = affine_transform(translation=mm_patch_size / 2.)
     tf_output_scale = affine_transform(scale=output_shape / mm_patch_size)
 
-    if p_augment_sample:
-        tf_augment = affine_transform(translation=p_augment_sample.translation, rotation=p_augment_sample.rotation)
+    if p_transform_augment:
+        augment_params_sample = sample_augmentation_parameters(p_transform_augment)
+        tf_augment = affine_transform(translation=augment_params_sample.translation,
+                                      rotation=augment_params_sample.rotation)
         tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_augment).dot(tf_shift_uncenter).dot(tf_output_scale)
     else:
         tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_shift_uncenter).dot(tf_output_scale)
 
     data_out = apply_affine_transform(data, tf_total, order=1, output_shape=output_shape)
 
-    annotatations_out = []
-    for zyxd in annotations:
-        zyx = np.array(zyxd[:3])
-        voxel_coords = utils_lung.world2voxel(zyx, origin, pixel_spacing)
-        voxel_coords = np.append(voxel_coords, [1])
-        voxel_coords_out = np.linalg.inv(tf_total).dot(voxel_coords)[:3]
-        diameter_mm = zyxd[-1]
-        diameter_out = diameter_mm * output_shape[1] / mm_patch_size[1]
-        zyxd_out = np.rint(np.append(voxel_coords_out, diameter_out))
-        annotatations_out.append(zyxd_out)
+    if luna_annotations is not None:
+        annotatations_out = []
+        for zyxd in luna_annotations:
+            zyx = np.array(zyxd[:3])
+            voxel_coords = utils_lung.world2voxel(zyx, luna_origin, pixel_spacing)
+            voxel_coords = np.append(voxel_coords, [1])
+            voxel_coords_out = np.linalg.inv(tf_total).dot(voxel_coords)[:3]
+            diameter_mm = zyxd[-1]
+            diameter_out = diameter_mm * output_shape[1] / mm_patch_size[1]
+            zyxd_out = np.rint(np.append(voxel_coords_out, diameter_out))
+            annotatations_out.append(zyxd_out)
+        return data_out, annotatations_out
 
-    return data_out, annotatations_out
-
-
-def luna_transform_scan_annotations(annotations, origin, pixel_spacing, transform_matrix):
-    """
-    List of nodule annotations in zyxd format
-    :param annotations:
-    :param transform_matrix:
-    :return:
-    """
+    return data_out
 
 
 def luna_transform_slice(data, annotations, pixel_spacing, p_transform, p_transform_augment,
@@ -197,13 +185,31 @@ def make_roi_mask(img_shape, roi_center, roi_radii, shape='circle', masked_value
     return mask
 
 
-def make_3d_mask(img_shape, roi_center, roi_radius, masked_value=0.):
-    mask = np.ones(img_shape) * masked_value
-    roi_radius = np.rint(roi_radius)
-    sz = slice(roi_center[0] - roi_radius, roi_center[0] + roi_radius)
-    sy = slice(roi_center[1] - roi_radius, roi_center[1] + roi_radius)
-    sx = slice(roi_center[2] - roi_radius, roi_center[2] + roi_radius)
-    mask[sz, sy, sx] = 1.
+def make_3d_mask(img_shape, center, radius, shape='sphere'):
+    mask = np.zeros(img_shape)
+    radius = np.rint(radius)
+    if shape == 'cube':
+        print 'r', radius
+        sz = slice(max(center[0] - radius, 0), min(center[0] + radius + 1, img_shape[0]))
+        sy = slice(max(center[1] - radius, 0), min(center[1] + radius + 1, img_shape[1]))
+        sx = slice(max(center[2] - radius, 0), min(center[2] + radius + 1, img_shape[2]))
+        mask[sz, sy, sx] = 1.
+    elif shape == 'sphere':
+        sz = slice(max(center[0] - radius, 0), min(center[0] + radius + 1, img_shape[0]))
+        sy = slice(max(center[1] - radius, 0), min(center[1] + radius + 1, img_shape[1]))
+        sx = slice(max(center[2] - radius, 0), min(center[2] + radius + 1, img_shape[2]))
+        r2 = np.arange(-radius, radius + 1) ** 2
+        dist2 = r2[:, None, None] + r2[:, None] + r2
+        volume = dist2 <= radius ** 2
+        mask[sz, sy, sx] = volume
+    return mask
+
+
+def make_3d_mask_from_annotations(img_shape, annotations, shape):
+    mask = np.zeros(img_shape)
+    for zyxd in annotations:
+        mask += make_3d_mask(img_shape, zyxd[:3], zyxd[-1] / 2, shape)
+    mask[mask > 0] = 1.
     return mask
 
 
