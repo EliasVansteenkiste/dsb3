@@ -331,7 +331,7 @@ def build_shift_center_transform(image_shape, center_location, patch_size):
         skimage.transform.SimilarityTransform(translation=translation_uncenter[::-1]))
 
 
-def affine_transform(scale=None, rotation=None, translation=None, shear=None, origin=None, output_shape=None):
+def affine_transform(scale=None, rotation=None, translation=None):
     """
     rotation and shear in degrees
     """

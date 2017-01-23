@@ -10,7 +10,7 @@ from configuration import set_configuration, config
 set_configuration('test_config')
 
 
-def plot_2d_3dimg(image3d, mask3d, axis, pid, img_dir, idx=None):
+def plot_2d_3dimg(image3d, mask3d, axis, pid, img_dir=None, idx=None):
     fig, ax = plt.subplots(2, 2, figsize=[8, 8])
     fig.canvas.set_window_title(pid)
     idx = image3d.shape[axis] / 2 if idx is None else idx
@@ -27,7 +27,8 @@ def plot_2d_3dimg(image3d, mask3d, axis, pid, img_dir, idx=None):
         ax[0, 1].imshow(mask3d[:, :, idx], cmap=plt.cm.gray)
         ax[1, 0].imshow(image3d[:, :, idx] * mask3d[:, :, idx], cmap=plt.cm.gray)
     plt.show()
-    fig.savefig(img_dir + '/%s.png' % pid, bbox_inches='tight')
+    if img_dir is not None:
+        fig.savefig(img_dir + '/%s.png' % pid, bbox_inches='tight')
     fig.clf()
     plt.close('all')
 
@@ -108,33 +109,67 @@ def test_luna3d():
 
     luna_data_paths = utils_lung.get_patient_data_paths(pathfinder.LUNA_DATA_PATH)
     luna_data_paths = [p for p in luna_data_paths if '.mhd' in p]
-    print len(luna_data_paths)
-    print id2zyxd.keys()
 
+    # luna_data_paths = [pathfinder.LUNA_DATA_PATH + '/1.3.6.1.4.1.14519.5.2.1.6279.6001.249530219848512542668813996730.mhd']
     for k, p in enumerate(luna_data_paths):
         img, origin, pixel_spacing = utils_lung.read_mhd(p)
         img = data_transforms.hu2normHU(img)
         id = os.path.basename(p).replace('.mhd', '')
+        print id
 
         annotations = id2zyxd[id]
 
         img_out, annotations_out = data_transforms.transform_scan3d(img,
                                                                     pixel_spacing=pixel_spacing,
                                                                     p_transform=config().p_transform,
-                                                                    p_transform_augment=config().p_transform_augment,
+                                                                    p_transform_augment=None,
+                                                                    # config().p_transform_augment,
                                                                     luna_annotations=annotations,
                                                                     luna_origin=origin)
 
         mask = data_transforms.make_3d_mask_from_annotations(img_out.shape, annotations_out, shape='sphere')
 
-        for zyxd in annotations_out:
-            plot_2d_3dimg(img_out, mask, 0, id, image_dir, idx=zyxd[0])
-            plot_2d_3dimg(img_out, mask, 1, id, image_dir, idx=zyxd[1])
-            plot_2d_3dimg(img_out, mask, 2, id, image_dir, idx=zyxd[2])
+        plot_2d_3dimg(img_out, mask, 0, id)
+        plot_2d_3dimg(img_out, mask, 1, id)
+        plot_2d_3dimg(img_out, mask, 2, id)
 
-            # plot_2d_3dimg(img_out, mask, 0, id, image_dir)
-            # plot_2d_3dimg(img_out, mask, 1, id, image_dir)
-            # plot_2d_3dimg(img_out, mask, 2, id, image_dir)
+        for zyxd in annotations_out:
+            plot_2d_3dimg(img_out, mask, 0, id, idx=zyxd[0])
+            plot_2d_3dimg(img_out, mask, 1, id, idx=zyxd[1])
+            plot_2d_3dimg(img_out, mask, 2, id, idx=zyxd[2])
+
+
+def count_proportion():
+    id2zyxd = utils_lung.read_luna_labels(pathfinder.LUNA_LABELS_PATH)
+
+    luna_data_paths = utils_lung.get_patient_data_paths(pathfinder.LUNA_DATA_PATH)
+    luna_data_paths = [p for p in luna_data_paths if '.mhd' in p]
+
+    n_white = 0
+    n_black = 0
+
+    for k, p in enumerate(luna_data_paths):
+        img, origin, pixel_spacing = utils_lung.read_mhd(p)
+        img = data_transforms.hu2normHU(img)
+        id = os.path.basename(p).replace('.mhd', '')
+        print id
+
+        annotations = id2zyxd[id]
+
+        img_out, annotations_out = data_transforms.transform_scan3d(img,
+                                                                    pixel_spacing=pixel_spacing,
+                                                                    p_transform=config().p_transform,
+                                                                    p_transform_augment=None,
+                                                                    # config().p_transform_augment,
+                                                                    luna_annotations=annotations,
+                                                                    luna_origin=origin)
+
+        mask = data_transforms.make_3d_mask_from_annotations(img_out.shape, annotations_out, shape='sphere')
+        n_white += np.sum(mask)
+        n_black += mask.shape[0] * mask.shape[1] * mask.shape[2] - np.sum(mask)
+
+        print 'white', n_white
+        print 'black', n_black
 
 
 def test_kaggle3d():
@@ -188,4 +223,5 @@ def test_kaggle3d():
 
 if __name__ == '__main__':
     # test_kaggle3d()
-    test_luna3d()
+    # test_luna3d()
+    count_proportion()

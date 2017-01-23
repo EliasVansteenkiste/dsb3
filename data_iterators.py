@@ -11,12 +11,11 @@ import os
 
 
 class LunaDataGenerator(object):
-    def __init__(self, data_path, batch_size, transform_params, patient_ids=None,
-                 full_batch=False, random=True, infinite=True, min_slices=0,
-                 data_prep_fun=data_transforms.transform_scan3d, **kwargs):
+    def __init__(self, data_path, batch_size, transform_params, data_prep_fun, rng,
+                 full_batch, random, infinite, patient_ids=None, **kwargs):
 
         if patient_ids:
-            self.patient_paths = [p + '.mhd' for p in patient_ids]
+            self.patient_paths = [data_path + '/' + p + '.mhd' for p in patient_ids]
         else:
             patient_paths = utils_lung.get_patient_data_paths(data_path)
             self.patient_paths = [p for p in patient_paths if '.mhd' in p]
@@ -25,7 +24,7 @@ class LunaDataGenerator(object):
         self.nsamples = len(self.patient_paths)
         self.data_path = data_path
         self.batch_size = batch_size
-        self.rng = np.random.RandomState(42)
+        self.rng = rng
         self.full_batch = full_batch
         self.random = random
         self.batch_size = batch_size
@@ -42,26 +41,27 @@ class LunaDataGenerator(object):
                 idxs_batch = rand_idxs[pos:pos + self.batch_size]
                 nb = len(idxs_batch)
                 # allocate batches
-                x_batch = np.zeros((nb,) + self.transform_params['patch_size'], dtype='float32')
-                y_batch = np.zeros((nb,) + self.transform_params['patch_size'], dtype='float32')
+                x_batch = np.zeros((nb, 1) + self.transform_params['patch_size'], dtype='float32')
+                y_batch = np.zeros((nb, 1) + self.transform_params['patch_size'], dtype='float32')
                 patients_ids = []
 
                 for i, idx in enumerate(idxs_batch):
                     patient_path = self.patient_paths[idx]
-                    id = os.path.basename(patient_path).replace('.mhd', '')
+                    id = utils_lung.luna_extract_pid(patient_path)
                     patients_ids.append(id)
 
                     img, origin, pixel_spacing = utils_lung.read_mhd(patient_path)
-                    x_batch[i], y_batch[i] = self.data_prep_fun(data=img,
-                                                                pixel_spacing=pixel_spacing,
-                                                                luna_annotations=self.id2annotations[id],
-                                                                luna_origin=origin)
+                    x_batch[i, 0, :, :, :], y_batch[i, 0, :, :, :] = self.data_prep_fun(data=img,
+                                                                                        pixel_spacing=pixel_spacing,
+                                                                                        luna_annotations=
+                                                                                        self.id2annotations[id],
+                                                                                        luna_origin=origin)
 
                 if self.full_batch:
                     if nb == self.batch_size:
-                        yield [x_batch], [y_batch], patients_ids
+                        yield x_batch, y_batch, patients_ids
                 else:
-                    yield [x_batch], [y_batch], patients_ids
+                    yield x_batch, y_batch, patients_ids
 
             if not self.infinite:
                 break

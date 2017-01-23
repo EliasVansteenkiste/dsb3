@@ -35,62 +35,58 @@ sys.stderr = sys.stdout
 
 print 'Build model'
 model = config().build_model()
-all_layers = nn.layers.get_all_layers(model.l_top)
-all_params = nn.layers.get_all_params(model.l_top)
-num_params = nn.layers.count_params(model.l_top)
+all_layers = nn.layers.get_all_layers(model.l_out)
+all_params = nn.layers.get_all_params(model.l_out)
+num_params = nn.layers.count_params(model.l_out)
 print '  number of parameters: %d' % num_params
 print string.ljust('  layer output shapes:', 36),
 print string.ljust('#params:', 10),
 print 'output shape:'
-for layer in all_layers[:-1]:
+for layer in all_layers:
     name = string.ljust(layer.__class__.__name__, 32)
     num_param = sum([np.prod(p.get_value().shape) for p in layer.get_params()])
     num_param = string.ljust(num_param.__str__(), 10)
     print '    %s %s %s' % (name, num_param, layer.output_shape)
 
-train_loss = config().build_objective(model)
+train_loss = config().build_objective(model, deterministic=False)
+valid_loss = config().build_objective(model, deterministic=True)
 
 learning_rate_schedule = config().learning_rate_schedule
 learning_rate = theano.shared(np.float32(learning_rate_schedule[0]))
 updates = config().build_updates(train_loss, model, learning_rate)
 
-xs_shared = [nn.utils.shared_empty(dim=len(l.shape)) for l in model.l_ins]
-ys_shared = [nn.utils.shared_empty(dim=len(l.shape)) for l in model.l_targets]
+x_shared = nn.utils.shared_empty(dim=len(model.l_in.shape))
+y_shared = nn.utils.shared_empty(dim=len(model.l_in.shape))
 
 idx = T.lscalar('idx')
 givens_train = {}
-for l_in, x in izip(model.l_ins, xs_shared):
-    givens_train[l_in.input_var] = x[idx * config().batch_size:(idx + 1) * config().batch_size]
-for l_target, y in izip(model.l_targets, ys_shared):
-    givens_train[l_target.input_var] = y[idx * config().batch_size:(idx + 1) * config().batch_size]
+givens_train[model.l_in.input_var] = x_shared[idx * config().batch_size:(idx + 1) * config().batch_size]
+givens_train[model.l_target.input_var] = y_shared[idx * config().batch_size:(idx + 1) * config().batch_size]
 
 givens_valid = {}
-for l_in, x in izip(model.l_ins, xs_shared):
-    givens_valid[l_in.input_var] = x
+givens_valid[model.l_in.input_var] = x_shared
+givens_valid[model.l_target.input_var] = y_shared
 
 # theano functions
-iter_train = theano.function([idx], train_loss, givens=givens_train, updates=updates, on_unused_input='ignore')
-iter_validate = theano.function([], [nn.layers.get_output(l, deterministic=True) for l in model.l_outs],
-                                givens=givens_valid, on_unused_input='warn')
+iter_train = theano.function([idx], train_loss, givens=givens_train, updates=updates)
+iter_validate = theano.function([], valid_loss, givens=givens_valid)
 
 if config().restart_from_save:
     print 'Load model parameters for resuming'
     resume_metadata = utils.load_pkl(config().restart_from_save)
-    nn.layers.set_all_param_values(model.l_top, resume_metadata['param_values'])
+    nn.layers.set_all_param_values(model.l_out, resume_metadata['param_values'])
     start_chunk_idx = resume_metadata['chunks_since_start'] + 1
     chunk_idxs = range(start_chunk_idx, config().max_nchunks)
 
     lr = np.float32(utils.current_learning_rate(learning_rate_schedule, start_chunk_idx))
     print '  setting learning rate to %.7f' % lr
     learning_rate.set_value(lr)
-    losses_train = resume_metadata['losses_train']
+    losses_eval_train = resume_metadata['losses_eval_train']
     losses_eval_valid = resume_metadata['losses_eval_valid']
-    crps_eval_valid = resume_metadata['crps_eval_valid']
 else:
     chunk_idxs = range(config().max_nchunks)
-    losses_train = []
+    losses_eval_train = []
     losses_eval_valid = []
-    crps_eval_valid = []
     start_chunk_idx = 0
 
 train_data_iterator = config().train_data_iterator
@@ -109,8 +105,8 @@ prev_time = start_time
 tmp_losses_train = []
 
 # use buffering.buffered_gen_threaded()
-for chunk_idx, (xs_chunk, ys_chunk, _) in izip(chunk_idxs,
-                                               buffering.buffered_gen_threaded(train_data_iterator.generate())):
+# buffering.buffered_gen_threaded(train_data_iterator.generate())
+for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, train_data_iterator.generate()):
     if chunk_idx in learning_rate_schedule:
         lr = np.float32(learning_rate_schedule[chunk_idx])
         print '  setting learning rate to %.7f' % lr
@@ -118,14 +114,13 @@ for chunk_idx, (xs_chunk, ys_chunk, _) in izip(chunk_idxs,
         learning_rate.set_value(lr)
 
     # load chunk to GPU
-    for x_shared, x in zip(xs_shared, xs_chunk):
-        x_shared.set_value(x)
-    for y_shared, y in zip(ys_shared, ys_chunk):
-        y_shared.set_value(y)
+    x_shared.set_value(x_chunk_train)
+    y_shared.set_value(y_chunk_train)
 
     # make nbatches_chunk iterations
     for b in xrange(config().nbatches_chunk):
         loss = iter_train(b)
+        print loss, id_train
         tmp_losses_train.append(loss)
 
     if ((chunk_idx + 1) % config().validate_every) == 0:
@@ -134,27 +129,21 @@ for chunk_idx, (xs_chunk, ys_chunk, _) in izip(chunk_idxs,
         # calculate mean train loss since the last validation phase
         mean_train_loss = np.mean(tmp_losses_train)
         print 'Mean train loss: %7f' % mean_train_loss
-        losses_train.append(mean_train_loss)
+        losses_eval_train.append(mean_train_loss)
         tmp_losses_train = []
 
         # load validation data to GPU
-        batch_valid_predictions, batch_valid_targets, batch_valid_ids = [], [], []
-        for xs_batch_valid, ys_batch_valid, ids_batch in valid_data_iterator.generate():
-            for x_shared, x in zip(xs_shared, xs_batch_valid):
-                x_shared.set_value(x)
-
-            batch_valid_targets.append(ys_batch_valid)
-            batch_valid_predictions.append(iter_validate())
-            batch_valid_ids.append(ids_batch)
+        tmp_losses_valid = []
+        for x_chunk_valid, y_chunk_valid, ids_batch in valid_data_iterator.generate():
+            x_shared.set_value(x_chunk_valid)
+            y_shared.set_value(y_chunk_valid)
+            tmp_losses_valid.append(iter_validate())
 
         # calculate validation loss across validation set
-        valid_loss = config().get_mean_validation_loss(batch_valid_predictions, batch_valid_targets)
+        valid_loss = np.mean(tmp_losses_valid)
+        # TODO: taking mean is not correct if chunks have different sizes!!!
         print 'Validation loss: ', valid_loss
         losses_eval_valid.append(valid_loss)
-
-        valid_crps = config().get_mean_crps_loss(batch_valid_predictions, batch_valid_targets, batch_valid_ids)
-        print 'Validation CRPS: ', valid_crps, np.mean(valid_crps)
-        crps_eval_valid.append(valid_crps)
 
         now = time.time()
         time_since_start = now - start_time
@@ -177,9 +166,9 @@ for chunk_idx, (xs_chunk, ys_chunk, _) in izip(chunk_idxs,
                 'git_revision_hash': utils.get_git_revision_hash(),
                 'experiment_id': expid,
                 'chunks_since_start': chunk_idx,
-                'losses_train': losses_train,
+                'losses_eval_train': losses_eval_train,
                 'losses_eval_valid': losses_eval_valid,
-                'param_values': nn.layers.get_all_param_values(model.l_top)
+                'param_values': nn.layers.get_all_param_values(model.l_out)
             }, f, pickle.HIGHEST_PROTOCOL)
             print '  saved to %s' % metadata_path
             print

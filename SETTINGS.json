@@ -5,6 +5,7 @@
   "SAMPLE_SUBMISSION_PATH": "/mnt/storage/data/dsb3/stage1_sample_submission.csv",
   "VALIDATION_SPLIT_PATH": "/mnt/storage/data/dsb3/validation_split.pkl",
   "LUNA_DATA_PATH": "/mnt/storage/data/dsb3/luna/dataset/",
-  "LUNA_LABELS_PATH": "/mnt/storage/data/dsb3/luna/annotations.csv"
+  "LUNA_LABELS_PATH": "/mnt/storage/data/dsb3/luna/annotations.csv",
+  "LUNA_VALIDATION_SPLIT_PATH": "/mnt/storage/data/dsb3/luna/validation_split.pkl"
 }
 
