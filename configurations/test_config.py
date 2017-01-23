@@ -6,7 +6,7 @@ import pathfinder
 restart_from_save = None
 rng = np.random.RandomState(42)
 p_transform = {'patch_size': (128, 128, 128),
-               'mm_patch_size': (360, 400, 400),
+               'mm_patch_size': (300, 300, 300),
                'pixel_spacing': (1., 1., 1.)
                }
 

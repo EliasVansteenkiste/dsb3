@@ -189,7 +189,6 @@ def make_3d_mask(img_shape, center, radius, shape='sphere'):
     mask = np.zeros(img_shape)
     radius = np.rint(radius)
     if shape == 'cube':
-        print 'r', radius
         sz = slice(max(center[0] - radius, 0), min(center[0] + radius + 1, img_shape[0]))
         sy = slice(max(center[1] - radius, 0), min(center[1] + radius + 1, img_shape[1]))
         sx = slice(max(center[2] - radius, 0), min(center[2] + radius + 1, img_shape[2]))

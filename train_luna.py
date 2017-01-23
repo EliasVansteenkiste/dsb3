@@ -14,6 +14,8 @@ import buffering
 from configuration import config, set_configuration
 import pathfinder
 
+theano.config.warn_float64 = 'raise'
+
 if len(sys.argv) < 2:
     sys.exit("Usage: train.py <configuration_name>")
 
@@ -105,8 +107,8 @@ prev_time = start_time
 tmp_losses_train = []
 
 # use buffering.buffered_gen_threaded()
-# buffering.buffered_gen_threaded(train_data_iterator.generate())
-for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, train_data_iterator.generate()):
+for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buffering.buffered_gen_threaded(
+        train_data_iterator.generate())):
     if chunk_idx in learning_rate_schedule:
         lr = np.float32(learning_rate_schedule[chunk_idx])
         print '  setting learning rate to %.7f' % lr
@@ -120,7 +122,7 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, trai
     # make nbatches_chunk iterations
     for b in xrange(config().nbatches_chunk):
         loss = iter_train(b)
-        print loss, id_train
+        print chunk_idx, loss
         tmp_losses_train.append(loss)
 
     if ((chunk_idx + 1) % config().validate_every) == 0:
@@ -134,10 +136,13 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, trai
 
         # load validation data to GPU
         tmp_losses_valid = []
-        for x_chunk_valid, y_chunk_valid, ids_batch in valid_data_iterator.generate():
+        for x_chunk_valid, y_chunk_valid, ids_batch in buffering.buffered_gen_threaded(valid_data_iterator.generate(),
+                                                                                       buffer_size=2):
             x_shared.set_value(x_chunk_valid)
             y_shared.set_value(y_chunk_valid)
-            tmp_losses_valid.append(iter_validate())
+            l_valid = iter_validate()
+            print l_valid, x_chunk_valid.shape
+            tmp_losses_valid.append(l_valid)
 
         # calculate validation loss across validation set
         valid_loss = np.mean(tmp_losses_valid)

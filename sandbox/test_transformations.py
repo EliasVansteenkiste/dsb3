@@ -223,5 +223,5 @@ def test_kaggle3d():
 
 if __name__ == '__main__':
     # test_kaggle3d()
-    # test_luna3d()
-    count_proportion()
+    test_luna3d()
+    # count_proportion()

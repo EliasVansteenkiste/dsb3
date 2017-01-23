@@ -30,7 +30,7 @@ def buffered_gen_mp(source_gen, buffer_size=2):
         yield data
 
 
-def buffered_gen_threaded(source_gen, buffer_size=2):
+def buffered_gen_threaded(source_gen, buffer_size=5):
     """
     Generator that runs a slow source generator in a separate thread. Beware of the GIL!
     buffer_size: the maximal number of items to pre-generate (length of the buffer)
