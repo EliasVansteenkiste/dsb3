@@ -7,7 +7,7 @@ from utils.transformation_3d import affine_transform, apply_affine_transform
 input_shape = np.asarray((160., 512., 512.))
 img = np.ones(input_shape.astype("int"))*50
 pixel_spacing = np.asarray([0.7, .7, .7])
-output_shape =  np.asarray((50., 100., 100.))
+output_shape =  np.asarray((100., 100., 100.))
 norm_patch_size = np.asarray((112, 300 ,300), np.float)
 
 # img[:, 50:450, 250:450] = 100 #make cubish thing
@@ -23,7 +23,7 @@ patch_shape = norm_shape * np.min(output_shape/norm_patch_size)
 
 shift_center = affine_transform(translation=-input_shape/2.-0.5)
 normscale = affine_transform(scale=norm_shape/input_shape)
-augment = affine_transform(shear=(5, -10, -10))
+augment = affine_transform(scale=(), shear=(10, 10, 0))
 patchscale = affine_transform(scale=patch_shape/norm_shape)
 unshift_center = affine_transform(translation=output_shape/2.-0.5)
 
