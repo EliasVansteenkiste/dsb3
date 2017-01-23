@@ -10,7 +10,7 @@ def apply_affine_transform(_input, matrix, order=1, output_shape=None):
     return scipy.ndimage.interpolation.affine_transform(
         _input, T, offset=s, order=order, output_shape=output_shape)
 
-def affine_transform(scale=None, rotation=None, translation=None, shear=None):
+def affine_transform(scale=None, rotation=None, translation=None, shear=None, reflection=None):
     """
     rotation and shear in degrees
     """
@@ -19,8 +19,12 @@ def affine_transform(scale=None, rotation=None, translation=None, shear=None):
     if not translation is None:
         matrix[:3, 3] = -np.asarray(translation, np.float)
 
+    if not reflection is None:
+        reflection = -np.asarray(reflection, np.float)*2+1
+    else: reflection = np.array((1,1,1))
+
     if not scale is None:
-        scale = 1./np.asarray(scale, np.float)
+        scale = reflection/np.asarray(scale, np.float)
         matrix[0,0] = scale[0]
         matrix[1,1] = scale[1]
         matrix[2,2] = scale[2]

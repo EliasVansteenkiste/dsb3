@@ -47,8 +47,7 @@ def uniform(max_val):
     return max_val*(random.random()*2-1)
 
 
-def bernoulli(p):
-    return p < random.random() #range [0.0, 1.0)
+def bernoulli(p): return p < random.random() #range [0.0, 1.0)
 
 
 def sample_augmentation_parameters(augm):
