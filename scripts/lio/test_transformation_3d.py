@@ -12,7 +12,7 @@ norm_patch_size = np.asarray((112, 300 ,300), np.float)
 
 # img[:, 50:450, 250:450] = 100 #make cubish thing
 s = np.asarray(img.shape)//2
-img[s[0]-50:s[0]+50, s[1]-50:s[1]+50, s[2]-50:s[2]+50] = 100 #make cubish thing
+img[s[0]-50:s[0]+50, s[1]-50:s[1]+200, s[2]-50:s[2]+50] = 100 #make cubish thing
 
 
 norm_shape = input_shape*pixel_spacing
@@ -23,7 +23,7 @@ patch_shape = norm_shape * np.min(output_shape/norm_patch_size)
 
 shift_center = affine_transform(translation=-input_shape/2.-0.5)
 normscale = affine_transform(scale=norm_shape/input_shape)
-augment = affine_transform(scale=(), shear=(10, 10, 0))
+augment = affine_transform(reflection=(False, True, False))
 patchscale = affine_transform(scale=patch_shape/norm_shape)
 unshift_center = affine_transform(translation=output_shape/2.-0.5)
 
