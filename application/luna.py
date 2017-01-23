@@ -1,0 +1,186 @@
+from collections import defaultdict
+import glob
+import csv
+import os
+import random
+from os import path
+import dicom
+
+import numpy as np
+
+from interfaces.data_loader import StandardDataLoader, TRAINING, VALIDATION, TEST, INPUT, OUTPUT, TRAIN
+from utils import paths
+
+import SimpleITK as sitk    # sudo pip install SimpleITK
+
+VALIDATION_SET_SIZE = 0.2
+
+"""
+This class is responsible for loading the data in your config
+
+It extends from StandardDataLoader, which does the fancy stuff, like being deterministic, loading and preprocessing multithreaded,
+The data loader is first prepared, and load_sample then returns data for each requested tag for a specific patient
+
+Note that every patient, independent on its set, gets a unique number.
+Every time that number is requested, exactly the same data needs to be returned
+"""
+class (StandardDataLoader):
+
+    OUTPUT_DATA_SIZE_TYPE = {
+        "luna:segmentation": ((123,), "float32"),
+        "luna:sample_id": ((), "uint32")
+    }
+
+    # These are shared between all objects of this type
+    labels = dict()
+    names = dict()
+
+    datasets = [TRAIN, VALIDATION]
+
+    def __init__(self, location=paths.LUNA_DATA_PATH, *args, **kwargs):
+        super(LunaDataLoader,self).__init__(location=location, *args, **kwargs)
+
+    def prepare(self):
+        """
+        Prepare the dataloader, by storing values to static fields of this class
+        In this case, only filenames are loaded prematurely
+        :return:
+        """
+        # step 0: load only when not loaded yet
+        # if TRAINING in self.data \
+        #     and VALIDATION in self.data:
+        #     return
+
+        # step 1: load the file names
+        file_list = sorted(glob.glob(self.location+"*.mhd"))
+        # count the number of data points
+
+        # make a stratified validation set
+        # note, the seed decides the validation set, but it is deterministic in the names
+        random.seed(317070)
+        validation_patients = random.sample(file_list, int(VALIDATION_SET_SIZE*len(file_list)))
+
+        # make the static data empty
+        for s in self.datasets:
+            self.data[s] = []
+            self.labels[s] = []
+            self.names[s] = []
+
+        # load the filenames and put into the right dataset
+        labels_as_dict = defaultdict(list)
+
+        with open(paths.LUNA_LABELS_PATH, 'rb') as csvfile:
+            reader = csv.reader(csvfile, delimiter=',', quotechar='|')
+            next(reader)  # skip the header
+            for row in reader:
+                label = (float(row[1]), float(row[2]), float(row[3]), float(row[4]))
+                labels_as_dict[str(row[0])].append(label)
+
+        for patient_file in file_list:
+            if patient_file in validation_patients:
+                s = VALIDATION
+            else:
+                s = TRAINING
+
+            self.data[s].append(patient_file)
+            patient_name = os.path.splitext(os.path.basename(patient_file))[0]
+            label = labels_as_dict[str(patient_name)]
+            self.labels[s].append( label )
+            self.names[s].append(patient_name)
+
+        # give every patient a unique number
+        last_index = -1
+        for s in self.datasets:
+            self.indices[s] = range(last_index+1,last_index+1+len(self.data[s]))
+            if len(self.indices[s]) > 0:
+                last_index = self.indices[s][-1]
+            print s, len(self.indices[s]), "samples"
+
+
+    def load_sample(self, sample_id, input_keys_to_do, output_keys_to_do):
+        ###################
+        #   for testing   #
+        ###################
+        #sample_id = 1  # test optimizing of parameters
+        #import random
+        #sample_id = random.choice([1,20000])  # test overfitting
+
+        # find which set this sample is in
+        set, set_indices = None, None
+        for set, set_indices in self.indices.iteritems():
+            if sample_id in set_indices:
+                break
+
+        assert sample_id in set_indices, "Sample ID %d is not known in any of the sets?" % sample_id
+
+        sample_index = set_indices.index(sample_id)
+
+        # prepare empty dicts which will contain the result
+        sample = dict()
+        sample[INPUT] = dict()
+        sample[OUTPUT] = dict()
+
+
+        patientdata = self.load_patient_data(self.data[set][sample_index])
+
+        # Iterate over input tags and return a dict with the requested tags filled
+        for tag in input_keys_to_do:
+            tags = tag.split(':')
+            if "luna" not in tags:
+                continue
+            if "filename" in tags:
+                sample[INPUT][tag] = self.names[set][sample_index]
+
+            if "3d" in tags or "default" in tags:
+                sample[INPUT][tag] = patientdata["pixeldata"].astype('float32')
+
+        for tag in output_keys_to_do:
+            tags = tag.split(':')
+            if "luna" not in tags:
+                continue
+            if "sample_id" in tags:
+                sample[OUTPUT][tag] = sample_id
+
+            if "segmentation" in tags:
+                sample[OUTPUT][tag] =  self.generate_mask(self.labels[set][sample_index], patientdata)
+
+        return sample
+
+
+    def load_patient_data(self, path):
+        result = dict()
+        pixel_data, origin, spacing = self.read_mhd_file(path)
+        result["pixeldata"] = pixel_data.T  # move from zyx to xyz
+        result["origin"] = origin[::-1]  # move from zyx to xyz
+        result["spacing"] = spacing[::-1]  # move from zyx to xyz
+        return result
+
+
+    @staticmethod
+    def read_mhd_file(path):
+        itk_data = sitk.ReadImage(path.encode('utf-8'))
+        pixel_data = sitk.GetArrayFromImage(itk_data)
+        origin = np.array(list(reversed(itk_data.GetOrigin())))
+        spacing = np.array(list(reversed(itk_data.GetSpacing())))
+        return pixel_data, origin, spacing
+
+
+    @staticmethod
+    def world_to_voxel_coordinates(world_coord, origin, spacing):
+        stretched_voxel_coord = np.absolute(world_coord - origin)
+        voxel_coord = stretched_voxel_coord / spacing
+        return voxel_coord
+
+
+    def generate_mask(self, labels, patient_data):
+        origin, spacing = patient_data["origin"], patient_data["spacing"]
+        mask = np.zeros(shape=patient_data["pixeldata"].shape, dtype='float32')
+        x,y,z = np.mgrid[:mask.shape[0],:mask.shape[1],:mask.shape[2]]
+
+        for label in labels:
+            position = np.array(label[:3])
+            diameter_in_mm = label[3]
+            xt, yt, zt = self.world_to_voxel_coordinates(position, origin, spacing)
+            distance2 = ((spacing[0]*(x-xt))**2 + (spacing[1]*(y-yt))**2 + (spacing[2]*(z-zt))**2)
+            mask[(distance2 <= diameter_in_mm**2)] = 1
+        return mask

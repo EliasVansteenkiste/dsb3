@@ -15,8 +15,8 @@ augmentation_parameters = {
 }
 
 preprocessors = [
-                 RescaleInput(input_scale=(0,255), output_scale=(0.0, 1.0)),
-                 AugmentInput(output_shape=(160,120),**augmentation_parameters),
+                 #RescaleInput(input_scale=(0,255), output_scale=(0.0, 1.0)),
+                 #AugmentInput(output_shape=(160,120),**augmentation_parameters),
                  #NormalizeInput(num_samples=100),
                  ]
 
@@ -24,7 +24,7 @@ preprocessors = [
 #####################
 #     training      #
 #####################
-training_data = KaggleSFDataLoader(sets={"training": 1.0},
+training_data = LunaDataLoader(sets={"training": 1.0},
                                  epochs=0.1,
                                  preprocessors=preprocessors,
                                  multiprocess=True,

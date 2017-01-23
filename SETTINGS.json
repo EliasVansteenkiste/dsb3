@@ -1,6 +1,8 @@
 {
   "DATA_PATH":"/mnt/storage/data/dsb3/stage1/",
+  "LUNA_DATA_PATH":"/media/jonas/BC95-7205/luna/",
   "LABELS_PATH":"/mnt/storage/data/dsb3/stage1_labels.csv",
+  "LUNA_LABELS_PATH":"/media/jonas/BC95-7205/annotations.csv",
   "MODEL_PATH":"/mnt/storage/metadata/dsb3/models/",
   "MODEL_PREDICTIONS_PATH":"/mnt/storage/metadata/dsb3/model-predictions/",
   "ANALYSIS_PATH":"/mnt/storage/metadata/dsb3/analysis/",
