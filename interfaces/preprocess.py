@@ -48,7 +48,6 @@ class NormalizeInput(BasePreprocessor):
         from interfaces.data_loader import INPUT
         for input_key, value in sample[INPUT].iteritems():
             sample[INPUT][input_key] = (value-self.bias[input_key]) / self.std[input_key]
-        return sample
 
 
 class RescaleInput(BasePreprocessor):
@@ -64,4 +63,3 @@ class RescaleInput(BasePreprocessor):
         for input_key, value in sample[INPUT].iteritems():
             image = sample[INPUT][input_key]
             sample[INPUT][input_key] = (image - self.bias) / self.coef
-        return sample

@@ -26,11 +26,6 @@ Every time that number is requested, exactly the same data needs to be returned
 """
 class LunaDataLoader(StandardDataLoader):
 
-    OUTPUT_DATA_SIZE_TYPE = {
-        "luna:segmentation": ((512,512,512), "float32"),
-        "luna:sample_id": ((), "uint32")
-    }
-
     # These are shared between all objects of this type
     labels = dict()
     names = dict()
@@ -141,8 +136,11 @@ class LunaDataLoader(StandardDataLoader):
             if "3d" in tags or "default" in tags:
                 sample[INPUT][tag] = patientdata["pixeldata"].astype('float32')
 
-            if "z-slices" in tags:
-                sample[INPUT][tag] = patientdata["pixeldata"].shape[2]
+            if "pixelspacing" in tags:
+                sample[INPUT][tag] = patientdata["spacing"].astype('float32')  # in mm per pixel
+
+            if "shape" in tags:
+                sample[INPUT][tag] = patientdata["pixeldata"].shape
 
         for tag in output_keys_to_do:
             tags = tag.split(':')

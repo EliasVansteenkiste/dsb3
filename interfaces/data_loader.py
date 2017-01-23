@@ -129,13 +129,13 @@ class StandardDataLoader(BaseDataLoader):
 
         sample_loader = functools.partial(self.load_sample, input_keys_to_do=input_keys_to_do, output_keys_to_do=output_keys_to_do)
         for i in xrange(len(self.preprocessors)):
+            input_keys_to_do += self.preprocessors[i].extra_input_tags_required
+            output_keys_to_do += self.preprocessors[i].extra_output_tags_required
+
             data_loader = ignore_exceptions_wrapper(itertools.imap(sample_loader, itertools.cycle(self.indices[TRAINING])))
             for j in xrange(i-1):
                 data_loader = itertools.imap(self.preprocessors[j].process, data_loader)
             self.preprocessors[i].train(data_loader)
-            # TODO: these lines need to move 4 lines up?
-            input_keys_to_do += self.preprocessors[i].extra_input_tags_required
-            output_keys_to_do += self.preprocessors[i].extra_output_tags_required
 
 
         indices_to_sample_from = sum([self.indices[s] for s in self.sets.keys()],[])
@@ -214,6 +214,21 @@ class StandardDataLoader(BaseDataLoader):
         return
 
 
+    def quick_sample_output(self,output_keys_to_do):
+
+        input_keys_to_do = []  # we do not need additional inputs to sample the output
+        output_keys_to_do = output_keys_to_do.keys()
+        for i in xrange(len(self.preprocessors)):
+            input_keys_to_do += self.preprocessors[i].extra_input_tags_required
+            output_keys_to_do += self.preprocessors[i].extra_output_tags_required
+
+        sample_data = self.load_sample(0,input_keys_to_do,
+                                       output_keys_to_do)
+        for preprocessor in self.preprocessors:
+            preprocessor.process(sample_data)
+        return sample_data[OUTPUT]
+
+
     def initialize_empty_chunk(self, chunk_size, required_input, required_output):
 
         # dict with {input_key: input_size}
@@ -229,9 +244,12 @@ class StandardDataLoader(BaseDataLoader):
             IDS: [None] * chunk_size,
         }
 
+        # we cannot know the output shape after preprocessing, unless we sample it.
+        output_sample = self.quick_sample_output(required_output)
+
         for tag in required_output.keys():
-            if tag in self.OUTPUT_DATA_SIZE_TYPE:
-                size, dtype = (no_samples, ) + self.OUTPUT_DATA_SIZE_TYPE[tag][0], self.OUTPUT_DATA_SIZE_TYPE[tag][1]
+            if tag in output_sample:
+                size, dtype = (no_samples, ) + output_sample[tag].shape, output_sample[tag].dtype
                 result[OUTPUT][tag] = np.zeros(size, dtype=dtype)
 
         for tag, size in required_input.iteritems():
