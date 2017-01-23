@@ -11,7 +11,7 @@ import numpy as np
 from interfaces.data_loader import StandardDataLoader, TRAINING, VALIDATION, TEST, INPUT, OUTPUT, TRAIN
 from utils import paths
 
-import SimpleITK as sitk    # sudo pip install SimpleITK
+import SimpleITK as sitk    # sudo pip install --upgrade pip; sudo pip install SimpleITK
 
 VALIDATION_SET_SIZE = 0.2
 
@@ -24,10 +24,10 @@ The data loader is first prepared, and load_sample then returns data for each re
 Note that every patient, independent on its set, gets a unique number.
 Every time that number is requested, exactly the same data needs to be returned
 """
-class (StandardDataLoader):
+class LunaDataLoader(StandardDataLoader):
 
     OUTPUT_DATA_SIZE_TYPE = {
-        "luna:segmentation": ((123,), "float32"),
+        "luna:segmentation": ((512,512,512), "float32"),
         "luna:sample_id": ((), "uint32")
     }
 
@@ -58,7 +58,8 @@ class (StandardDataLoader):
         # make a stratified validation set
         # note, the seed decides the validation set, but it is deterministic in the names
         random.seed(317070)
-        validation_patients = random.sample(file_list, int(VALIDATION_SET_SIZE*len(file_list)))
+        patient_names = [self.patient_name_from_file_name(f) for f in file_list]
+        validation_patients = random.sample(patient_names, int(VALIDATION_SET_SIZE*len(patient_names)))
 
         # make the static data empty
         for s in self.datasets:
@@ -77,13 +78,14 @@ class (StandardDataLoader):
                 labels_as_dict[str(row[0])].append(label)
 
         for patient_file in file_list:
-            if patient_file in validation_patients:
+            patient_name = self.patient_name_from_file_name(patient_file)
+
+            if patient_name in validation_patients:
                 s = VALIDATION
             else:
                 s = TRAINING
 
             self.data[s].append(patient_file)
-            patient_name = os.path.splitext(os.path.basename(patient_file))[0]
             label = labels_as_dict[str(patient_name)]
             self.labels[s].append( label )
             self.names[s].append(patient_name)
@@ -95,6 +97,11 @@ class (StandardDataLoader):
             if len(self.indices[s]) > 0:
                 last_index = self.indices[s][-1]
             print s, len(self.indices[s]), "samples"
+
+
+    @staticmethod
+    def patient_name_from_file_name(patient_file):
+        return os.path.splitext(os.path.basename(patient_file))[0]
 
 
     def load_sample(self, sample_id, input_keys_to_do, output_keys_to_do):
@@ -133,6 +140,9 @@ class (StandardDataLoader):
 
             if "3d" in tags or "default" in tags:
                 sample[INPUT][tag] = patientdata["pixeldata"].astype('float32')
+
+            if "z-slices" in tags:
+                sample[INPUT][tag] = patientdata["pixeldata"].shape[2]
 
         for tag in output_keys_to_do:
             tags = tag.split(':')
@@ -175,7 +185,7 @@ class (StandardDataLoader):
     def generate_mask(self, labels, patient_data):
         origin, spacing = patient_data["origin"], patient_data["spacing"]
         mask = np.zeros(shape=patient_data["pixeldata"].shape, dtype='float32')
-        x,y,z = np.mgrid[:mask.shape[0],:mask.shape[1],:mask.shape[2]]
+        x,y,z = np.ogrid[:mask.shape[0],:mask.shape[1],:mask.shape[2]]
 
         for label in labels:
             position = np.array(label[:3])

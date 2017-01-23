@@ -180,7 +180,8 @@ class StandardDataLoader(BaseDataLoader):
             chunk_memory = self.initialize_empty_chunk(chunk_size, required_input, required_output)
 
             processes = [False] * chunk_size
-            pool = AsyncPool(size=chunk_size)
+            if self.multiprocess:
+                pool = AsyncPool(size=chunk_size)
 
             while sum(processes) != len(processes):
                 try:

@@ -8,6 +8,7 @@ _CONFIG_DIR = "configurations"
 DEFAULT = "default"
 _config = None
 
+_configuration_name = None
 
 def set_configuration(configuration):
     """Imports and initialises the configuration module."""
@@ -17,13 +18,19 @@ def set_configuration(configuration):
     if os.sep in configuration:
         configuration = os.path.relpath(configuration)
         configuration = configuration.replace(os.sep, '.')
-        _config = importlib.import_module(configuration)
+        _configuration_name = configuration
+        _config = importlib.import_module(_configuration_name)
     else:
-        _config = importlib.import_module("%s.%s" % (_CONFIG_DIR, configuration))
+        _configuration_name = "%s.%s" % (_CONFIG_DIR, configuration)
+        _config = importlib.import_module(_configuration_name)
+
     if configuration != DEFAULT:
         print "loaded", _config
 
 set_configuration(DEFAULT)
+
+def get_configuration_name():
+    return _configuration_name
 
 # dirty hack to access config attributes as if they were actually in the module
 class Configuration():

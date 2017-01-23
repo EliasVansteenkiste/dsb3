@@ -3,9 +3,10 @@ from interfaces.data_loader import INPUT
 from utils import put_in_the_middle
 import numpy as np
 
-class Put_In_The_Middle(BasePreprocessor):
+class PutInTheMiddle(BasePreprocessor):
 
     def __init__(self, tag=None, output_shape=(256,256,256)):
+        assert tag is not None
         self.output_shape = output_shape
         self.tag = tag
 

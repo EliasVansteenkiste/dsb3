@@ -1,8 +1,9 @@
 import heapq
 import random
 import math
-from bitarray import bitarray
 import numpy as np
+
+LENGTH = 4
 
 def check_on_leaderboard(expected, predicted):
     expected, predicted = np.array(expected), np.array(predicted)
@@ -12,56 +13,18 @@ def check_on_leaderboard(expected, predicted):
     return float("%.06f"%result)  # round to 6 digits after comma
 
 
-LENGTH = 198
 
-def alternate(n):
-    return (([0]*n+[1]*n)*LENGTH)[:LENGTH]
+def aim_for_value(val):
+    return 1./(1.+np.exp(-val*LENGTH))
 
 
-def distance(a,b):
-    return np.sum((a-b)**2)
-
-def find_solution(a,b):
-
-    # for i in xrange(LENGTH):
-    #     solution = bitarray( [random.randint(0,1) for i in xrange(LENGTH)])
-    #     already_there = {solution}
-    #     todos = [ (distance( b, np.dot(a, solution.tolist()) ), solution) ]
-
-    a_big = np.concatenate([a,np.eye(LENGTH)],axis=0)
-    b_big = np.concatenate([b,0.5*np.ones(shape=(LENGTH,))],axis=0)
-    solution = np.linalg.lstsq(a_big, b_big)[0]
-    solution = bitarray([0 if s<0.5 else 1 for s in solution])
-    print "original", distance( b, np.dot(a, solution.tolist()))
-    todos = [ (distance( b, np.dot(a, solution.tolist()) ), solution) ]
-    already_there = {solution}
-
-    heapq.heapify( todos )
-    best = np.inf
-    while todos:
-        prev_d, current_solution = heapq.heappop(todos)
-        # test all bit flips, see which one works best
-        for bitnumber in xrange(len(current_solution)):
-            solution = bitarray(current_solution)
-            solution[bitnumber] = 1-solution[bitnumber]
-            d = distance( b, np.dot(a,tuple(solution)) )
-            if d==0:
-                return solution
-            else:
-                if d<best:
-                    best = d
-                    print d, len(already_there)
-            item = (d, solution)
-            if solution not in already_there:
-                already_there.add(solution)
-                heapq.heappush(todos, item)
-                if len(already_there)%100000==0:
-                    print len(already_there)
-        # memory and stuff
-        MAX_TODOS = 1000
-        if len(todos)>MAX_TODOS:
-            todos = heapq.nsmallest(MAX_TODOS,todos)
-            heapq.heapify(todos)
+def int_to_bit_array(val, num_bits):
+    res = [1 if c=='1' else 0 for c in bin(val)[2:]]
+    if len(res)<num_bits:
+        res = [0]*(num_bits-len(res)) + res
+    else:
+        res = res[-num_bits:]
+    return res[::-1]
 
 
 for test_number in xrange(1):
@@ -75,39 +38,54 @@ for test_number in xrange(1):
     results = []
     submissions = []
 
-    num_submissions = int(math.ceil(math.log(LENGTH, 2)))
-    print num_submissions,"submissions"
     MARGIN = 0.4
+
+    start = 1e-3
+    num_bits = 9
+
+    num_submissions = int(math.ceil(1.0*LENGTH/num_bits))
+    print num_submissions,"submissions"
+
     for n in xrange(num_submissions):
         # subm = alternate(2**(n+1))
         # subm = [subm[i] for i in random_permutation]
         # don't be too sure.
         # subm = [MARGIN + i*(1-2*MARGIN) for i in subm]
-        subm = [random.uniform(0.4,0.6) for i in xrange(LENGTH)]
+        subm = [0.5]*LENGTH
+        for i in xrange(num_bits):
+            idx = n*num_bits+i
+            if idx<LENGTH:
+                subm[idx] = aim_for_value(start * 2**(num_bits-i-1))
         results.append(check_on_leaderboard(true_labels, subm))
         submissions.append(subm)
 
+    # print results
     # solve the system
     results = np.array(results)
     subm = np.array(submissions)
 
-    normalize = (np.log(MARGIN) - np.log(1.0-MARGIN))/float(LENGTH)
+    print np.log(2)
+    res = []
+    for r in results:
+        for i in xrange(num_bits):
+            print
+            print "current",r
+            p = aim_for_value(start * 2**(num_bits-i-1))
+            if r>np.log(2):
+                res.append(0)
+                influence = np.log(1.-p)+np.log(2)
+                r += influence
+            else:
+                res.append(1)
+                influence = np.log(p)+np.log(2)
+                r -= influence
+            print "influence",influence
 
-    a = (np.log(subm) - np.log(1.0-subm))/float(LENGTH)/normalize
-    b = -(np.sum(np.log(1.0-subm),axis=1)/float(LENGTH)+results)/normalize
+    print res
+    prediction = res[:LENGTH]
+    print len(prediction)
 
-    #a,b =np.round(a).astype('int32'), np.round(b).astype('int32')
-
-
-    np.set_printoptions(threshold=np.nan)
-    # print a[-1,:], b[-1], sum(true_labels)
-    print "Distance of the real solution:", distance(np.dot(a,true_labels),b)
-
-    # find a vector of 198 0's and 1's for which a*vector = b
-    prediction = find_solution(a,b)
-
-    print np.dot(a,prediction),b
-
+    print sum([int_to_bit_array(int(np.log(2)/start), num_bits) for r in results],[])[::-1]
     print prediction
     print true_labels
     if prediction == true_labels:

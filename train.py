@@ -19,7 +19,7 @@ from interfaces.data_loader import TRAINING
 from interfaces.objectives import MAXIMIZE
 from utils.log import print_to_file
 
-from utils.configuration import set_configuration, config
+from utils.configuration import set_configuration, config, get_configuration_name
 import utils
 from utils import LOGS_PATH, MODEL_PATH
 import theano
@@ -428,7 +428,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     set_configuration(args.config)
 
-    expid = utils.generate_expid(args.config)
+    expid = utils.generate_expid(get_configuration_name())
 
     log_file = LOGS_PATH + "%s.log" % expid
     with print_to_file(log_file):

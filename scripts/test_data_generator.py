@@ -1,6 +1,7 @@
-from application.data import KaggleSFDataLoader
-from interfaces.data_loader import INPUT, OUTPUT
-from interfaces.preprocess import AugmentInput, RescaleInput
+from application.luna import LunaDataLoader
+from application.preprocessors.in_the_middle import PutInTheMiddle
+from interfaces.data_loader import INPUT, OUTPUT, TRAINING
+#from interfaces.preprocess import AugmentInput, RescaleInput
 
 augmentation_parameters = {
     "zoom_x":[0.8, 1.2],
@@ -18,47 +19,42 @@ preprocessors = [
                  #RescaleInput(input_scale=(0,255), output_scale=(0.0, 1.0)),
                  #AugmentInput(output_shape=(160,120),**augmentation_parameters),
                  #NormalizeInput(num_samples=100),
-                 ]
+    PutInTheMiddle(tag="luna:3d", output_shape=(512,512,512))
+]
 
 
 #####################
 #     training      #
 #####################
-training_data = LunaDataLoader(sets={"training": 1.0},
-                                 epochs=0.1,
+training_data = LunaDataLoader(sets=TRAINING,
+                                 epochs=1,
                                  preprocessors=preprocessors,
-                                 multiprocess=True,
+                                 multiprocess=False,
                                  crash_on_exception=True
                                 )
 
-chunk_size = 16
+chunk_size = 1
 
 training_data.prepare()
 print training_data.number_of_samples
 
-batch = training_data.generate_batch(
+batches = training_data.generate_batch(
     chunk_size=chunk_size,
-    required_input={"kaggle-sf:rgb":(chunk_size,3,160,120)},
-    required_output={"kaggle-sf:class":None, "kaggle-sf:sample_id":None},
+    required_input={"luna:z-slices":(chunk_size,)}, #"luna:3d":(chunk_size,512,512,512),
+    required_output=dict()#{"luna:segmentation":None, "luna:sample_id":None},
 )
 
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import numpy as np
 import utils.buffering
-plt.figure()
-plt.ion()
 
-plot = None
-for data in utils.buffering.buffered_gen_mp(batch):
-    input = data[INPUT]["kaggle-sf:rgb"].astype('float32')
-    output = data[OUTPUT]["kaggle-sf:sample_id"]
-
-    if plot is None:
-        plot = plt.imshow(np.transpose(input[0,:,:,:],[2,1,0]), interpolation='none')
-        title = plt.title(str(output[0]))
-
-    for i in xrange(input.shape[0]):
-        plot.set_data(np.transpose(input[i,:,:,:],[2,1,0]))
-        title.set_text(str(output[i]))
-        plt.pause(0.5)
-        raw_input()
+maximum = 0
+i = 0
+for data in batches:
+    #input = data[INPUT]["luna:3d"]
+    #output = data[OUTPUT]["luna:segmentation"]
+    slices = data[INPUT]["luna:z-slices"][0]
+    i+=1
+    if slices>maximum:
+        maximum=slices
+    print i,slices, maximum

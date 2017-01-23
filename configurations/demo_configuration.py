@@ -1,4 +1,4 @@
-from application.preprocessors.in_the_middle import Put_In_The_Middle
+from application.preprocessors.in_the_middle import PutInTheMiddle
 from configurations.default import *
 
 import lasagne
@@ -33,7 +33,7 @@ save_every_chunks = 1
 "Put in here the preprocessors for your data." \
 "They will be run consequently on the datadict of the dataloader in the order of your list."
 preprocessors = [
-    Put_In_The_Middle(tag="3d",output_shape=(256,512,512))
+    PutInTheMiddle(tag="3d",output_shape=(256,512,512))
 ]
 
 
