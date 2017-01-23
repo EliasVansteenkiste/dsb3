@@ -7,36 +7,14 @@ from utils.transformation_3d import affine_transform, apply_affine_transform
 from interfaces.data_loader import INPUT, OUTPUT
 
 
+
 DEFAULT_AUGMENTATION_PARAMETERS = {
     "scale": [1, 1, 1],  # factor
     "rotation": [0, 0, 0],  # degrees
     "shear": [0, 0, 0],  # degrees
-    "translation": [0, 0, 0],  # pixels
+    "translation": [0, 0, 0],  # mm
     "reflection": [0, 0, 0] #Bernoulli p
 }
-
-
-def lio_augment(volume, pixel_spacing, output_shape, norm_patch_size, augment_p):
-    input_shape = np.asarray(volume.shape, np.float)
-    pixel_spacing = np.asarray(pixel_spacing, np.float)
-    output_shape = np.asarray(output_shape, np.float)
-    norm_patch_size = np.asarray(norm_patch_size, np.float)
-
-    norm_shape = input_shape * pixel_spacing
-    # this will stretch in some dimensions, but the stretch is consistent across samples
-    patch_shape = norm_shape * output_shape / norm_patch_size
-    # else, use this: patch_shape = norm_shape * np.min(output_shape / norm_patch_size)
-
-    shift_center = affine_transform(translation=-input_shape / 2. - 0.5)
-    normscale = affine_transform(scale=norm_shape / input_shape)
-    augment = affine_transform(**augment_p)
-    patchscale = affine_transform(scale=patch_shape / norm_shape)
-    unshift_center = affine_transform(translation=output_shape / 2. - 0.5)
-
-    matrix = shift_center.dot(normscale).dot(augment).dot(patchscale).dot(unshift_center)
-
-    output = apply_affine_transform(volume, matrix, order=1, output_shape=output_shape.astype("int"))
-    return output
 
 
 def log_uniform(max_val):
@@ -47,8 +25,41 @@ def uniform(max_val):
     return max_val*(random.random()*2-1)
 
 
-def bernoulli(p):
-    return p < random.random() #range [0.0, 1.0)
+def bernoulli(p): return random.random() < p  #range [0.0, 1.0)
+
+
+MAX_HU = 400.
+MIN_HU = -1000.
+PIXEL_MEAN = 0.25
+NORMSCALE = 1./(MAX_HU - MIN_HU)
+NORMOFFSET = - MIN_HU*NORMSCALE - PIXEL_MEAN
+def normalize_and_center(x): return x*NORMSCALE + NORMOFFSET
+
+
+def lio_augment(volume, pixel_spacing, output_shape, norm_patch_shape, augment_p, interp_order=1):
+    input_shape = np.asarray(volume.shape, np.float)
+    pixel_spacing = np.asarray(pixel_spacing, np.float)
+    output_shape = np.asarray(output_shape, np.float)
+    norm_patch_shape = np.asarray(norm_patch_shape, np.float)
+
+    norm_shape = input_shape * pixel_spacing
+    # this will stretch in some dimensions, but the stretch is consistent across samples
+    patch_shape = norm_shape * output_shape / norm_patch_shape
+    # else, use this: patch_shape = norm_shape * np.min(output_shape / norm_patch_shape)
+
+    shift_center = affine_transform(translation=-input_shape / 2. - 0.5)
+    normscale = affine_transform(scale=norm_shape / input_shape)
+    augment = affine_transform(**augment_p)
+    patchscale = affine_transform(scale=patch_shape / norm_shape)
+    unshift_center = affine_transform(translation=output_shape / 2. - 0.5)
+
+    matrix = shift_center.dot(normscale).dot(augment).dot(patchscale).dot(unshift_center)
+
+    output = apply_affine_transform(volume, matrix,
+                                    order=interp_order,
+                                    output_shape=output_shape.astype("int"),
+                                    cval=MIN_HU)
+    return output
 
 
 def sample_augmentation_parameters(augm):
@@ -101,7 +112,7 @@ class LioAugment(BasePreprocessor):
                     volume=volume,
                     pixel_spacing=spacing,
                     output_shape=self.output_shape,
-                    norm_patch_size=self.norm_patch_size,
+                    norm_patch_shape=self.norm_patch_size,
                     augment_p=augment_p
                 )
             elif tag in sample[OUTPUT]:
@@ -110,7 +121,7 @@ class LioAugment(BasePreprocessor):
                     volume=volume,
                     pixel_spacing=spacing,
                     output_shape=self.output_shape,
-                    norm_patch_size=self.norm_patch_size,
+                    norm_patch_shape=self.norm_patch_size,
                     augment_p=augment_p
                 )
             else:

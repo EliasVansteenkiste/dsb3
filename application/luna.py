@@ -42,9 +42,9 @@ class LunaDataLoader(StandardDataLoader):
         :return:
         """
         # step 0: load only when not loaded yet
-        # if TRAINING in self.data \
-        #     and VALIDATION in self.data:
-        #     return
+        if TRAINING in self.data \
+            and VALIDATION in self.data:
+            return
 
         # step 1: load the file names
         file_list = sorted(glob.glob(self.location+"*.mhd"))

@@ -321,15 +321,17 @@ def train_model(expid):
                         required_output = required_output,
                     )
 
-                print "  %s (%d/%d samples)" % (dataset_name, dataset_generator.number_of_used_samples, dataset_generator.number_of_samples)
+                print "  %s (%d/%d samples)" % (dataset_name,
+                                                dataset_generator.number_of_samples_in_iterator,
+                                                dataset_generator.number_of_samples)
                 print "  -----------------------"
 
                 # If there are no validation samples, don't bother validating.
                 if dataset_generator.number_of_samples == 0:
                     continue
 
-                chunk_losses = np.zeros((len(network_outputs),0))
-                chunk_labels = np.zeros((0,))
+                chunk_losses = None
+                chunk_labels = None
 
                 # loop over all validation data chunks
                 data_load_time.start()
@@ -343,7 +345,18 @@ def train_model(expid):
                         xs_shared[key].set_value(validation_data["input"][key])
 
                     # Keep the labels of the validation data for later.
-                    chunk_labels = np.concatenate((chunk_labels, validation_data["output"]['dsb3:class']), axis=0)
+                    output_keys = set()
+                    for key,ob in objectives["validate"].iteritems():
+                        output_keys.add(ob.target_key)
+
+                    # quick-fix: use less different objectives on one trainset in validation
+                    assert len(output_keys)==1, "Can only have one target value as validation target variable (TODO: fix this)"
+
+                    new_data = validation_data["output"][output_keys.pop()]
+                    if chunk_labels is None:
+                        chunk_labels = new_data
+                    else:
+                        chunk_labels = np.concatenate((chunk_labels, new_data), axis=0)
 
                     # loop over the batches of one chunk, and keep the predictions
                     for b in xrange(num_batches_chunk_eval):
@@ -351,7 +364,10 @@ def train_model(expid):
                         th_result = iter_predict(b)
                         gpu_time.stop()
                         resulting_losses = np.stack(th_result[:len(network_outputs)], axis=0)
-                        chunk_losses = np.concatenate((chunk_losses, resulting_losses), axis=1)
+                        if chunk_losses is None:
+                            chunk_losses = resulting_losses
+                        else:
+                            chunk_losses = np.concatenate((chunk_losses, resulting_losses), axis=1)
                     data_load_time.start()
                 data_load_time.stop()
 
@@ -360,7 +376,7 @@ def train_model(expid):
 
                 # Compare the predictions with the actual labels and print them.
                 for key,ob in objectives["validate"].iteritems():
-                    loss = ob.score_lists(chunk_losses[0,:], chunk_labels)
+                    loss = ob.get_loss_from_lists(chunk_losses[0,:], chunk_labels)
                     losses[VALIDATION][dataset_name][loss_name].append(loss)
                     print string.rjust(loss_name+":",17), "%.6f" % loss
                 print
@@ -429,7 +445,7 @@ if __name__ == "__main__":
     set_configuration(args.config)
 
     expid = utils.generate_expid(get_configuration_name())
-
+    print "config?",get_configuration_name()
     log_file = LOGS_PATH + "%s.log" % expid
     with print_to_file(log_file):
 

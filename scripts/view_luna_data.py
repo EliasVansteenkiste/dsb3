@@ -12,14 +12,14 @@ AUGMENTATION_PARAMETERS = {
     "scale": [1, 1, 1],  # factor
     "rotation": [360, 360, 360],  # degrees
     "shear": [0, 0, 0],  # degrees
-    "translation": [0, 0, 0],  # pixels
+    "translation": [128, 128, 128],  # mm
     "reflection": [0, 0, 0] #Bernoulli p
 }
 
 preprocessors = [
     LioAugment(tags=["luna:3d", "luna:segmentation"],
-               output_shape=(256,256,256),
-               norm_patch_size=(256,256,256),
+               output_shape=(128,128,128),
+               norm_patch_size=(128,128,128),
                augmentation_params=AUGMENTATION_PARAMETERS
                )
                  #RescaleInput(input_scale=(0,255), output_scale=(0.0, 1.0)),
@@ -58,12 +58,12 @@ if False:
 else:
     batches = training_data.generate_batch(
         chunk_size=chunk_size,
-        required_input={"luna:3d":(1,256,256,256)}, #"luna:3d":(chunk_size,512,512,512),
+        required_input={"luna:3d":(1,128,128,128)}, #"luna:3d":(chunk_size,512,512,512),
         required_output={"luna:segmentation":None,"sample_id":None},
     )
     sample = next(batches)  # first one has no tumors
     sample = next(batches)
-    print sample
+    print "ids:", sample['ids']
     data = sample[INPUT]["luna:3d"][0,:,:,:]
     segm = sample[OUTPUT]["luna:segmentation"][0,:,:,:]
 
