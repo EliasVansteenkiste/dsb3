@@ -13,14 +13,8 @@ from utils import paths
 
 VALIDATION_SET_SIZE = 0.2
 
-def test_loader():
-    paths.ALL_DATA_PATH = "/home/lio/data/dsb3/stage1+luna_bcolz/",
-    paths.SPACINGS_PATH =  "/home/lio/data/dsb3/spacings.pkl.gz",
-    l = LioDataLoader(multiprocess=False)
-    l.prepare()
 
-
-class LioDataLoader(StandardDataLoader):
+class BcolzAllDataLoader(StandardDataLoader):
 
     OUTPUT_DATA_SIZE_TYPE = {
         "lio:prob":     ((), "float32"),
@@ -34,7 +28,7 @@ class LioDataLoader(StandardDataLoader):
     datasets = [TRAIN, VALIDATION]
 
     def __init__(self, location=paths.ALL_DATA_PATH, *args, **kwargs):
-        super(LioDataLoader,self).__init__(location=location, *args, **kwargs)
+        super(BcolzAllDataLoader, self).__init__(location=location, *args, **kwargs)
 
     def prepare(self):
         """
@@ -60,6 +54,9 @@ class LioDataLoader(StandardDataLoader):
             next(reader)  # skip the header
             for row in reader:
                 labels[row[0]] = int(row[1])
+
+        print labels
+        sys.exit()
 
         # make a stratified validation set
         # note, the seed decides the validation set, but it is deterministic in the file_names and labels
@@ -256,6 +253,13 @@ class LioDataLoader(StandardDataLoader):
             except:
                 print "Could not clean key %s with value %s"%(key,value)
         return data
+
+
+def test_loader():
+    paths.ALL_DATA_PATH = "/home/lio/data/dsb3/stage1+luna_bcolz/",
+    paths.SPACINGS_PATH =  "/home/lio/data/dsb3/spacings.pkl.gz",
+    l = BcolzAllDataLoader(multiprocess=False)
+    l.prepare()
 
 
 if __name__ == '__main__':
