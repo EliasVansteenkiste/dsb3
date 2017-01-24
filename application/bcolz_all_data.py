@@ -2,6 +2,8 @@ import glob
 import csv
 import random
 from os import path
+import os
+print os.environ["PYTHONPATH"]
 import dicom
 import sys
 
@@ -16,16 +18,11 @@ VALIDATION_SET_SIZE = 0.2
 
 class BcolzAllDataLoader(StandardDataLoader):
 
-    OUTPUT_DATA_SIZE_TYPE = {
-        "lio:prob":     ((), "float32"),
-        "lio:sample_id": ((), "uint32")
-    }
-
     # These are shared between all objects of this type
     labels = dict()
     names = dict()
 
-    datasets = [TRAIN, VALIDATION]
+    datasets = [TRAIN, VALIDATION, TEST]
 
     def __init__(self, location=paths.ALL_DATA_PATH, *args, **kwargs):
         super(BcolzAllDataLoader, self).__init__(location=location, *args, **kwargs)
@@ -46,17 +43,12 @@ class BcolzAllDataLoader(StandardDataLoader):
         # sys.exit()
 
 
-        #TODO
-
         labels = dict()
         with open(paths.LABELS_PATH, 'rb') as csvfile:
             reader = csv.reader(csvfile, delimiter=',', quotechar='|')
             next(reader)  # skip the header
             for row in reader:
-                labels[row[0]] = int(row[1])
-
-        print labels
-        sys.exit()
+                labels[str(row[0])] = int(row[1])
 
         # make a stratified validation set
         # note, the seed decides the validation set, but it is deterministic in the file_names and labels
@@ -72,7 +64,7 @@ class BcolzAllDataLoader(StandardDataLoader):
 
         # load the filenames and put into the right dataset
         for i, patient_folder in enumerate(patients):
-            patient_id = patient_folder.split(path.sep)[-2]
+            patient_id = str(patient_folder.split(path.sep)[-2])
             if patient_id in labels:
                 if patient_id in validation_patients:
                     dataset = VALIDATION
@@ -86,6 +78,11 @@ class BcolzAllDataLoader(StandardDataLoader):
             if patient_id in labels:
                 self.labels[dataset].append(labels[patient_id])
             self.names[dataset].append(patient_id)
+
+        print "train", len(self.data[TRAIN])
+        print "valid", len(self.data[VALIDATION])
+        print "test", len(self.data[TEST])
+        # sys.exit()
 
         # give every patient a unique number
         last_index = -1
@@ -256,8 +253,8 @@ class BcolzAllDataLoader(StandardDataLoader):
 
 
 def test_loader():
-    paths.ALL_DATA_PATH = "/home/lio/data/dsb3/stage1+luna_bcolz/",
-    paths.SPACINGS_PATH =  "/home/lio/data/dsb3/spacings.pkl.gz",
+    # paths.ALL_DATA_PATH = "/home/lio/data/dsb3/stage1+luna_bcolz/",
+    # paths.SPACINGS_PATH =  "/home/lio/data/dsb3/spacings.pkl.gz",
     l = BcolzAllDataLoader(multiprocess=False)
     l.prepare()
 
