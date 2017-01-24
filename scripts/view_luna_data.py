@@ -88,7 +88,6 @@ def init():
 def animate(i):
     im.set_data(get_data_step(i))
     return im,
-
 anim = animation.FuncAnimation(fig, animate, init_func=init, frames=data.shape[2], interval=200, blit=True)
 
 plt.show()

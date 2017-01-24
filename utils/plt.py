@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
 def show_compare(volume1, volume2):
     plt.close('all')
@@ -10,3 +11,31 @@ def show_compare(volume1, volume2):
     ax[1, 1].imshow(volume2[:, volume2.shape[1] // 2], cmap="gray")
     ax[1, 2].imshow(volume2[:, :, volume2.shape[2] // 2], cmap="gray")
     plt.show()
+
+
+
+
+
+def show_animate(data):
+	import matplotlib.animation as animation
+
+	def get_data_step(step):
+		return np.concatenate([data[:,:,step,None], data[:,:,step,None], data[:,:,step,None]], axis=-1)
+
+	fig = plt.figure()
+	im = fig.gca().imshow(get_data_step(0))
+
+	# initialization function: plot the background of each frame
+	def init():
+	    im.set_data(get_data_step(0))
+	    return im,
+
+	# animation function.  This is called sequentially
+	def animate(i):
+	    im.set_data(get_data_step(i))
+	    return im,
+
+	animation.FuncAnimation(fig, animate, init_func=init, frames=data.shape[2], interval=200, blit=True)
+	print data.shape
+
+	plt.show()

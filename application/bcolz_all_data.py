@@ -4,8 +4,10 @@ import random
 from os import path
 import os
 print os.environ["PYTHONPATH"]
-import dicom
+import bcolz
 import sys
+import cPickle
+import gzip
 
 import numpy as np
 
@@ -21,6 +23,7 @@ class BcolzAllDataLoader(StandardDataLoader):
     # These are shared between all objects of this type
     labels = dict()
     names = dict()
+    spacings = dict()
 
     datasets = [TRAIN, VALIDATION, TEST]
 
@@ -61,6 +64,10 @@ class BcolzAllDataLoader(StandardDataLoader):
             self.data[s] = []
             self.labels[s] = []
             self.names[s] = []
+            self.spacings[s] = []
+
+        with gzip.open(paths.SPACINGS_PATH) as f:
+            spacings = cPickle.load(f)
 
         # load the filenames and put into the right dataset
         for i, patient_folder in enumerate(patients):
@@ -78,11 +85,13 @@ class BcolzAllDataLoader(StandardDataLoader):
             if patient_id in labels:
                 self.labels[dataset].append(labels[patient_id])
             self.names[dataset].append(patient_id)
+            self.spacings[dataset].append(spacings[patient_id])
+
+
 
         print "train", len(self.data[TRAIN])
         print "valid", len(self.data[VALIDATION])
         print "test", len(self.data[TEST])
-        # sys.exit()
 
         # give every patient a unique number
         last_index = -1
@@ -116,30 +125,31 @@ class BcolzAllDataLoader(StandardDataLoader):
         sample[INPUT] = dict()
         sample[OUTPUT] = dict()
 
+        volume = bcolz.open(self.data[set][sample_index])[:].T  # move from zyx to xyz
+        patient_name = self.names[set][sample_index]
+
         # Iterate over input tags and return a dict with the requested tags filled
         for tag in input_keys_to_do:
             tags = tag.split(':')
-            if "dsb3" not in tags:
-                continue
+            if "bcolzall" not in tags: continue
 
             if "filename" in tags:
-                sample[INPUT][tag] = self.data[set][sample_index]
+                sample[INPUT][tag] = patient_name
 
-            if "all" in tags:
-                sample[INPUT][tag] = self.load_patient_data(self.data[set][sample_index])
+            if "3d" in tags or "default" in tags:
+                sample[INPUT][tag] = volume
 
-            if "3d" in tags:
-                sample[INPUT][tag] = self.get_raw_3d_data(self.data[set][sample_index]).astype('float32')
+            if "pixelspacing" in tags:
+                sample[INPUT][tag] = self.spacings[patient_name]  # in mm per pixel
 
-            if "default" in tags:
-                sample[INPUT][tag] = self.data[set]["data"][sample_index].astype('float32')
+            if "shape" in tags:
+                sample[INPUT][tag] = volume.shape
 
         for tag in output_keys_to_do:
             tags = tag.split(':')
-            if "dsb3" not in tags:
-                continue
+            if "bcolzall" not in tags: continue
 
-            if "class" in tags:
+            if "target" in tags: 
                 sample[OUTPUT][tag] = np.int64(self.labels[set][sample_index])
 
             if "sample_id" in tags:
@@ -148,115 +158,15 @@ class BcolzAllDataLoader(StandardDataLoader):
         return sample
 
 
-    def get_raw_3d_data(self, path):
-        """
-        Messy method which loads the 3d data of a patient.
-        Note that the order of slices might be off!
-        :param path:
-        :return:
-        """
-        slices = self.load_patient_data(path)
-        d = []
-        for sl in slices.itervalues():
-            d.append( (sl["InstanceNumber"], sl["PixelData"]) )
-        d.sort()
-        result = np.stack([item[1] for item in d])
-        return result
-
-
-    def load_patient_data(self, path):
-        """
-        Load all the data a patient has and return as dict of dicts
-        :param path:
-        :return:
-        """
-        images = sorted(glob.glob(path+'*.dcm'))
-        result = dict()
-        for image in images:
-            result[image] = self.read_dicom(image)
-
-        # remove the ones which errored
-        result = dict((k, v) for k, v in result.iteritems() if v)
-        return result
-
-
-    def read_dicom(self,filename):
-        """
-        Load 1 dicom file and return as dict
-        :param filename:
-        :return:
-        """
-        d = dicom.read_file(filename, force=True)
-        data = {}
-        try:
-            for attr in dir(d):
-                   if attr[0].isupper() and attr != 'PixelData':
-                    try:
-                        data[attr] = getattr(d, attr)
-                    except AttributeError:
-                        pass
-            data["PixelData"] = np.array(d.pixel_array)
-            data = self.clean_dicom_data(data)
-        except:
-            print "Failed to load the data in %s" % filename
-            return None
-        return data
-
-
-    def clean_dicom_data(self, data):
-        """
-        clean the dicom file, such that no dicom-specific data-types (or numbers as strings) are let through
-        Note: this needs to be very robust. Fuck dicom.
-        :param data:
-        :return:
-        """
-        for key,value in data.iteritems():
-            try:
-                if key == 'AcquisitionNumber':
-                    data[key] = int(value) if value != '' else value
-                elif key == 'BitsAllocated' or key=="BitsStored":
-                    data[key] = int(value)
-                elif key == 'BurnedInAnnotation':
-                    data[key] = False if value=="NO" else True
-                elif key == "Columns":
-                    data[key] = int(value)
-                elif key == "HighBit":
-                    data[key] = int(value)
-                elif key == "ImageOrientationPatient" or key=="ImagePositionPatient":
-                    data[key] = [float(v) for v in value]
-                elif key == "InstanceNumber":
-                    data[key] = int(value)
-                elif key == "PixelData":
-                    pass
-                elif key == 'PixelRepresentation':
-                    data[key] = int(value)
-                elif key == "PixelSpacing":
-                    data[key] = [float(v) for v in value]
-                elif key == 'RescaleIntercept' or key == "RescaleSlope" or key == "Rows":
-                    data[key] = int(value)
-                elif key == 'SamplesPerPixel':
-                    data[key] = int(value)
-                elif key == 'SeriesNumber':
-                    data[key] = int(value) if value else -1
-                elif key == 'SliceLocation':
-                    data[key] = float(value)
-                elif key == 'WindowCenter' or key == 'WindowWidth':
-                    try:
-                        data[key] = [int(v) for v in value]
-                    except:
-                        data[key] = int(value)
-                else:
-                    data[key] = str(value)
-            except:
-                print "Could not clean key %s with value %s"%(key,value)
-        return data
-
-
 def test_loader():
+    import utils.plt
     # paths.ALL_DATA_PATH = "/home/lio/data/dsb3/stage1+luna_bcolz/",
     # paths.SPACINGS_PATH =  "/home/lio/data/dsb3/spacings.pkl.gz",
-    l = BcolzAllDataLoader(multiprocess=False)
+    l = BcolzAllDataLoader(multiprocess=False, location="/home/lio/data/dsb3/stage1+luna_bcolz/")
     l.prepare()
+    sample = l.load_sample(l.indices[TRAIN][0], ["bcolzall:3d", "pixelspacing"], ["target"])
+    utils.plt.show_animate(sample[INPUT]["bcolzall:3d"])
+
 
 
 if __name__ == '__main__':
