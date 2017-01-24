@@ -40,7 +40,7 @@ AUGMENTATION_PARAMETERS = {
     "scale": [1, 1, 1],  # factor
     "rotation": [360, 360, 360],  # degrees
     "shear": [0, 0, 0],  # degrees
-    "translation": [0, 0, 0],  # pixels
+    "translation": [0, 0, 0],  # mm
     "reflection": [0, 0, 0] #Bernoulli p
 }
 

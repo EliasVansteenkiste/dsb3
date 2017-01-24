@@ -149,7 +149,7 @@ class BcolzAllDataLoader(StandardDataLoader):
             tags = tag.split(':')
             if "bcolzall" not in tags: continue
 
-            if "target" in tags: 
+            if "target" in tags:
                 sample[OUTPUT][tag] = np.int64(self.labels[set][sample_index])
 
             if "sample_id" in tags:
@@ -165,7 +165,7 @@ def test_loader():
     l = BcolzAllDataLoader(multiprocess=False, location="/home/lio/data/dsb3/stage1+luna_bcolz/")
     l.prepare()
     sample = l.load_sample(l.indices[TRAIN][0], ["bcolzall:3d", "pixelspacing"], ["target"])
-    utils.plt.show_animate(sample[INPUT]["bcolzall:3d"])
+    utils.plt.show_animate(sample[INPUT]["bcolzall:3d"], 50)
 
 
 
