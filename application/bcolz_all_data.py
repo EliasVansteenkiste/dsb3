@@ -3,7 +3,6 @@ import csv
 import random
 from os import path
 import os
-print os.environ["PYTHONPATH"]
 import bcolz
 import sys
 import cPickle
@@ -166,7 +165,6 @@ def test_loader():
     l.prepare()
     sample = l.load_sample(l.indices[TRAIN][0], ["bcolzall:3d", "pixelspacing"], ["target"])
     utils.plt.show_animate(sample[INPUT]["bcolzall:3d"], 50)
-
 
 
 if __name__ == '__main__':
