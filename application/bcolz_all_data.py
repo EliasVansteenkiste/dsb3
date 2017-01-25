@@ -139,7 +139,7 @@ class BcolzAllDataLoader(StandardDataLoader):
                 sample[INPUT][tag] = volume
 
             if "pixelspacing" in tags:
-                sample[INPUT][tag] = self.spacings[patient_name]  # in mm per pixel
+                sample[INPUT][tag] = self.spacings[set][sample_index]  # in mm per pixel
 
             if "shape" in tags:
                 sample[INPUT][tag] = volume.shape

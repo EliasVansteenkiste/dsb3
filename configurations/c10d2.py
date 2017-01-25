@@ -48,7 +48,7 @@ AUGMENTATION_PARAMETERS = {
 nn_input_shape = (128, 128, 128)
 preprocessors = [
     Augment3D(
-        tags=["bcolzall:volume"],
+        tags=["bcolzall:3d"],
         output_shape = nn_input_shape,
         norm_patch_shape=(320, 340, 340),
         augmentation_params={
@@ -58,7 +58,7 @@ preprocessors = [
             "translation": [20, 20, 20],  # m
             "reflection": [0, 0, 0]}, #Bernoulli p
         interp_order=1),
-    DefaultNormalizer(tags=["bcolzall:volume"])
+    DefaultNormalizer(tags=["bcolzall:3d"])
 ]
 
 
@@ -97,7 +97,7 @@ validation_data = {
         process_last_chunk=True,
         multiprocess=False,
         crash_on_exception=True),
-    "training set": None
+ #   "training set": None
     # "training set":  PatientDataLoader(sets=TRAINING,
     #                                     epochs=0.01,
     #                                     preprocessors=preprocessors,
