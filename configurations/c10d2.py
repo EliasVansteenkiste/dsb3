@@ -164,30 +164,29 @@ def build_model():
     l = lasagne.layers.DimshuffleLayer(l_in, pattern=(0, 'x', 1, 2, 3))
 
     n = 8
-
     l = conv3d(l, n)
     l = conv3d(l, n)
-    l = max_pool3d(l, n)
-
-    n *= 2
-    l = conv3d(l, n)
-    l = conv3d(l, n)
-    l = max_pool3d(l, n)
+    l = max_pool3d(l)
 
     n *= 2
     l = conv3d(l, n)
     l = conv3d(l, n)
-    l = max_pool3d(l, n)
+    l = max_pool3d(l)
 
     n *= 2
     l = conv3d(l, n)
     l = conv3d(l, n)
-    l = max_pool3d(l, n)
+    l = max_pool3d(l)
 
     n *= 2
     l = conv3d(l, n)
     l = conv3d(l, n)
-    l = max_pool3d(l, n)
+    l = max_pool3d(l)
+
+    n *= 2
+    l = conv3d(l, n)
+    l = conv3d(l, n)
+    l = max_pool3d(l)
 
     n *= 2
     l = dense(drop(l), n)
