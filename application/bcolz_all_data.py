@@ -35,6 +35,9 @@ class BcolzAllDataLoader(StandardDataLoader):
         In this case, only filenames are loaded prematurely
         :return:
         """
+        
+        print "previous bcolz nthreads:", bcolz.set_nthreads(1);
+
         # step 0: load only when not loaded yet
         if TRAINING in self.data and VALIDATION in self.data: return
 

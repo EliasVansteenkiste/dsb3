@@ -35,27 +35,19 @@ save_every_chunks = 10
 #   preprocessing   #
 #####################
 
-AUGMENTATION_PARAMETERS = {
-    "scale": [1, 1, 1],  # factor
-    "rotation": [0, 0, 0],  # degrees
-    "shear": [0, 0, 0],  # degrees
-    "translation": [0, 0, 0],  # mm
-    "reflection": [0, 0, 0] #Bernoulli p
-}
-
 "Put in here the preprocessors for your data." \
 "They will be run consequently on the datadict of the dataloader in the order of your list."
-nn_input_shape = (128, 128, 128)
+nn_input_shape = (64, 128, 128)
 preprocessors = [
     Augment3D(
         tags=["bcolzall:3d"],
         output_shape = nn_input_shape,
         norm_patch_shape=(320, 340, 340),
         augmentation_params={
-            "scale": [1.05, 1.05, 1.05],  # factor
-            "rotation": [5, 5, 5],  # degrees
-            "shear": [2, 2, 2],  # degrees
-            "translation": [20, 20, 20],  # m
+            "scale": [1, 1, 1],  # factor
+            "rotation": [3, 3, 3],  # degrees
+            "shear": [0, 0, 0],  # degrees
+            "translation": [10, 10, 10],  # mm
             "reflection": [0, 0, 0]}, #Bernoulli p
         interp_order=1),
     DefaultNormalizer(tags=["bcolzall:3d"])
@@ -65,6 +57,7 @@ preprocessors = [
 #####################
 #     training      #
 #####################
+
 "This is the train dataloader. We will train until this one stops loading data."
 "You can set the number of epochs, the datasets and if you want it multiprocessed"
 training_data = BcolzAllDataLoader(
@@ -74,11 +67,15 @@ training_data = BcolzAllDataLoader(
     multiprocess=True,
     crash_on_exception=True)
 
-"Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate."
-learning_rate_schedule = {
-    0.0: 0.0001,
-    9.0: 0.00001,
-}
+"Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate." 
+lr = 0.001 
+lr_decay = 0.75 # per epoch
+learning_rate_schedule = {}
+for i in range(100):
+    learning_rate_schedule[float(i)] = lr*(lr_decay**i)
+
+print learning_rate_schedule
+
 "The function to build updates."
 build_updates = lasagne.updates.adam
 
@@ -95,7 +92,7 @@ validation_data = {
         epochs=1,
         preprocessors=preprocessors,
         process_last_chunk=True,
-        multiprocess=False,
+        multiprocess=True,
         crash_on_exception=True),
  #   "training set": None
     # "training set":  PatientDataLoader(sets=TRAINING,
@@ -143,16 +140,18 @@ conv3d = partial(dnn.Conv3DDNNLayer,
     pad='same',
     W=lasagne.init.Orthogonal('relu'),
     b=lasagne.init.Constant(0.0),
-    nonlinearity=lasagne.nonlinearities.rectify)
+    nonlinearity=lasagne.nonlinearities.leaky_rectify)
 
 max_pool3d = partial(dnn.MaxPool3DDNNLayer, pool_size=2)
 
 dense = partial(lasagne.layers.DenseLayer,
     W=lasagne.init.Orthogonal('relu'),
     b=lasagne.init.Constant(0.0),
-    nonlinearity=lasagne.nonlinearities.rectify)
+    nonlinearity=lasagne.nonlinearities.leaky_rectify)
 
 drop = lasagne.layers.DropoutLayer
+
+bn = lasagne.layers.batch_norm
 
 
 "Here we build a model. The model returns a dict with the requested inputs for each layer:" \
@@ -164,33 +163,27 @@ def build_model():
     l = lasagne.layers.DimshuffleLayer(l_in, pattern=(0, 'x', 1, 2, 3))
 
     n = 8
-    l = conv3d(l, n)
-    l = conv3d(l, n)
+    l = bn(conv3d(l, n))
     l = max_pool3d(l)
 
     n *= 2
-    l = conv3d(l, n)
-    l = conv3d(l, n)
+    l = bn(conv3d(l, n))
     l = max_pool3d(l)
 
     n *= 2
-    l = conv3d(l, n)
-    l = conv3d(l, n)
+    l = bn(conv3d(l, n))
     l = max_pool3d(l)
 
     n *= 2
-    l = conv3d(l, n)
-    l = conv3d(l, n)
+    l = bn(conv3d(l, n))
     l = max_pool3d(l)
 
     n *= 2
-    l = conv3d(l, n)
-    l = conv3d(l, n)
+    l = bn(conv3d(l, n))
     l = max_pool3d(l)
 
     n *= 2
-    l = dense(drop(l), n)
-    l = dense(drop(l), n)
+    l = bn(dense(drop(l), n))
 
     l = lasagne.layers.DenseLayer(l,
                                  num_units=1,

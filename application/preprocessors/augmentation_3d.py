@@ -116,8 +116,9 @@ class Augment3D(BasePreprocessor):
                     augment_p=augment_p,
                     interp_order=self.interp_order
                 )
-            else:
-                raise Exception("Did not find tag which I had to augment: %s"%tag)
+#            else:
+#		print sample[INPUT].keys()
+ #               raise Exception("Did not find tag which I had to augment: %s"%tag)
 
 
 def test_augmentation():
