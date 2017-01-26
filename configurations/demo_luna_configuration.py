@@ -38,9 +38,9 @@ save_every_chunks = 1
 
 AUGMENTATION_PARAMETERS = {
     "scale": [1, 1, 1],  # factor
-    "rotation": [360, 360, 360],  # degrees
+    "rotation": [180, 180, 180],  # degrees (from -180 to 180)
     "shear": [0, 0, 0],  # degrees
-    "translation": [0, 0, 0],  # pixels
+    "translation": [256, 256, 256],  # mms (from -128 to 128)
     "reflection": [0, 0, 0] #Bernoulli p
 }
 
@@ -51,14 +51,6 @@ preprocessors = [
                output_shape=(128,128,128),  # in pixels
                norm_patch_size=(128,128,128),  # in mms
                augmentation_params=AUGMENTATION_PARAMETERS
-               ),
-    NormalizeInput(num_samples=1),
-]
-
-preprocessors_validation = [
-    LioAugment(tags=["luna:3d", "luna:segmentation"],
-               output_shape=(128,128,128),  # in pixels
-               norm_patch_size=(128,128,128),  # in mms
                ),
     NormalizeInput(num_samples=1),
 ]
@@ -94,14 +86,14 @@ epochs_per_validation = 1
 validation_data = {
     "validation set": LunaDataLoader(sets=VALIDATION,
                                         epochs=1,
-                                        preprocessors=preprocessors_validation,
+                                        preprocessors=preprocessors,
                                         process_last_chunk=True,
                                  multiprocess=False,
                                  crash_on_exception=True,
                                         ),
     "training set":  LunaDataLoader(sets=TRAINING,
                                         epochs=0.01,
-                                        preprocessors=preprocessors_validation,
+                                        preprocessors=preprocessors,
                                         process_last_chunk=True,
                                  multiprocess=False,
                                  crash_on_exception=True,

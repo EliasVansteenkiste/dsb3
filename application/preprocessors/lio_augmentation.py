@@ -25,7 +25,8 @@ def uniform(max_val):
     return max_val*(random.random()*2-1)
 
 
-def bernoulli(p): return random.random() < p  #range [0.0, 1.0)
+def bernoulli(p):
+    return random.random() < p  #range [0.0, 1.0)
 
 
 MAX_HU = 400.
@@ -36,7 +37,7 @@ NORMOFFSET = - MIN_HU*NORMSCALE - PIXEL_MEAN
 def normalize_and_center(x): return x*NORMSCALE + NORMOFFSET
 
 
-def lio_augment(volume, pixel_spacing, output_shape, norm_patch_shape, augment_p, interp_order=1):
+def lio_augment(volume, pixel_spacing, output_shape, norm_patch_shape, augment_p, interp_order=1, cval=MIN_HU):
     input_shape = np.asarray(volume.shape, np.float)
     pixel_spacing = np.asarray(pixel_spacing, np.float)
     output_shape = np.asarray(output_shape, np.float)
@@ -58,16 +59,17 @@ def lio_augment(volume, pixel_spacing, output_shape, norm_patch_shape, augment_p
     output = apply_affine_transform(volume, matrix,
                                     order=interp_order,
                                     output_shape=output_shape.astype("int"),
-                                    cval=MIN_HU)
+                                    cval=cval)
     return output
 
 
-def sample_augmentation_parameters(augm):
-    augm["scale"] = [log_uniform(v) for v in augm["scale"]]
-    augm["rotation"] = [uniform(v) for v in augm["rotation"]]
-    augm["shear"] = [uniform(v) for v in augm["shear"]]
-    augm["translation"] = [uniform(v) for v in augm["translation"]]
-    augm["reflection"] = [bernoulli(v) for v in augm["reflection"]]
+def sample_augmentation_parameters(augm_param):
+    augm = dict(augm_param)
+    augm["scale"] = [log_uniform(v) for v in augm_param["scale"]]
+    augm["rotation"] = [uniform(v) for v in augm_param["rotation"]]
+    augm["shear"] = [uniform(v) for v in augm_param["shear"]]
+    augm["translation"] = [uniform(v) for v in augm_param["translation"]]
+    augm["reflection"] = [bernoulli(v) for v in augm_param["reflection"]]
     return augm
 
 
@@ -100,7 +102,6 @@ class LioAugment(BasePreprocessor):
 
     def process(self, sample):
         augment_p = sample_augmentation_parameters(self.augmentation_params)
-
         for tag in self.tags:
             pixelspacingtag = tag.split(':')[0]+":pixelspacing"
             assert pixelspacingtag in sample[INPUT], "tag %s not found"%pixelspacingtag
@@ -122,7 +123,8 @@ class LioAugment(BasePreprocessor):
                     pixel_spacing=spacing,
                     output_shape=self.output_shape,
                     norm_patch_shape=self.norm_patch_size,
-                    augment_p=augment_p
+                    augment_p=augment_p,
+                    cval=0.0
                 )
             else:
                 pass

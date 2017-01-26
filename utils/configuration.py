@@ -4,30 +4,32 @@
 import importlib
 import os
 
-_CONFIG_DIR = "configurations"
-DEFAULT = "default"
+DEFAULT = "configurations.default"
 _config = None
 
 _configuration_name = None
 
+
+def path_to_importable_string(path):
+    if path.endswith('.py'):
+        path = path[:-3]
+        if os.sep in path:
+            path = os.path.relpath(path)
+            path = path.replace(os.sep, '.')
+    else:
+        pass
+    return path
+
 def set_configuration(configuration):
     """Imports and initialises the configuration module."""
     global _config, _configuration_name
-    if configuration.endswith('.py'):
-        configuration = configuration[:-3]
-    if os.sep in configuration:
-        configuration = os.path.relpath(configuration)
-        configuration = configuration.replace(os.sep, '.')
-        _configuration_name = configuration
-        _config = importlib.import_module(_configuration_name)
-    else:
-        _configuration_name = "%s.%s" % (_CONFIG_DIR, configuration)
-        _config = importlib.import_module(_configuration_name)
-    print _configuration_name
+    configuration = path_to_importable_string(configuration)
+    _configuration_name = configuration
+    _config = importlib.import_module(_configuration_name)
     if configuration != DEFAULT:
         print "loaded", _config
 
-set_configuration(DEFAULT)
+# set_configuration(DEFAULT)
 
 def get_configuration_name():
     global _configuration_name

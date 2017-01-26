@@ -93,3 +93,28 @@ class WeightedSegmentationCrossEntropyObjective(SegmentationCrossEntropyObjectiv
     def get_loss_from_lists(self, predicted, expected, *args, **kwargs):
         predicted = np.float32(1-2*self.eps) * predicted + self.eps
         return -np.mean(expected*np.log(predicted) * self.classweights[1] + (1-expected)*np.log(1-predicted) * self.classweights[0])
+
+
+
+
+class JaccardIndexObjective(SegmentationCrossEntropyObjective):
+    optimize = MAXIMIZE
+
+    def __init__(self, smooth=1., *args, **kwargs):
+        super(WeightedSegmentationCrossEntropyObjective, self).__init__(*args, **kwargs)
+        self.smooth = np.float32(smooth)
+
+    def get_loss(self, *args, **kwargs):
+        network_predictions = lasagne.layers.helper.get_output(self.prediction, *args, **kwargs)
+        target_values = self.target_vars[self.target_key]
+
+        y_true_f = T.flatten(target_values)
+        y_pred_f = T.flatten(network_predictions)
+        intersection = T.sum(y_true_f * y_pred_f)
+        return (intersection + self.smooth) / (T.sum(y_true_f) + T.sum(y_pred_f) - intersection + self.smooth)
+
+    def get_loss_from_lists(self, predicted, expected, *args, **kwargs):
+        y_true_f = expected.flatten()
+        y_pred_f = predicted.flatten()
+        intersection = np.sum(y_true_f * y_pred_f)
+        return (intersection + self.smooth) / (np.sum(y_true_f) + np.sum(y_pred_f) - intersection + self.smooth)

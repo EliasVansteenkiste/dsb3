@@ -446,8 +446,8 @@ if __name__ == "__main__":
     set_configuration(args.config)
 
     expid = utils.generate_expid(get_configuration_name())
-    print "config?",get_configuration_name()
-    log_file = LOGS_PATH + "%s.log" % expid
+
+    log_file = LOGS_PATH + "%s-train.log" % expid
     with print_to_file(log_file):
 
         print "Running configuration:", config.__name__

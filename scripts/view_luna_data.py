@@ -3,10 +3,9 @@ from application.preprocessors.in_the_middle import PutInTheMiddle
 from application.preprocessors.lio_augmentation import LioAugment
 from interfaces.data_loader import INPUT, OUTPUT, TRAINING
 #from interfaces.preprocess import AugmentInput, RescaleInput
-import numpy as np
-import matplotlib
-import matplotlib.animation as animation
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+import numpy as np
 
 AUGMENTATION_PARAMETERS = {
     "scale": [1, 1, 1],  # factor
@@ -47,10 +46,6 @@ if False:
     #####################
 
     sample = training_data.load_sample(0,input_keys_to_do=["luna:3d"], output_keys_to_do=["luna:segmentation"])
-    import matplotlib
-    import matplotlib.pyplot as plt
-    import matplotlib.animation as animation
-    import numpy as np
     data = sample[INPUT]["luna:3d"][:,:,:]
     segm = sample[OUTPUT]["luna:segmentation"][:,:,:]
 

@@ -1,12 +1,14 @@
 """
-For running analysis on the outputs of your model (see also application/analyze.py)
+For running analysis on the outputs of your model (see also application/analysis)
+
+Note, by default, this runs on the validation data!
 
 Usage:
-python analyze.py myconfigfile [-f analysis_function_to_run]
+python analyze.py myconfigfile analysis_file
 """
-from application.analyze import analyze
 import argparse
 from functools import partial
+import importlib
 from itertools import izip
 import cPickle as pickle
 import string
@@ -19,7 +21,7 @@ from interfaces.data_loader import TRAINING
 from interfaces.data_loader import IDS
 from utils.log import print_to_file
 
-from utils.configuration import set_configuration, config
+from utils.configuration import set_configuration, config, get_configuration_name, path_to_importable_string
 import utils
 from utils import LOGS_PATH, MODEL_PATH, ANALYSIS_PATH
 import theano
@@ -36,7 +38,7 @@ warnings.simplefilter("error")
 import sys
 sys.setrecursionlimit(10000)
 
-def analyze_model(expid, mfile=None):
+def analyze_model(expid, path_to_function, mfile=None):
     metadata_path = MODEL_PATH + "%s.pkl" % (expid if not mfile else mfile)
     analysis_path = ANALYSIS_PATH + "%s/" % expid
     if not os.path.exists(analysis_path):
@@ -175,7 +177,7 @@ def analyze_model(expid, mfile=None):
                 required_output = required_output,
             )
 
-        print "  %s (%d/%d samples)" % (dataset_name, dataset_generator.number_of_used_samples, dataset_generator.number_of_samples)
+        print "  %s (%d/%d samples)" % (dataset_name, dataset_generator.number_of_samples_in_iterator, dataset_generator.number_of_samples)
         print "  -----------------------"
 
         data_load_time.start()
@@ -196,6 +198,7 @@ def analyze_model(expid, mfile=None):
                 gpu_time.stop()
 
                 for idx_ex in xrange(config.batch_size):
+                    # Create all the kwargs to analyze for each test ran
                     kwargs = {}
                     for key in xs_shared.keys():
                         kwargs[key] = validation_data["input"][key][idx+idx_ex]
@@ -208,7 +211,10 @@ def analyze_model(expid, mfile=None):
 
                     id = validation_data[IDS][idx+idx_ex]
                     if id is not None:
-                        analyze(id=id, analysis_path=analysis_path, **kwargs)
+                        # Load the required function in dynamically
+                        importable = path_to_importable_string(path_to_function)
+                        analysis_module = importlib.import_module(importable)
+                        analysis_module.analyze(id=id, analysis_path=analysis_path, **kwargs)
 
                 idx += config.batch_size
 
@@ -231,24 +237,26 @@ def analyze_model(expid, mfile=None):
 
 
 
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    required = parser.add_argument_group('required arguments')
-    required.add_argument('-c', '--config',
-                          help='configuration to run',
-                          required=True)
+    parser.add_argument("config", help='configuration to run',)
+    parser.add_argument("function", help='analysis function to run',)
+    # required = parser.add_argument_group('required arguments')
+    # required.add_argument('-c', '--config',
+    #                       required=True)
     args = parser.parse_args()
+
+    path_to_function = args.function
+
     set_configuration(args.config)
 
-    expid = utils.generate_expid(args.config)
+    expid = utils.generate_expid(get_configuration_name())
 
-    log_file = LOGS_PATH + "%s_analysis.log" % expid
+    log_file = LOGS_PATH + "%s-analyze.log" % expid
     with print_to_file(log_file):
 
         print "Running configuration:", config.__name__
         print "Current git version:", utils.get_git_revision_hash()
 
-        analyze_model(expid)
+        analyze_model(expid, path_to_function)
         print "log saved to '%s'" % log_file

@@ -13,7 +13,8 @@ import csv
 import itertools
 import string
 import time
-
+from utils.log import print_to_file
+from utils.paths import LOGS_PATH
 import datetime
 from functools import partial
 from itertools import izip
@@ -30,7 +31,7 @@ from utils import buffering
 import utils
 import math
 
-from utils.configuration import config, set_configuration
+from utils.configuration import config, set_configuration, get_configuration_name
 from utils.paths import MODEL_PATH, MODEL_PREDICTIONS_PATH, SUBMISSION_PATH
 
 def predict_model(expid, mfile=None):
@@ -195,21 +196,30 @@ def predict_model(expid, mfile=None):
     return
 
 
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    required = parser.add_argument_group('required arguments')
-    required.add_argument('-c', '--config',
-                          help='configuration to run',
-                          required=True)
+    parser.add_argument("config", help='configuration to run',)
+
     optional = parser.add_argument_group('optional arguments')
     optional.add_argument('-m', '--metadata',
                           help='metadatafile to use',
                           required=False)
-
+    # required = parser.add_argument_group('required arguments')
+    # required.add_argument('-c', '--config',
+    #                       required=True)
     args = parser.parse_args()
     set_configuration(args.config)
 
-    expid = utils.generate_expid(args.config)
+    expid = utils.generate_expid(get_configuration_name())
     mfile = args.metadata
 
-    predict_model(expid, mfile)
+    log_file = LOGS_PATH + "%s-predict.log" % expid
+    with print_to_file(log_file):
+
+        print "Running configuration:", config.__name__
+        print "Current git version:", utils.get_git_revision_hash()
+
+        predict_model(expid, mfile)
+        print "log saved to '%s'" % log_file
