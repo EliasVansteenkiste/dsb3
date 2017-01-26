@@ -182,18 +182,6 @@ def train_model(expid):
     for validation_data in config.validation_data.values():
         validation_data.prepare()
 
-    # Make a data generator which returns preprocessed chunks of data which are fed to the model
-    # Note that this is a generator object! It is a special kind of iterator.
-    chunk_size = config.batches_per_chunk * config.batch_size
-
-    training_data_generator = buffering.buffered_gen_threaded(
-        config.training_data.generate_batch(
-            chunk_size = chunk_size,
-            required_input = required_input,
-            required_output = required_output,
-        )
-    )
-
     print "Will train for %s epochs" % config.training_data.epochs
 
     # If this is the second time we run this configuration, we might need to load the results of the previous
@@ -209,6 +197,7 @@ def train_model(expid):
         print "  setting learning rate to %.7f" % current_lr
         learning_rate.set_value(current_lr)
         losses = resume_metadata['losses']
+        config.training_data.skip_first_chunks(start_chunk_idx)
     else:
         start_chunk_idx=0
         losses = dict()
@@ -222,6 +211,18 @@ def train_model(expid):
             for loss_name in validate_losses_theano.keys():
                 losses[VALIDATION][dataset_name][loss_name] = list()
 
+
+    # Make a data generator which returns preprocessed chunks of data which are fed to the model
+    # Note that this is a generator object! It is a special kind of iterator.
+    chunk_size = config.batches_per_chunk * config.batch_size
+
+    training_data_generator = buffering.buffered_gen_threaded(
+        config.training_data.generate_batch(
+            chunk_size = chunk_size,
+            required_input = required_input,
+            required_output = required_output,
+        )
+    )
 
     # Estimate the number of batches we will train for.
     chunks_train_idcs = itertools.count(start_chunk_idx)

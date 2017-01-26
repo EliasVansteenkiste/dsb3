@@ -54,6 +54,9 @@ class BaseDataLoader(object):
     def initialize_empty_chunk(self, chunk_size, required_input, required_output):
         raise NotImplementedError()
 
+    def skip_first_chunks(self, n):
+        raise NotImplementedError()
+
 
 class StandardDataLoader(BaseDataLoader):
 
@@ -78,6 +81,7 @@ class StandardDataLoader(BaseDataLoader):
         self.multiprocess = multiprocess
         self.crash_on_exception = crash_on_exception
         self.process_last_chunk = process_last_chunk
+        self.skip_chunks = 0
 
     def _make_sets_dict(self):
         if type(self.sets) == dict:
@@ -105,6 +109,9 @@ class StandardDataLoader(BaseDataLoader):
         if self.epochs is None:
             return None
         return int(self.epochs * self.number_of_samples)
+
+    def skip_first_chunks(self, n):
+        self.skip_chunks += n
 
     def generate_batch(self,
                        chunk_size,
@@ -159,6 +166,8 @@ class StandardDataLoader(BaseDataLoader):
                 indices_to_sample_from = iter(selection)
             else:
                 raise Exception("Epochs should be int, float or None")
+
+        indices_to_sample_from = itertools.islice(indices_to_sample_from, self.skip_chunks * chunk_size, None)
 
         def consume_sample(sample_id, memory_position):
             try:
