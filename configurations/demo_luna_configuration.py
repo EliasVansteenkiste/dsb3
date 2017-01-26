@@ -26,7 +26,7 @@ batch_size = 1
 "However, when too big, the GPU will run out of memory"
 batches_per_chunk = 16
 "Reload the parameters from last time and continue, or start anew when you run this config file again"
-restart_from_save = False
+restart_from_save = True
 "After how many chunks should you save parameters. Keep this number high for better performance. It will always store at end anyway"
 save_every_chunks = 1
 
@@ -55,6 +55,13 @@ preprocessors = [
     NormalizeInput(num_samples=1),
 ]
 
+preprocessors_validation = [
+    LioAugment(tags=["luna:3d", "luna:segmentation"],
+               output_shape=(128,128,128),  # in pixels
+               norm_patch_size=(128,128,128),  # in mms
+               ),
+    NormalizeInput(num_samples=1),
+]
 
 #####################
 #     training      #
@@ -87,14 +94,14 @@ epochs_per_validation = 1
 validation_data = {
     "validation set": LunaDataLoader(sets=VALIDATION,
                                         epochs=1,
-                                        preprocessors=preprocessors,
+                                        preprocessors=preprocessors_validation,
                                         process_last_chunk=True,
                                  multiprocess=False,
                                  crash_on_exception=True,
                                         ),
     "training set":  LunaDataLoader(sets=TRAINING,
                                         epochs=0.01,
-                                        preprocessors=preprocessors,
+                                        preprocessors=preprocessors_validation,
                                         process_last_chunk=True,
                                  multiprocess=False,
                                  crash_on_exception=True,

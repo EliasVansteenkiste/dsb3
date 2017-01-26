@@ -5,13 +5,12 @@ import os
 import random
 from os import path
 import dicom
-
+from multiprocessing import Lock
 import numpy as np
 
 from interfaces.data_loader import StandardDataLoader, TRAINING, VALIDATION, TEST, INPUT, OUTPUT, TRAIN
 from utils import paths
 
-import SimpleITK as sitk    # sudo pip install --upgrade pip; sudo pip install SimpleITK
 
 VALIDATION_SET_SIZE = 0.2
 
@@ -159,17 +158,22 @@ class LunaDataLoader(StandardDataLoader):
         result = dict()
         pixel_data, origin, spacing = self.read_mhd_file(path)
         result["pixeldata"] = pixel_data.T  # move from zyx to xyz
-        result["origin"] = origin[::-1]  # move from zyx to xyz
-        result["spacing"] = spacing[::-1]  # move from zyx to xyz
+        result["origin"] = origin  # move from zyx to xyz
+        result["spacing"] = spacing  # move from zyx to xyz
         return result
 
 
+    _SimpleITKLock = Lock()
     @staticmethod
     def read_mhd_file(path):
-        itk_data = sitk.ReadImage(path.encode('utf-8'))
-        pixel_data = sitk.GetArrayFromImage(itk_data)
-        origin = np.array(list(reversed(itk_data.GetOrigin())))
-        spacing = np.array(list(reversed(itk_data.GetSpacing())))
+        # SimpleITK has trouble with multiprocessing :-/
+        with LunaDataLoader._SimpleITKLock:
+
+            import SimpleITK as sitk    # sudo pip install --upgrade pip; sudo pip install SimpleITK
+            itk_data = sitk.ReadImage(path.encode('utf-8'))
+            pixel_data = sitk.GetArrayFromImage(itk_data)
+            origin = np.array(list(itk_data.GetOrigin()))
+            spacing = np.array(list(itk_data.GetSpacing()))
         return pixel_data, origin, spacing
 
 
