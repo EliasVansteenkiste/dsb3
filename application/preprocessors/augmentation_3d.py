@@ -56,12 +56,13 @@ def augment_3d(volume, pixel_spacing, output_shape, norm_patch_shape, augment_p,
 
 
 def sample_augmentation_parameters(augm):
-    augm["scale"] = [log_uniform(v) for v in augm["scale"]]
-    augm["rotation"] = [uniform(v) for v in augm["rotation"]]
-    augm["shear"] = [uniform(v) for v in augm["shear"]]
-    augm["translation"] = [uniform(v) for v in augm["translation"]]
-    augm["reflection"] = [bernoulli(v) for v in augm["reflection"]]
-    return augm
+    augm_ = dict(augm)
+    augm_["scale"] = [log_uniform(v) for v in augm["scale"]]
+    augm_["rotation"] = [uniform(v) for v in augm["rotation"]]
+    augm_["shear"] = [uniform(v) for v in augm["shear"]]
+    augm_["translation"] = [uniform(v) for v in augm["translation"]]
+    augm_["reflection"] = [bernoulli(v) for v in augm["reflection"]]
+    return augm_
 
 
 class Augment3D(BasePreprocessor):

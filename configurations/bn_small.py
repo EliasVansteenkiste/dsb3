@@ -47,7 +47,7 @@ preprocessors = [
             "scale": [1, 1, 1],  # factor
             "rotation": [3, 3, 3],  # degrees
             "shear": [0, 0, 0],  # degrees
-            "translation": [10, 10, 10],  # mm
+            "translation": [20, 20, 20],  # mm
             "reflection": [0, 0, 0]}, #Bernoulli p
         interp_order=1),
     DefaultNormalizer(tags=["bcolzall:3d"])
@@ -74,7 +74,7 @@ learning_rate_schedule = {}
 for i in range(100):
     learning_rate_schedule[float(i)] = lr*(lr_decay**i)
 
-print learning_rate_schedule
+#print learning_rate_schedule
 
 "The function to build updates."
 build_updates = lasagne.updates.adam
@@ -95,13 +95,13 @@ validation_data = {
         multiprocess=True,
         crash_on_exception=True),
  #   "training set": None
-    # "training set":  PatientDataLoader(sets=TRAINING,
-    #                                     epochs=0.01,
-    #                                     preprocessors=preprocessors,
-    #                                     process_last_chunk=True,
-    #                              multiprocess=False,
-    #                              crash_on_exception=True,
-    #                                     ),
+    "training set":  BcolzAllDataLoader(sets=TRAINING,
+                                         epochs=0.01,
+                                         preprocessors=preprocessors,
+                                         process_last_chunk=True,
+                                  multiprocess=True,
+                                  crash_on_exception=True,
+                                         ),
     }
 
 
