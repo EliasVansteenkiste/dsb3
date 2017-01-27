@@ -55,6 +55,14 @@ class BcolzAllDataLoader(StandardDataLoader):
             for row in reader:
                 labels[str(row[0])] = int(row[1])
 
+        # with open(paths.LUNA_LABELS_PATH, "rb") as csvfile:
+        #     reader = csv.reader(csvfile, delimiter=',', quotechar='|')
+        #     next(reader)  # skip the header
+        #     for row in reader:
+        #         print row
+        #         sys.exit()
+        #         labels[str(row[0])] = int(row[1])
+
         # make a stratified validation set
         # note, the seed decides the validation set, but it is deterministic in the file_names and labels
         random.seed(317070)
@@ -129,7 +137,7 @@ class BcolzAllDataLoader(StandardDataLoader):
 
         patient_name = self.names[set][sample_index]
         try:
-            volume = bcolz.open(self.data[set][sample_index])[:].T  # move from zyx to xyz
+            volume = bcolz.open(self.data[set][sample_index], 'r')[:].T  # move from zyx to xyz
         except:
             print patient_name
             raise
