@@ -4,12 +4,15 @@ import os
 import numpy as np
 import cPickle as pickle
 import time
+import sys
+from utils.configuration import path_to_importable_string
 from utils.paths import MODEL_PATH
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 
 print "Looking for the metadata files..."
-path = MODEL_PATH + "j0_conv.pkl"
+
+path = MODEL_PATH + path_to_importable_string(sys.argv[1]) + ".pkl"
 print path
 files = sorted(glob.glob(path))
 print "Plotting..."
