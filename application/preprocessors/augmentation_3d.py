@@ -71,6 +71,7 @@ def sample_augmentation_parameters(augm):
         new_augm["translation"] = [uniform(v) for v in augm["translation"]]
     if "reflection" in augm:
         new_augm["reflection"] = [bernoulli(v) for v in augm["reflection"]]
+    del new_augm["uniform scale"]
     return new_augm
 
 
