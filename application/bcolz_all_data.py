@@ -127,8 +127,12 @@ class BcolzAllDataLoader(StandardDataLoader):
         sample[INPUT] = dict()
         sample[OUTPUT] = dict()
 
-        volume = bcolz.open(self.data[set][sample_index])[:].T  # move from zyx to xyz
         patient_name = self.names[set][sample_index]
+        try:
+            volume = bcolz.open(self.data[set][sample_index])[:].T  # move from zyx to xyz
+        except:
+            print patient_name
+            raise
 
         # Iterate over input tags and return a dict with the requested tags filled
         for tag in input_keys_to_do:
