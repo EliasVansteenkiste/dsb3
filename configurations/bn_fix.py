@@ -73,9 +73,9 @@ training_data = BcolzAllDataLoader(
 "Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate." 
 lr = 0.001 
 lr_decay = 0.5
-learning_rate_schedule = {}
+learning_rate_schedule = {0.:lr}
 for i in range(10):
-    learning_rate_schedule[float(2**i)] = lr*(lr_decay**i)
+    learning_rate_schedule[float(2**i)] = lr*(lr_decay**(i+1))
 
 print learning_rate_schedule
 
