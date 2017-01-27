@@ -40,7 +40,11 @@ AUGMENTATION_PARAMETERS = {
     "scale": [1, 1, 1],  # factor
     "rotation": [180, 180, 180],  # degrees (from -180 to 180)
     "shear": [0, 0, 0],  # degrees
+<<<<<<< HEAD
     "translation": [128, 128, 128],  # mms (from -128 to 128)
+=======
+    "translation": [0, 0, 0],  # mm
+>>>>>>> lio
     "reflection": [0, 0, 0] #Bernoulli p
 }
 

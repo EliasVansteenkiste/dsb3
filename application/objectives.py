@@ -18,7 +18,7 @@ class CrossEntropyObjective(TargetVarDictObjective):
 
     def __init__(self, input_layers, target_name, *args, **kwargs):
         super(CrossEntropyObjective, self).__init__(input_layers, *args, **kwargs)
-        self.target_key = target_name + ":class"
+        self.target_key = target_name + ":target"
         self.target_vars[self.target_key]  = T.lvector("target_class")
         self.prediction = input_layers["predicted_probability"]
 
