@@ -55,13 +55,13 @@ class BcolzAllDataLoader(StandardDataLoader):
             for row in reader:
                 labels[str(row[0])] = int(row[1])
 
-        # with open(paths.LUNA_LABELS_PATH, "rb") as csvfile:
-        #     reader = csv.reader(csvfile, delimiter=',', quotechar='|')
-        #     next(reader)  # skip the header
-        #     for row in reader:
-        #         print row
-        #         sys.exit()
-        #         labels[str(row[0])] = int(row[1])
+        with open(paths.LUNA_LABELS_PATH, "rb") as csvfile:
+            reader = csv.reader(csvfile, delimiter=',', quotechar='|')
+            next(reader)  # skip the header
+            for row in reader:
+                labels[str(row[0])] = diameter_to_prob(float(row[4]))
+                # print row[4], diameter_to_prob(float(row[4]))
+                # sys.exit()
 
         # make a stratified validation set
         # note, the seed decides the validation set, but it is deterministic in the file_names and labels
@@ -172,7 +172,38 @@ class BcolzAllDataLoader(StandardDataLoader):
         return sample
 
 
+
+# 6% to 28% for nodules 5 to 10 mm,
+slope10 = (0.28-0.06) / (10.-5.)
+offset10 = 0.06 - slope10*5.
+# and 64% to 82% for nodules >20 mm in diameter
+slope30 = (0.82-0.64) / (30.-20.)
+offset30 = 0.64 - slope30*20.
+# For nodules more than 3 cm in diameter, 93% to 97% are malignant
+slope40 = (0.97-0.93) / (40.-30.)
+offset40 = 0.93 - slope40*30.
+
+def diameter_to_prob(diam):
+    # The prevalence of malignancy is 0% to 1% for nodules <5 mm,
+    if diam < 5:
+        p = 0.01*diam/5.
+    elif diam < 10:
+        p = slope10*diam+offset10
+    elif diam < 20:
+        p = (slope10*diam+offset10 + slope30*diam+offset30)/2.
+    elif diam < 30:
+        p = slope30*diam+offset30
+    else:
+        p = slope40 * diam + offset40
+    return np.clip(p ,0.,1.)
+
+
 def test_loader():
+    # pnts = [diameter_to_prob(i/100.*40.) for i in range(100)]
+    # import matplotlib.pyplot as plt
+    # plt.plot(pnts)
+    # plt.show()
+
     import utils.plt
     # paths.ALL_DATA_PATH = "/home/lio/data/dsb3/stage1+luna_bcolz/",
     # paths.SPACINGS_PATH =  "/home/lio/data/dsb3/spacings.pkl.gz",
