@@ -38,7 +38,7 @@ save_every_chunks = 10
 
 "Put in here the preprocessors for your data." \
 "They will be run consequently on the datadict of the dataloader in the order of your list."
-nn_input_shape = (64, 128, 128)
+nn_input_shape = (128, 128, 64)
 preprocessors = [
     Augment3D(
         tags=["bcolzall:3d"],
