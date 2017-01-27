@@ -31,6 +31,7 @@ restart_from_save = False
 save_every_chunks = 10
 
 
+
 #####################
 #   preprocessing   #
 #####################
@@ -61,21 +62,22 @@ preprocessors = [
 
 "This is the train dataloader. We will train until this one stops loading data."
 "You can set the number of epochs, the datasets and if you want it multiprocessed"
+n_epochs = 10
 training_data = BcolzAllDataLoader(
     sets=TRAINING,
-    epochs=10, #infinite
+    epochs=n_epochs,
     preprocessors=preprocessors,
     multiprocess=True,
     crash_on_exception=True)
 
 "Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate." 
 lr = 0.001 
-lr_decay = 0.75 # per epoch
+lr_decay = 0.5
 learning_rate_schedule = {}
-for i in range(100):
-    learning_rate_schedule[float(i)] = lr*(lr_decay**i)
+for i in range(10):
+    learning_rate_schedule[float(2**i)] = lr*(lr_decay**i)
 
-#print learning_rate_schedule
+print learning_rate_schedule
 
 "The function to build updates."
 build_updates = lasagne.updates.adam
