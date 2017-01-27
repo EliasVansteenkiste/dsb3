@@ -55,19 +55,21 @@ class BcolzAllDataLoader(StandardDataLoader):
             for row in reader:
                 labels[str(row[0])] = int(row[1])
 
-        with open(paths.LUNA_LABELS_PATH, "rb") as csvfile:
-            reader = csv.reader(csvfile, delimiter=',', quotechar='|')
-            next(reader)  # skip the header
-            for row in reader:
-                labels[str(row[0])] = diameter_to_prob(float(row[4]))
-                # print row[4], diameter_to_prob(float(row[4]))
-                # sys.exit()
-
         # make a stratified validation set
         # note, the seed decides the validation set, but it is deterministic in the file_names and labels
         random.seed(317070)
         ids_per_label = [[patient_id for patient_id,label in labels.iteritems() if label==l] for l in [0,1]]
         validation_patients = sum([random.sample(sorted(ids), int(VALIDATION_SET_SIZE*len(ids))) for ids in ids_per_label],[])
+
+        luna_labels = {}
+        with open(paths.LUNA_LABELS_PATH, "rb") as csvfile:
+            reader = csv.reader(csvfile, delimiter=',', quotechar='|')
+            next(reader)  # skip the header
+            for row in reader:
+                luna_labels[str(row[0])] = diameter_to_prob(float(row[4]))
+
+        print len(luna_labels)
+        labels.update(luna_labels)
 
         # make the static data empty
         for s in self.datasets:
