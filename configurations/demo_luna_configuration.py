@@ -26,7 +26,7 @@ batch_size = 1
 "However, when too big, the GPU will run out of memory"
 batches_per_chunk = 16
 "Reload the parameters from last time and continue, or start anew when you run this config file again"
-restart_from_save = True
+restart_from_save = False
 "After how many chunks should you save parameters. Keep this number high for better performance. It will always store at end anyway"
 save_every_chunks = 1
 
@@ -40,7 +40,7 @@ AUGMENTATION_PARAMETERS = {
     "scale": [1, 1, 1],  # factor
     "rotation": [180, 180, 180],  # degrees (from -180 to 180)
     "shear": [0, 0, 0],  # degrees
-    "translation": [256, 256, 256],  # mms (from -128 to 128)
+    "translation": [128, 128, 128],  # mms (from -128 to 128)
     "reflection": [0, 0, 0] #Bernoulli p
 }
 
