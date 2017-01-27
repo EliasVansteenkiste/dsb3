@@ -42,7 +42,7 @@ preprocessors = [
     Augment3D(
         tags=["bcolzall:3d"],
         output_shape = nn_input_shape,
-        norm_patch_shape=(320, 340, 340),
+        norm_patch_shape=(320, 340, 340), # wrong axes!
         augmentation_params={
             "scale": [1, 1, 1],  # factor
             "rotation": [3, 3, 3],  # degrees
