@@ -48,15 +48,26 @@ class CrossEntropyObjective(TargetVarDictObjective):
 
 
 
-class SegmentationCrossEntropyObjective(TargetVarDictObjective):
-    optimize = MINIMIZE
-    eps = 1e-7
+
+
+class VolumeSegmentationObjective(TargetVarDictObjective):
 
     def __init__(self, input_layers, target_name, *args, **kwargs):
-        super(SegmentationCrossEntropyObjective, self).__init__(input_layers, *args, **kwargs)
+        super(VolumeSegmentationObjective, self).__init__(input_layers, *args, **kwargs)
         self.target_key = target_name + ":segmentation"
         self.target_vars[self.target_key]  = T.ftensor4("target_segmentation")
         self.prediction = input_layers["predicted_segmentation"]
+
+    def get_loss(self, *args, **kwargs):
+        raise NotImplementedError()
+
+    def get_loss_from_lists(self, predicted, expected, *args, **kwargs):
+        raise NotImplementedError()
+
+
+class SegmentationCrossEntropyObjective(VolumeSegmentationObjective):
+    optimize = MINIMIZE
+    eps = 1e-7
 
     def get_loss(self, *args, **kwargs):
         network_predictions = lasagne.layers.helper.get_output(self.prediction, *args, **kwargs)
@@ -73,8 +84,9 @@ class SegmentationCrossEntropyObjective(TargetVarDictObjective):
 
 
 class WeightedSegmentationCrossEntropyObjective(SegmentationCrossEntropyObjective):
-
-
+    """
+    Weighted cross entropy. One class is weighted according with other class
+    """
     def __init__(self, classweights, *args, **kwargs):
         super(WeightedSegmentationCrossEntropyObjective, self).__init__(*args, **kwargs)
         self.classweights = classweights
@@ -89,7 +101,6 @@ class WeightedSegmentationCrossEntropyObjective(SegmentationCrossEntropyObjectiv
         log_loss = T.mean(ce, axis=(1,2,3))
         return log_loss
 
-
     def get_loss_from_lists(self, predicted, expected, *args, **kwargs):
         predicted = np.float32(1-2*self.eps) * predicted + self.eps
         return -np.mean(expected*np.log(predicted) * self.classweights[1] + (1-expected)*np.log(1-predicted) * self.classweights[0])
@@ -97,24 +108,120 @@ class WeightedSegmentationCrossEntropyObjective(SegmentationCrossEntropyObjectiv
 
 
 
-class JaccardIndexObjective(SegmentationCrossEntropyObjective):
+class JaccardIndexObjective(VolumeSegmentationObjective):
+    """
+    Jaccard Index: https://en.wikipedia.org/wiki/Jaccard_index
+    """
     optimize = MAXIMIZE
 
     def __init__(self, smooth=1., *args, **kwargs):
-        super(WeightedSegmentationCrossEntropyObjective, self).__init__(*args, **kwargs)
+        super(JaccardIndexObjective, self).__init__(*args, **kwargs)
         self.smooth = np.float32(smooth)
 
     def get_loss(self, *args, **kwargs):
         network_predictions = lasagne.layers.helper.get_output(self.prediction, *args, **kwargs)
         target_values = self.target_vars[self.target_key]
 
-        y_true_f = T.flatten(target_values)
-        y_pred_f = T.flatten(network_predictions)
-        intersection = T.sum(y_true_f * y_pred_f)
-        return (intersection + self.smooth) / (T.sum(y_true_f) + T.sum(y_pred_f) - intersection + self.smooth)
+        y_true_f = target_values
+        y_pred_f = network_predictions
+        intersection = T.sum(y_true_f * y_pred_f, axis=(1,2,3))
+        return (intersection + self.smooth) / (T.sum(y_true_f, axis=(1,2,3)) + T.sum(y_pred_f, axis=(1,2,3)) - intersection + self.smooth)
 
     def get_loss_from_lists(self, predicted, expected, *args, **kwargs):
         y_true_f = expected.flatten()
         y_pred_f = predicted.flatten()
         intersection = np.sum(y_true_f * y_pred_f)
         return (intersection + self.smooth) / (np.sum(y_true_f) + np.sum(y_pred_f) - intersection + self.smooth)
+
+
+
+class SoerensonDiceCoefficientObjective(VolumeSegmentationObjective):
+    """
+    Soerensen-Dice coefficient: https://en.wikipedia.org/wiki/S%C3%B8rensen%E2%80%93Dice_coefficient
+    """
+    optimize = MAXIMIZE
+
+    def __init__(self, smooth=1., *args, **kwargs):
+        super(SoerensonDiceCoefficientObjective, self).__init__(*args, **kwargs)
+        self.smooth = np.float32(smooth)
+
+    def get_loss(self, *args, **kwargs):
+        network_predictions = lasagne.layers.helper.get_output(self.prediction, *args, **kwargs)
+        target_values = self.target_vars[self.target_key]
+
+        y_true_f = target_values
+        y_pred_f = network_predictions
+
+        intersection = T.sum(y_true_f * y_pred_f, axis=(1,2,3))
+        return ( 2 * intersection + self.smooth) / (T.sum(y_true_f, axis=(1,2,3)) + T.sum(y_pred_f, axis=(1,2,3)) + self.smooth)
+
+    def get_loss_from_lists(self, predicted, expected, *args, **kwargs):
+        y_true_f = expected.flatten()
+        y_pred_f = predicted.flatten()
+        intersection = np.sum(y_true_f * y_pred_f)
+        return (2 * intersection + self.smooth) / (np.sum(y_true_f) + np.sum(y_pred_f) + self.smooth)
+
+
+class PrecisionObjective(VolumeSegmentationObjective):
+    """
+    Precision: https://en.wikipedia.org/wiki/Precision_and_recall
+    """
+
+    optimize = MAXIMIZE
+
+    def __init__(self, smooth=1., *args, **kwargs):
+        super(PrecisionObjective, self).__init__(*args, **kwargs)
+        self.smooth = smooth
+
+    def get_loss(self, *args, **kwargs):
+        network_predictions = lasagne.layers.helper.get_output(self.prediction, *args, **kwargs)
+        target_values = self.target_vars[self.target_key]
+
+        y_true_f = target_values
+        y_pred_f = network_predictions
+
+        true_positive = T.sum(y_true_f * y_pred_f, axis=(1,2,3))
+        false_positive = T.sum((1.-y_true_f) * y_pred_f, axis=(1,2,3))
+
+        return (true_positive + self.smooth) / (true_positive + false_positive + self.smooth)
+
+    def get_loss_from_lists(self, predicted, expected, *args, **kwargs):
+        y_true_f = expected.flatten()
+        y_pred_f = predicted.flatten()
+
+        true_positive = np.sum(y_true_f * y_pred_f)
+        false_positive = np.sum((1.-y_true_f) * y_pred_f)
+
+        return (true_positive + self.smooth) / (true_positive + false_positive + self.smooth)
+
+
+class RecallObjective(VolumeSegmentationObjective):
+    """
+    Recall: https://en.wikipedia.org/wiki/Precision_and_recall
+    """
+    optimize = MAXIMIZE
+
+    def __init__(self, smooth=1., *args, **kwargs):
+        super(RecallObjective, self).__init__(*args, **kwargs)
+        self.smooth = smooth
+
+    def get_loss(self, *args, **kwargs):
+        network_predictions = lasagne.layers.helper.get_output(self.prediction, *args, **kwargs)
+        target_values = self.target_vars[self.target_key]
+
+        y_true_f = target_values
+        y_pred_f = network_predictions
+
+        true_positive = T.sum(y_true_f * y_pred_f, axis=(1,2,3))
+        false_negative = T.sum(y_true_f * (1.-y_pred_f), axis=(1,2,3))
+
+        return (true_positive + self.smooth) / (true_positive + false_negative + self.smooth)
+
+    def get_loss_from_lists(self, predicted, expected, *args, **kwargs):
+        y_true_f = expected.flatten()
+        y_pred_f = predicted.flatten()
+
+        true_positive = np.sum(y_true_f * y_pred_f)
+        false_negative = np.sum(y_true_f * (1.-y_pred_f))
+
+        return (true_positive + self.smooth) / (true_positive + false_negative + self.smooth)
