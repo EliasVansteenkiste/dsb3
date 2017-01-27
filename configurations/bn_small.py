@@ -27,7 +27,7 @@ batch_size = 16
 batches_per_chunk = 1
 "Reload the parameters from last time and continue, or start anew when you run this config file again"
 restart_from_save = False
-"After how many chunks should you save parameters. Keep this number high for better performance. It will always store at end anyway"
+"After how many chunks sho uld you save parameters. Keep this number high for better performance. It will always store at end anyway"
 save_every_chunks = 10
 
 
