@@ -71,11 +71,11 @@ training_data = BcolzAllDataLoader(
     crash_on_exception=True)
 
 "Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate." 
-lr = 0.01
-lr_decay = 0.5
-learning_rate_schedule = {0.:lr}
-for i in range(10):
-    learning_rate_schedule[float(2**i)] = lr*(lr_decay**(i+1))
+lr = 0.002
+lr_min = 0.00001
+lr_decay = 0.8
+for i in range(n_epochs):
+    learning_rate_schedule[i] = max(lr_min, lr*(lr_decay**i))
 
 print learning_rate_schedule
 
@@ -188,8 +188,8 @@ def build_model():
     l = max_pool3d(l)
 
     n *= 2
-    l = bn(dense(drop(l), n))
-    l = bn(dense(drop(l), n))
+    l = bn(dense(l, n))
+    l = bn(dense(l, n))
 
     l = lasagne.layers.DenseLayer(l,
                                  num_units=1,
