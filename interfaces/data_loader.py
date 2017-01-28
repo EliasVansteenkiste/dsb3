@@ -9,6 +9,7 @@ from utils.parallelism import AsyncPool
 INPUT = "input"
 OUTPUT = "output"
 IDS = "ids"
+VALID_SAMPLES = "valid_samples"
 
 TRAIN = "training"
 TRAINING = "training"
@@ -35,7 +36,7 @@ class BaseDataLoader(object):
     def load_sample(self, sample_id, input_keys_to_do, output_keys_to_do):
         raise NotImplementedError()
 
-    def preprocess_sample(self, chunk_memory, index, sample_data):
+    def preprocess_sample(self, sample_data):
         raise NotImplementedError()
 
     def filter_samples(self):
@@ -172,15 +173,10 @@ class StandardDataLoader(BaseDataLoader):
         def consume_sample(sample_id, memory_position):
             try:
                 sample_data = self.load_sample(sample_id,
-                                               input_keys_to_do,
-                                               output_keys_to_do)
-                if self.remove_this_sample_before_preprocessing(sample_data):
-                    return False
-
-                self.preprocess_sample(chunk_memory, memory_position, sample_data)
-                if self.remove_this_sample_after_preprocessing(sample_data):
-                    return False
-
+                                                   input_keys_to_do,
+                                                   output_keys_to_do)
+                self.preprocess_sample(sample_data)
+                self.store_sample(chunk_memory, memory_position, sample_data)
                 chunk_memory[IDS][memory_position] = sample_id
                 return True  # success!
             except Exception as e:
@@ -199,6 +195,7 @@ class StandardDataLoader(BaseDataLoader):
                 pool = AsyncPool(size=chunk_size)
 
             while sum(processes) != len(processes):
+                position = 0
                 try:
                     for position in xrange(chunk_size):
                         if processes[position]:  # We already did this one
@@ -219,13 +216,14 @@ class StandardDataLoader(BaseDataLoader):
                         processes = pool.get_results()
                         processes = filter(lambda x: x is not None, processes)
 
-                    yield chunk_memory
                 except StopIteration:
                     if self.multiprocess:
                         pool.get_results()
                     if self.process_last_chunk:
+                        chunk_memory[VALID_SAMPLES] = position
                         yield chunk_memory
                     return  # there were no more indices to sample from
+            yield chunk_memory
         return
 
 
@@ -257,6 +255,7 @@ class StandardDataLoader(BaseDataLoader):
             INPUT: {},
             OUTPUT: {},
             IDS: [None] * chunk_size,
+            VALID_SAMPLES: chunk_size
         }
 
         # we cannot know the output shape after preprocessing, unless we sample it.
@@ -274,22 +273,18 @@ class StandardDataLoader(BaseDataLoader):
         return result
 
 
-    def preprocess_sample(self, chunk_memory, index, sample_data):
+    def preprocess_sample(self, sample_data):
 
         for preprocessor in self.preprocessors:
             preprocessor.process(sample_data)
 
+    def store_sample(self, chunk_memory, index, sample_data):
         for tag in chunk_memory[INPUT]:
             chunk_memory[INPUT][tag][index] = sample_data[INPUT][tag]
 
         for tag in chunk_memory[OUTPUT]:
             chunk_memory[OUTPUT][tag][index] = sample_data[OUTPUT][tag]
 
-    def remove_this_sample_before_preprocessing(self, sample):
-        return False
-
-    def remove_this_sample_after_preprocessing(self, sample):
-        return False
 
 def compress_data(original_class):
     import bcolz
