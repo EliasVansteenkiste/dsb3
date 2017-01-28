@@ -1,6 +1,6 @@
 from functools import partial
 from lasagne.layers import dnn
-from application.luna import LunaDataLoader
+from application.luna import LunaDataLoader, OnlyPositiveLunaDataLoader
 from application.preprocessors.in_the_middle import PutInTheMiddle
 from application.preprocessors.lio_augmentation import LioAugment
 from configurations.default import *
@@ -9,7 +9,8 @@ import lasagne
 import theano.tensor as T
 import numpy as np
 
-from application.objectives import CrossEntropyObjective, WeightedSegmentationCrossEntropyObjective
+from application.objectives import CrossEntropyObjective, WeightedSegmentationCrossEntropyObjective, \
+    JaccardIndexObjective, SoerensonDiceCoefficientObjective, RecallObjective, PrecisionObjective
 from application.data import PatientDataLoader
 from deep_learning.upscale import Upscale3DLayer
 from interfaces.data_loader import VALIDATION, TRAINING, TEST, TRAIN
@@ -60,12 +61,13 @@ preprocessors = [
 #####################
 "This is the train dataloader. We will train until this one stops loading data."
 "You can set the number of epochs, the datasets and if you want it multiprocessed"
-training_data = LunaDataLoader(sets=TRAINING,
-                                  epochs=10.0,
-                                  preprocessors=preprocessors,
-                                 multiprocess=True,
-                                 crash_on_exception=False,
-                                  )
+training_data = OnlyPositiveLunaDataLoader(
+    sets=TRAINING,
+    epochs=10,
+    preprocessors=preprocessors,
+    multiprocess=True,
+    crash_on_exception=False,
+)
 
 "Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate."
 learning_rate_schedule = {
@@ -84,15 +86,15 @@ epochs_per_validation = 1
 
 "Which data do we want to validate on. We will run all validation objectives on each validation data set."
 validation_data = {
-    "validation set": LunaDataLoader(sets=VALIDATION,
+    "validation set": OnlyPositiveLunaDataLoader(sets=VALIDATION,
                                         epochs=1,
                                         preprocessors=preprocessors,
                                         process_last_chunk=True,
                                  multiprocess=False,
                                  crash_on_exception=True,
                                         ),
-    "training set":  LunaDataLoader(sets=TRAINING,
-                                        epochs=None,
+    "training set":  OnlyPositiveLunaDataLoader(sets=TRAINING,
+                                        epochs=0.01,
                                         preprocessors=preprocessors,
                                         process_last_chunk=True,
                                  multiprocess=False,
@@ -116,16 +118,50 @@ test_data = None
 "On both sets, you may request multiple objectives! Only the one called 'objective' is used to optimize on."
 
 def build_objectives(interface_layers):
-    obj = WeightedSegmentationCrossEntropyObjective(classweights=[3000,1],
-                                                    input_layers=interface_layers["outputs"],
-                                                    target_name="luna",
-                                                    )
+    obj_weighted = WeightedSegmentationCrossEntropyObjective(
+        classweights=[10000, 1],
+        input_layers=interface_layers["outputs"],
+        target_name="luna",
+    )
+
+    obj_jaccard = JaccardIndexObjective(
+        smooth=1.,
+        input_layers=interface_layers["outputs"],
+        target_name="luna",
+    )
+
+    obj_dice = SoerensonDiceCoefficientObjective(
+        smooth=1.,
+        input_layers=interface_layers["outputs"],
+        target_name="luna",
+    )
+
+    obj_precision = PrecisionObjective(
+        smooth=1.,
+        input_layers=interface_layers["outputs"],
+        target_name="luna",
+    )
+
+    obj_recall = RecallObjective(
+        smooth=1.,
+        input_layers=interface_layers["outputs"],
+        target_name="luna",
+    )
+
     return {
         "train":{
-            "objective": obj,
+            "objective": obj_jaccard,
+            "weighted": obj_weighted,
+            "Dice": obj_dice,
+            "precision": obj_precision,
+            "recall": obj_recall,
         },
         "validate":{
-            "objective": obj,
+            "objective": obj_jaccard,
+            "weighted": obj_weighted,
+            "Dice": obj_dice,
+            "precision": obj_precision,
+            "recall": obj_recall,
         }
     }
 
