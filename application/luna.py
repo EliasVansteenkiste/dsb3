@@ -203,13 +203,61 @@ class OnlyPositiveLunaDataLoader(LunaDataLoader):
     This dataloader will only return samples which do contain a positive segmentation!
     """
 
-    def remove_this_sample_after_preprocessing(self, sample):
-        if np.sum(sample[OUTPUT]["luna:segmentation"]) == 0:
-            return True
-        return False
+    def prepare(self):
+        """
+        Prepare the dataloader, by storing values to static fields of this class
+        In this case, only filenames are loaded prematurely
+        :return:
+        """
+        # step 0: load only when not loaded yet
+        if TRAINING in self.data \
+            and VALIDATION in self.data:
+            return
 
+        # step 1: load the file names
+        file_list = sorted(glob.glob(self.location+"*.mhd"))
+        # count the number of data points
 
-    def remove_this_sample_before_preprocessing(self, sample):
-        if np.sum(sample[OUTPUT]["luna:segmentation"]) == 0:
-            return True
-        return False
+        # make a stratified validation set
+        # note, the seed decides the validation set, but it is deterministic in the names
+        random.seed(317070)
+        patient_names = [self.patient_name_from_file_name(f) for f in file_list]
+        validation_patients = random.sample(patient_names, int(VALIDATION_SET_SIZE*len(patient_names)))
+
+        # make the static data empty
+        for s in self.datasets:
+            self.data[s] = []
+            self.labels[s] = []
+            self.names[s] = []
+
+        # load the filenames and put into the right dataset
+        labels_as_dict = defaultdict(list)
+
+        with open(paths.LUNA_LABELS_PATH, 'rb') as csvfile:
+            reader = csv.reader(csvfile, delimiter=',', quotechar='|')
+            next(reader)  # skip the header
+            for row in reader:
+                label = (float(row[1]), float(row[2]), float(row[3]), float(row[4]))
+                labels_as_dict[str(row[0])].append(label)
+
+        for patient_file in file_list:
+            patient_name = self.patient_name_from_file_name(patient_file)
+
+            if patient_name in validation_patients:
+                s = VALIDATION
+            else:
+                s = TRAINING
+            label = labels_as_dict[str(patient_name)]
+            if not label:
+                continue
+            self.data[s].append(patient_file)
+            self.labels[s].append( label )
+            self.names[s].append(patient_name)
+
+        # give every patient a unique number
+        last_index = -1
+        for s in self.datasets:
+            self.indices[s] = range(last_index+1,last_index+1+len(self.data[s]))
+            if len(self.indices[s]) > 0:
+                last_index = self.indices[s][-1]
+            print s, len(self.indices[s]), "samples"
