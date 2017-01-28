@@ -196,3 +196,20 @@ class LunaDataLoader(StandardDataLoader):
             distance2 = ((spacing[0]*(x-xt))**2 + (spacing[1]*(y-yt))**2 + (spacing[2]*(z-zt))**2)
             mask[(distance2 <= (diameter_in_mm/2.0)**2)] = 1
         return mask
+
+
+class OnlyPositiveLunaDataLoader(LunaDataLoader):
+    """
+    This dataloader will only return samples which do contain a positive segmentation!
+    """
+
+    def remove_this_sample_after_preprocessing(self, sample):
+        if np.sum(sample[OUTPUT]["luna:segmentation"]) == 0:
+            return True
+        return False
+
+
+    def remove_this_sample_before_preprocessing(self, sample):
+        if np.sum(sample[OUTPUT]["luna:segmentation"]) == 0:
+            return True
+        return False

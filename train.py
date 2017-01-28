@@ -387,10 +387,12 @@ def train_model(expid):
         time_since_start = now - start_time
         time_since_prev = now - prev_time
         prev_time = now
+        # This is the most useful stat of all! Keep this number low, and your total optimization time will be low too.
+        print "  on average %dms per training sample" % (1000.*time_since_start / ((e+1 - start_chunk_idx) * config.batch_size * config.batches_per_chunk))
         print "  %s since start (+%.2f s)" % (utils.hms(time_since_start), time_since_prev)
-        print "  (%s waiting on gpu vs %s waiting for data)" % (gpu_time, data_load_time)
+        print "  %s waiting on gpu vs %s waiting for data" % (gpu_time, data_load_time)
         try:
-            if num_chunks_train:
+            if num_chunks_train:  # only if we ever stop running
                 est_time_left = time_since_start * (float(num_chunks_train - (e + 1 - start_chunk_idx)) / float(e + 1 - start_chunk_idx))
                 eta = datetime.datetime.now() + datetime.timedelta(seconds=est_time_left)
                 eta_str = eta.strftime("%c")
@@ -400,8 +402,6 @@ def train_model(expid):
             # Shit happens
             print "  This will take really long, like REALLY long."
 
-        # This is the most useful stat of all! Keep this number low, and your total optimization time will be low too.
-        print "  on average %dms per training sample" % (1000.*time_since_start / ((e+1 - start_chunk_idx) * config.batch_size * config.batches_per_chunk))
 
         # Save the data every config.save_every_chunks chunks. Or at the end of the training.
         # We should make it config.save_every_epochs epochs sometimes. Consistency

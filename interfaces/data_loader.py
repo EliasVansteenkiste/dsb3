@@ -167,14 +167,20 @@ class StandardDataLoader(BaseDataLoader):
             else:
                 raise Exception("Epochs should be int, float or None")
 
-        indices_to_sample_from = itertools.islice(indices_to_sample_from, self.skip_chunks * chunk_size, None)
+            indices_to_sample_from = itertools.islice(indices_to_sample_from, self.skip_chunks * chunk_size, None)
 
         def consume_sample(sample_id, memory_position):
             try:
                 sample_data = self.load_sample(sample_id,
                                                input_keys_to_do,
                                                output_keys_to_do)
+                if self.remove_this_sample_before_preprocessing(sample_data):
+                    return False
+
                 self.preprocess_sample(chunk_memory, memory_position, sample_data)
+                if self.remove_this_sample_after_preprocessing(sample_data):
+                    return False
+
                 chunk_memory[IDS][memory_position] = sample_id
                 return True  # success!
             except Exception as e:
@@ -279,7 +285,11 @@ class StandardDataLoader(BaseDataLoader):
         for tag in chunk_memory[OUTPUT]:
             chunk_memory[OUTPUT][tag][index] = sample_data[OUTPUT][tag]
 
+    def remove_this_sample_before_preprocessing(self, sample):
+        return False
 
+    def remove_this_sample_after_preprocessing(self, sample):
+        return False
 
 def compress_data(original_class):
     import bcolz
