@@ -30,6 +30,7 @@ restart_from_save = False
 "After how many chunks sho uld you save parameters. Keep this number high for better performance. It will always store at end anyway"
 save_every_chunks = 10
 
+multiprocessing_on = True
 
 
 #####################
@@ -67,7 +68,7 @@ training_data = BcolzAllDataLoader(
     sets=TRAINING,
     epochs=n_epochs,
     preprocessors=preprocessors,
-    multiprocess=False,
+    multiprocess=multiprocessing_on,
     crash_on_exception=True)
 
 "Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate." 
@@ -96,13 +97,13 @@ validation_data = {
         epochs=1,
         preprocessors=preprocessors,
         process_last_chunk=True,
-        multiprocess=False,
+        multiprocess=multiprocessing_on,
         crash_on_exception=True),
     "training set":  BcolzAllDataLoader(sets=TRAINING,
         epochs=0.15,
         preprocessors=preprocessors,
         process_last_chunk=True,
-        multiprocess=False,
+        multiprocess=multiprocessing_on,
         crash_on_exception=True)
     }
 
