@@ -83,7 +83,7 @@ training_data = BcolzAllDataLoader(
     crash_on_exception=True)
 
 "Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate." 
-lr = 0.002
+lr = 0.01
 lr_min = 0.00001
 lr_decay = 0.8
 learning_rate_schedule = {}
@@ -168,7 +168,7 @@ dense = partial(lasagne.layers.DenseLayer,
 
 drop = lasagne.layers.DropoutLayer
 
-bn = lasagne.layers.batch_norm
+bn = dnn.batch_norm_dnn
 
 
 "Here we build a model. The model returns a dict with the requested inputs for each layer:" \
