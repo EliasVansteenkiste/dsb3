@@ -74,6 +74,7 @@ training_data = BcolzAllDataLoader(
 lr = 0.002
 lr_min = 0.00001
 lr_decay = 0.8
+learning_rate_schedule = {}
 for i in range(n_epochs):
     learning_rate_schedule[i] = max(lr_min, lr*(lr_decay**i))
 
