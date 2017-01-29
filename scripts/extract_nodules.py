@@ -3,6 +3,11 @@ from scipy.stats import multivariate_normal
 from sklearn.mixture import GaussianMixture
 
 
+
+"""
+The most important function in this file for use in our stack is extract_rois
+"""
+
 def get_rv(mu_x, mu_y, mu_z, variance_x, variance_y, variance_z):
 	return multivariate_normal([mu_x, mu_y, mu_z], [[variance_x, 0, 0], [0, variance_y, 0], [0, 0, variance_z]])
 
@@ -29,16 +34,38 @@ def fit_gmix(segmentation_volume, n_comp=2):
 
 	return gmix
 
-def extract_rois(segmentation_volume, size_roi=10, no_rois=2):
+def extract_rois(segmentation_volume, size_roi=10, n_rois=2):
 	"""
 	Extract the region of interest by fitting a Gaussian mixture model
+	
+
+    Parameters
+    ----------
+    segmentation_volume : 3D numpy array with floating numbers. 
+    	For each voxel, the floating point represents the probability that 
+    	the voxel is inside a malignant nodule.
+    size_roi : integer
+    	The size for the region of interests that will be returned. 
+    	In other words, the dimension of the 3D cube that is cut out around 
+    	the centerof the nodules that have been found.
+    n_rois : integer
+        The number of regions of interest that will be searched for and cut out.
+        This is also equals the number of Gaussian processes in the model that is 
+        fit to the probabilties of the segmentation_volume
+
+    Returns
+    -------
+    numpy ndarray
+        The input array in the ``floatX`` dtype configured for Theano.
+        If `arr` is an ndarray of correct dtype, it is returned as is.
+
 	"""
 
 	# fit the gaussian mix
-	gmix = fit_gmix(segmentation_volume,no_rois)
+	gmix = fit_gmix(segmentation_volume,n_rois)
 	
 	# extract region of interests
-	rois = np.zeros((no_rois,size_roi,size_roi,size_roi))
+	rois = np.zeros((n_rois,size_roi,size_roi,size_roi))
 	for idx, center in enumerate(gmix.means_):
 		center=np.round(center).astype(int)
 		print center
@@ -49,7 +76,7 @@ def extract_rois(segmentation_volume, size_roi=10, no_rois=2):
 
 
 def extract_nodules_best_gmix(segmentation_volume, max_n_components=10):
-	"does not work well yet"
+	"!!!!!!!!!!!!does not work well yet"
 	"This function finds the best gaussian mix for a volume of probabilities"
 	no_samples = 10000
 	occurences =  np.round(no_samples*segmentation_volume/np.sum(segmentation_volume)).astype(int)
@@ -106,7 +133,7 @@ if __name__=="__main__":
 	test = rv1.pdf(pos)+rv2.pdf(pos)
 	print 'rv1.pdf(pos)+rv2.pdf(pos).shape', test.shape
 
-	extract_rois(test)
+	extract_rois(test, n_rois=2)
 
 
 
