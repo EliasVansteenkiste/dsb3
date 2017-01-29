@@ -6,7 +6,7 @@ from sklearn.mixture import GaussianMixture
 def get_rv(mu_x, mu_y, mu_z, variance_x, variance_y, variance_z):
 	return multivariate_normal([mu_x, mu_y, mu_z], [[variance_x, 0, 0], [0, variance_y, 0], [0, 0, variance_z]])
 
-def extract_nodules_gmix(segmentation_volume, no_components=2):
+def fit_gmix(segmentation_volume, n_comp=2):
 	"This function finds the best gaussian mix for a volume of probabilities"
 	no_samples = 4000
 	occurences =  np.round(no_samples*segmentation_volume/np.sum(segmentation_volume)).astype(int)
@@ -21,7 +21,7 @@ def extract_nodules_gmix(segmentation_volume, no_components=2):
 					samples[counter]=[x,y,z]
 					counter += 1
 
-	gmix = GaussianMixture(n_components=no_c, covariance_type='full')
+	gmix = GaussianMixture(n_components=n_comp, covariance_type='full')
 	gmix.fit(samples)
 	print 'means', gmix.means_
 	print 'covariances', gmix.covariances_
@@ -29,9 +29,29 @@ def extract_nodules_gmix(segmentation_volume, no_components=2):
 
 	return gmix
 
+def extract_rois(segmentation_volume, size_roi=10, no_rois=2):
+	"""
+	Extract the region of interest by fitting a Gaussian mixture model
+	"""
+
+	# fit the gaussian mix
+	gmix = fit_gmix(segmentation_volume,no_rois)
+	
+	# extract region of interests
+	rois = np.zeros((no_rois,size_roi,size_roi,size_roi))
+	for idx, center in enumerate(gmix.means_):
+		center=np.round(center).astype(int)
+		print center
+		half_size = size_roi/2
+		rois[idx] = segmentation_volume[center[0]-half_size:center[0]+half_size,center[1]-half_size:center[1]+half_size,center[2]-half_size:center[2]+half_size]
+
+
+
+
 def extract_nodules_best_gmix(segmentation_volume, max_n_components=10):
+	"does not work well yet"
 	"This function finds the best gaussian mix for a volume of probabilities"
-	no_samples = 4000
+	no_samples = 10000
 	occurences =  np.round(no_samples*segmentation_volume/np.sum(segmentation_volume)).astype(int)
 	total_occ = np.sum(occurences)
 	samples = np.zeros((total_occ,3))
@@ -52,7 +72,7 @@ def extract_nodules_best_gmix(segmentation_volume, max_n_components=10):
 		score = gmix.score(samples)
 		print 'score', score
 		print 'means', gmix.means_
-		print 'covariances', gmix.covariances_
+		# print 'covariances', gmix.covariances_
 		print 'weights', gmix.weights_
 		if score>best_score:
 			best_score = score
@@ -86,7 +106,7 @@ if __name__=="__main__":
 	test = rv1.pdf(pos)+rv2.pdf(pos)
 	print 'rv1.pdf(pos)+rv2.pdf(pos).shape', test.shape
 
-	extract_nodules_gmix(test)
+	extract_rois(test)
 
 
 

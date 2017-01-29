@@ -39,7 +39,7 @@ plt.plot(training_errors, label='training errors')
 plt.plot(validation_errors, label='validation errors')
 plt.legend()
 plt.title(sys.argv[1])
-plt.xlabel('Validation moment()')
+plt.xlabel('Validation moment(fixed)')
 plt.ylabel('Error')	
 plt.savefig(sys.argv[2])
 
