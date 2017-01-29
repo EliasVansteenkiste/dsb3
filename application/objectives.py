@@ -225,3 +225,45 @@ class RecallObjective(VolumeSegmentationObjective):
         false_negative = np.sum(y_true_f * (1.-y_pred_f))
 
         return (true_positive + self.smooth) / (true_positive + false_negative + self.smooth)
+
+
+class ClippedFObjective(VolumeSegmentationObjective):
+    """
+    Recall: https://en.wikipedia.org/wiki/Precision_and_recall
+    """
+    optimize = MAXIMIZE
+
+    def __init__(self, smooth=1., recall_weight=1.0, precision_weight=1.0, *args, **kwargs):
+        super(ClippedFObjective, self).__init__(*args, **kwargs)
+        self.smooth = smooth
+        self.recall_weight = recall_weight
+        self.precision_weight = precision_weight
+
+    def get_loss(self, *args, **kwargs):
+        network_predictions = lasagne.layers.helper.get_output(self.prediction, *args, **kwargs)
+        target_values = self.target_vars[self.target_key]
+
+        y_true_f = target_values
+        y_pred_f = network_predictions
+
+        true_positive = T.sum(y_true_f * y_pred_f, axis=(1,2,3))
+        false_negative = T.sum(y_true_f * (1.-y_pred_f), axis=(1,2,3))
+        false_positive = T.sum((1.-y_true_f) * y_pred_f, axis=(1,2,3))
+
+        recall = (true_positive + self.smooth) / (true_positive + false_negative + self.smooth)
+        precision = (true_positive + self.smooth) / (true_positive + false_positive + self.smooth)
+
+        return T.minimum(recall*self.recall_weight, 1.0) * 0.5 + T.minimum(precision*self.precision_weight, 1.0) * 0.5
+
+    def get_loss_from_lists(self, predicted, expected, *args, **kwargs):
+        y_true_f = expected.flatten()
+        y_pred_f = predicted.flatten()
+
+        true_positive = np.sum(y_true_f * y_pred_f)
+        false_negative = np.sum(y_true_f * (1.-y_pred_f))
+        false_positive = np.sum((1.-y_true_f) * y_pred_f)
+
+        recall = (true_positive + self.smooth) / (true_positive + false_negative + self.smooth)
+        precision = (true_positive + self.smooth) / (true_positive + false_positive + self.smooth)
+
+        return np.minimum(recall*self.recall_weight, 1.0) * 0.5 + np.minimum(precision*self.precision_weight, 1.0) * 0.5

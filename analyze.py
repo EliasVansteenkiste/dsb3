@@ -157,7 +157,7 @@ def analyze_model(expid, path_to_function, mfile=None):
         resume_metadata = np.load(metadata_path)
         lasagne.layers.set_all_param_values(top_layer, resume_metadata['param_values'])
     else:
-        raise "No previous parameters found!"
+        raise Exception("No previous parameters found!")
 
     start_time,prev_time = None,None
     print "Loading first chunks"
@@ -198,7 +198,7 @@ def analyze_model(expid, path_to_function, mfile=None):
                 gpu_time.stop()
 
                 for idx_ex in xrange(config.batch_size):
-                    # Create all the kwargs to analyze for each test ran
+                    # Create all the kwargs to analyze for each test run
                     kwargs = {}
                     for key in xs_shared.keys():
                         kwargs[key] = validation_data["input"][key][idx+idx_ex]

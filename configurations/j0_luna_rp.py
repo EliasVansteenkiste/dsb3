@@ -10,7 +10,7 @@ import theano.tensor as T
 import numpy as np
 
 from application.objectives import CrossEntropyObjective, WeightedSegmentationCrossEntropyObjective, \
-    JaccardIndexObjective, SoerensonDiceCoefficientObjective, RecallObjective, PrecisionObjective
+    JaccardIndexObjective, SoerensonDiceCoefficientObjective, RecallObjective, PrecisionObjective, ClippedFObjective
 from application.data import PatientDataLoader
 from deep_learning.upscale import Upscale3DLayer
 from interfaces.data_loader import VALIDATION, TRAINING, TEST, TRAIN
@@ -148,18 +148,28 @@ def build_objectives(interface_layers):
         target_name="luna",
     )
 
+    obj_custom = ClippedFObjective(
+        smooth=1e-5,
+        recall_weight = 1.0001,
+        precision_weight = 3.0,
+        input_layers=interface_layers["outputs"],
+        target_name="luna",
+    )
+
     return {
         "train":{
-            "objective": obj_dice,
-            "Jaccard": obj_jaccard,
+            "objective": obj_custom,
+            "jaccard": obj_jaccard,
             "weighted": obj_weighted,
+            "Dice": obj_dice,
             "precision": obj_precision,
             "recall": obj_recall,
         },
         "validate":{
-            "objective": obj_dice,
-            "Jaccard": obj_jaccard,
+            "objective": obj_custom,
+            "jaccard": obj_jaccard,
             "weighted": obj_weighted,
+            "Dice": obj_dice,
             "precision": obj_precision,
             "recall": obj_recall,
         }

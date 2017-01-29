@@ -128,4 +128,17 @@ class LioAugment(BasePreprocessor):
                 )
             else:
                 pass
-                # raise Exception("Did not find tag which I had to augment: %s"%tag)
+                #raise Exception("Did not find tag which I had to augment: %s"%tag)
+
+class LioAugmentOnlyPositive(LioAugment):
+    def process(self, sample):
+        original_sample_input = dict(sample[INPUT])
+        original_sample_output = dict(sample[OUTPUT])
+        good = False
+        while not good:
+            sample[INPUT].update(original_sample_input)
+            sample[OUTPUT].update(original_sample_output)
+            super(LioAugmentOnlyPositive, self).process(sample)
+            for tag in self.tags:
+                if tag in sample[OUTPUT]:
+                    good = (np.sum(sample[OUTPUT][tag])!=0)
