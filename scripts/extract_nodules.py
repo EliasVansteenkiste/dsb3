@@ -23,13 +23,11 @@ def extract_nodules_gmix(segmentation_volume, no_components=2):
 
 	gmix = GaussianMixture(n_components=no_c, covariance_type='full')
 	gmix.fit(samples)
-	score = gmix.score(samples)
-	print 'score', score
 	print 'means', gmix.means_
 	print 'covariances', gmix.covariances_
 	print 'weights', gmix.weights_
 
-	return bgmix
+	return gmix
 
 def extract_nodules_best_gmix(segmentation_volume, max_n_components=10):
 	"This function finds the best gaussian mix for a volume of probabilities"
