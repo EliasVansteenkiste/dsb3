@@ -50,9 +50,9 @@ preprocessors = [
         augmentation_params={
             "scale": [1, 1, 1],  # factor
             "uniform scale": 1, # factor
-            "rotation": [0, 0, 0],  # degrees
+            "rotation": [5, 5, 5],  # degrees
             "shear": [0, 0, 0],  # degrees
-            "translation": [0, 0, 0],  # mm
+            "translation": [50, 50, 50],  # mm
             "reflection": [0, 0, 0]}, #Bernoulli p
         interp_order=1),
     DefaultNormalizer(tags=["bcolzall:3d"])
@@ -74,7 +74,7 @@ preprocessors_valid = [
 
 "This is the train dataloader. We will train until this one stops loading data."
 "You can set the number of epochs, the datasets and if you want it multiprocessed"
-n_epochs = 1000
+n_epochs = 30
 training_data = BcolzAllDataLoader(
     sets=TRAINING,
     epochs=n_epochs,
@@ -83,9 +83,9 @@ training_data = BcolzAllDataLoader(
     crash_on_exception=True)
 
 "Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate." 
-lr = 0.01
-lr_min = 0.00001
-lr_decay = 0.8
+lr = 0.0001
+lr_min = 0.000001
+lr_decay = 0.9
 learning_rate_schedule = {}
 for i in range(n_epochs):
     lr_ = lr*(lr_decay**i)
