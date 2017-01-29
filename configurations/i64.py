@@ -21,10 +21,10 @@ from deep_learning.deep_learning_layers import ConvolutionLayer, PoolLayer
 from interfaces.preprocess import NormalizeInput
 
 "This is the number of samples in each batch"
-batch_size = 32
+batch_size = 8
 "This is the number of batches in each chunk. Computation speeds up if this is as big as possible." \
 "However, when too big, the GPU will run out of memory"
-batches_per_chunk = 1
+batches_per_chunk = 8
 "Reload the parameters from last time and continue, or start anew when you run this config file again"
 restart_from_save = False
 "After how many chunks sho uld you save parameters. Keep this number high for better performance. It will always store at end anyway"
@@ -39,7 +39,7 @@ multiprocessing_on = True
 
 "Put in here the preprocessors for your data." \
 "They will be run consequently on the datadict of the dataloader in the order of your list."
-nn_input_shape = (128, 128, 64)
+nn_input_shape = (64, 64, 32)
 norm_patch_shape = (340, 340, 320) #median
 
 preprocessors = [
@@ -83,16 +83,19 @@ training_data = BcolzAllDataLoader(
     crash_on_exception=True)
 
 "Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate." 
-lr = 0.01
-lr_decay = 0.5
-learning_rate_schedule = {0.:lr}
-for i in range(10):
-    learning_rate_schedule[float(2**i)] = lr*(lr_decay**(i+1))
+lr = 0.001
+lr_min = lr/1000
+lr_decay = 0.9
+learning_rate_schedule = {}
+for i in range(n_epochs):
+    lr_ = lr*(lr_decay**i)
+    if lr_ < lr_min: break
+    learning_rate_schedule[i] = lr_
 
 print learning_rate_schedule
 
 "The function to build updates."
-build_updates = lasagne.updates.adam
+build_updates = lasagne.updates.rmsprop
 
 
 #####################
@@ -153,7 +156,7 @@ conv3d = partial(dnn.Conv3DDNNLayer,
     pad='same',
     W=lasagne.init.Orthogonal('relu'),
     b=lasagne.init.Constant(0.0),
-#    untie_biases=True,
+    untie_biases=True,
     nonlinearity=lasagne.nonlinearities.rectify)
 
 max_pool3d = partial(dnn.MaxPool3DDNNLayer, pool_size=2)
@@ -177,32 +180,32 @@ def build_model():
     l = lasagne.layers.DimshuffleLayer(l_in, pattern=(0, 'x', 1, 2, 3))
 
     n = 16
-    l = bn(conv3d(l, n, filter_size=7, stride=2))
+    #l = conv3d(l, n, filter_size=7, stride=2)
     # l = max_pool3d(l)
 
-    n *= 2
-    l = bn(conv3d(l, n))
-    l = bn(conv3d(l, n))
+    #n *= 2
+    l = conv3d(l, n)
+    l = conv3d(l, n)
     l = max_pool3d(l)
 
     n *= 2
-    l = bn(conv3d(l, n))
-    l = bn(conv3d(l, n))
+    l = conv3d(l, n)
+    l = conv3d(l, n)
     l = max_pool3d(l)
 
     n *= 2
-    l = bn(conv3d(l, n))
-    l = bn(conv3d(l, n))
+    l = conv3d(l, n)
+    l = conv3d(l, n)
     l = max_pool3d(l)
 
     n *= 2
-    l = bn(conv3d(l, n))
-    l = bn(conv3d(l, n))
+    l = conv3d(l, n)
+    l = conv3d(l, n)
     l = max_pool3d(l)
 
     n *= 2
-    l = bn(dense(drop(l), n))
-    l = bn(dense(drop(l), n))
+    l = dense(drop(l), n)
+    l = dense(drop(l), n)
 
     l = lasagne.layers.DenseLayer(l,
                                  num_units=1,
