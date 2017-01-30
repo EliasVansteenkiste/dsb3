@@ -146,6 +146,11 @@ def train_model(expid):
     # build the update step for Theano
     updates = config.build_updates(train_loss_theano, all_params, learning_rate)
 
+    if hasattr(config, "print_gradnorm") and config.print_gradnorm:
+        all_grads = theano.grad(train_loss_theano, all_params, disconnected_inputs='warn')
+        grad_norm = T.sqrt(T.sum([(g ** 2).sum() for g in all_grads]) + 1e-9)
+
+
     # Compile the Theano function of your model+objective
     print "Compiling..."
     iter_train = theano.function([idx],
@@ -303,6 +308,9 @@ def train_model(expid):
         for loss_name, loss in zip(train_losses_theano.keys(), mean_train_loss):
             losses[TRAINING][loss_name].append(loss)
             print string.rjust(loss_name+":",15), "%.6f" % loss
+
+        if hasattr(config, "print_gradnorm") and config.print_gradnorm:
+            print "gradient norm:", grad_norm
 
         # Now, we will do validation. We do this about every config.epochs_per_validation epochs.
         # We also always validate at the end of every training!

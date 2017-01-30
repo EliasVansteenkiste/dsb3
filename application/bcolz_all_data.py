@@ -209,10 +209,27 @@ def test_loader():
     import utils.plt
     # paths.ALL_DATA_PATH = "/home/lio/data/dsb3/stage1+luna_bcolz/",
     # paths.SPACINGS_PATH =  "/home/lio/data/dsb3/spacings.pkl.gz",
-    l = BcolzAllDataLoader(multiprocess=False, location="/home/lio/data/dsb3/stage1+luna_bcolz/")
+    l = BcolzAllDataLoader(multiprocess=False)#, location="/home/lio/data/dsb3/stage1+luna_bcolz/")
     l.prepare()
-    sample = l.load_sample(l.indices[TRAIN][0], ["bcolzall:3d", "pixelspacing"], ["target"])
-    utils.plt.show_animate(sample[INPUT]["bcolzall:3d"], 50)
+
+    import sklearn.metrics
+
+    lbls = l.labels[VALIDATION]
+    print lbls
+    preds = [0.25 for _ in lbls]
+
+    print sklearn.metrics.log_loss(lbls, preds)
+
+
+
+
+
+
+
+
+
+    # sample = l.load_sample(l.indices[TRAIN][0], ["bcolzall:3d", "pixelspacing"], ["target"])
+    # utils.plt.show_animate(sample[INPUT]["bcolzall:3d"], 50)
 
 
 if __name__ == '__main__':

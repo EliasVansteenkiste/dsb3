@@ -1,8 +1,8 @@
 {
-  "ALL_DATA_PATH":"/mnt/ssd/dsb3/stage1+luna_bcolz/",
-  "SPACINGS_PATH":"/mnt/ssd/dsb3/spacings.pkl.gz",
-  "DATA_PATH":"/mnt/ssd/dsb3/stage1/",
-  "LUNA_DATA_PATH":"/mnt/ssd/dsb3/luna/dataset/",
+  "ALL_DATA_PATH":"/mnt/storage/data/dsb3/stage1+luna_bcolz/",
+  "SPACINGS_PATH":"/mnt/storage/data/dsb3/spacings.pkl.gz",
+  "DATA_PATH":"/mnt/storage/data/dsb3/stage1/",
+  "LUNA_DATA_PATH":"/mnt/storage/data/dsb3/luna/dataset/",
   "LABELS_PATH":"/mnt/storage/data/dsb3/stage1_labels.csv",
   "LUNA_LABELS_PATH":"/mnt/storage/data/dsb3/luna/annotations.csv",
   "MODEL_PATH":"/mnt/storage/metadata/dsb3/models/",

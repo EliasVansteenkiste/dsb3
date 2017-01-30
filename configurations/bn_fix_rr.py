@@ -18,7 +18,6 @@ from deep_learning.deep_learning_layers import ConvolutionLayer, PoolLayer
 #####################
 #   running speed   #
 #####################
-from interfaces.preprocess import NormalizeInput
 
 "This is the number of samples in each batch"
 batch_size = 32
@@ -93,7 +92,7 @@ print learning_rate_schedule
 
 "The function to build updates."
 build_updates = lasagne.updates.adam
-
+print_gradnorm = True
 
 #####################
 #    validation     #
