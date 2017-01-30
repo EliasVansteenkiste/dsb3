@@ -61,6 +61,16 @@ class BcolzAllDataLoader(StandardDataLoader):
         ids_per_label = [[patient_id for patient_id,label in labels.iteritems() if label==l] for l in [0,1]]
         validation_patients = sum([random.sample(sorted(ids), int(VALIDATION_SET_SIZE*len(ids))) for ids in ids_per_label],[])
 
+        # luna_labels = {}
+        # with open(paths.LUNA_LABELS_PATH, "rb") as csvfile:
+        #     reader = csv.reader(csvfile, delimiter=',', quotechar='|')
+        #     next(reader)  # skip the header
+        #     for row in reader:
+        #         luna_labels[str(row[0])] = diameter_to_prob(float(row[4]))
+
+        # print len(luna_labels)
+        # labels.update(luna_labels)
+
         # make the static data empty
         for s in self.datasets:
             self.data[s] = []
@@ -127,8 +137,12 @@ class BcolzAllDataLoader(StandardDataLoader):
         sample[INPUT] = dict()
         sample[OUTPUT] = dict()
 
-        volume = bcolz.open(self.data[set][sample_index])[:].T  # move from zyx to xyz
         patient_name = self.names[set][sample_index]
+        try:
+            volume = bcolz.open(self.data[set][sample_index], 'r')[:].T  # move from zyx to xyz
+        except:
+            print patient_name
+            raise
 
         # Iterate over input tags and return a dict with the requested tags filled
         for tag in input_keys_to_do:
@@ -142,7 +156,7 @@ class BcolzAllDataLoader(StandardDataLoader):
                 sample[INPUT][tag] = volume
 
             if "pixelspacing" in tags:
-                sample[INPUT][tag] = self.spacings[set][sample_index]  # in mm per pixel
+                sample[INPUT][tag] = self.spacings[set][sample_index][::-1]  # in mm per pixel
 
             if "shape" in tags:
                 sample[INPUT][tag] = volume.shape
@@ -160,14 +174,88 @@ class BcolzAllDataLoader(StandardDataLoader):
         return sample
 
 
+
+# 6% to 28% for nodules 5 to 10 mm,
+slope10 = (0.28-0.06) / (10.-5.)
+offset10 = 0.06 - slope10*5.
+# and 64% to 82% for nodules >20 mm in diameter
+slope30 = (0.82-0.64) / (30.-20.)
+offset30 = 0.64 - slope30*20.
+# For nodules more than 3 cm in diameter, 93% to 97% are malignant
+slope40 = (0.97-0.93) / (40.-30.)
+offset40 = 0.93 - slope40*30.
+
+def diameter_to_prob(diam):
+    # The prevalence of malignancy is 0% to 1% for nodules <5 mm,
+    if diam < 5:
+        p = 0.01*diam/5.
+    elif diam < 10:
+        p = slope10*diam+offset10
+    elif diam < 20:
+        p = (slope10*diam+offset10 + slope30*diam+offset30)/2.
+    elif diam < 30:
+        p = slope30*diam+offset30
+    else:
+        p = slope40 * diam + offset40
+    return np.clip(p ,0.,1.)
+
+
+def test_diameter_to_prob():
+    pnts = [diameter_to_prob(i/100.*40.) for i in range(100)]
+    import matplotlib.pyplot as plt
+    plt.plot(pnts)
+    plt.show()
+
+
 def test_loader():
-    import utils.plt
+    from application.preprocessors.augmentation_3d import Augment3D
+    from application.preprocessors.normalize_scales import DefaultNormalizer
+    nn_input_shape = (128, 128, 64)
+    norm_patch_shape = (340, 340, 320)  # median
+    preprocessors = [
+        Augment3D(
+            tags=["bcolzall:3d"],
+            output_shape=nn_input_shape,
+            norm_patch_shape=norm_patch_shape,
+            augmentation_params={
+                "scale": [1, 1, 1],  # factor
+                "uniform scale": 1,  # factor
+                "rotation": [0, 0, 0],  # degrees
+                "shear": [0, 0, 0],  # deg
+                # rees
+                "translation": [0, 0, 0],  # mm
+                "reflection": [0, 0, 0]},  # Bernoulli p
+            interp_order=1),
+        DefaultNormalizer(tags=["bcolzall:3d"])
+    ]
+
     # paths.ALL_DATA_PATH = "/home/lio/data/dsb3/stage1+luna_bcolz/",
     # paths.SPACINGS_PATH =  "/home/lio/data/dsb3/spacings.pkl.gz",
-    l = BcolzAllDataLoader(multiprocess=False, location="/home/lio/data/dsb3/stage1+luna_bcolz/")
+    l = BcolzAllDataLoader(
+        multiprocess=False,
+        location="/home/lio/data/dsb3/stage1+luna_bcolz/",
+        sets=TRAINING,
+        preprocessors=preprocessors)
     l.prepare()
-    sample = l.load_sample(l.indices[TRAIN][0], ["bcolzall:3d", "pixelspacing"], ["target"])
-    utils.plt.show_animate(sample[INPUT]["bcolzall:3d"], 50)
+
+    chunk_size = 1
+
+    batches = l.generate_batch(
+        chunk_size=chunk_size,
+        required_input={"bcolzall:pixelspacing": (chunk_size, 3), "bcolzall:3d":(chunk_size,)+nn_input_shape},
+        required_output=dict()  # {"luna:segmentation":None, "luna:sample_id":None},
+    )
+
+    # import sklearn.metrics
+    # lbls = l.labels[VALIDATION]
+    # preds = [0.25 for _ in lbls]
+    # print sklearn.metrics.log_loss(lbls, preds)
+
+    # sample = l.load_sample(l.indices[TRAIN][0], ["bcolzall:3d", "pixelspacing"], ["target"])
+    for sample in batches:
+        import utils.plt
+        print sample[INPUT]["bcolzall:3d"].shape, sample[INPUT]["bcolzall:pixelspacing"]
+        utils.plt.show_animate(sample[INPUT]["bcolzall:3d"][0], 50)
 
 
 if __name__ == '__main__':

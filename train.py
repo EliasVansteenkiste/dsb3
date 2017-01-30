@@ -6,6 +6,7 @@ Run with:
 python train.py myconfigfile
 """
 import argparse
+from collections import defaultdict
 from functools import partial
 from itertools import izip
 import cPickle as pickle
@@ -14,7 +15,7 @@ import datetime
 import itertools
 import lasagne
 import time
-from interfaces.data_loader import VALIDATION
+from interfaces.data_loader import VALIDATION, VALID_SAMPLES
 from interfaces.data_loader import TRAINING
 from interfaces.objectives import MAXIMIZE
 from utils.log import print_to_file
@@ -145,6 +146,11 @@ def train_model(expid):
 
     # build the update step for Theano
     updates = config.build_updates(train_loss_theano, all_params, learning_rate)
+
+    if hasattr(config, "print_gradnorm") and config.print_gradnorm:
+        all_grads = theano.grad(train_loss_theano, all_params, disconnected_inputs='warn')
+        grad_norm = T.sqrt(T.sum([(g ** 2).sum() for g in all_grads]) + 1e-9)
+
 
     # Compile the Theano function of your model+objective
     print "Compiling..."
@@ -304,6 +310,9 @@ def train_model(expid):
             losses[TRAINING][loss_name].append(loss)
             print string.rjust(loss_name+":",15), "%.6f" % loss
 
+        if hasattr(config, "print_gradnorm") and config.print_gradnorm:
+            print "gradient norm:", grad_norm
+
         # Now, we will do validation. We do this about every config.epochs_per_validation epochs.
         # We also always validate at the end of every training!
         validate_every = max(int((config.epochs_per_validation * config.training_data.number_of_samples) / (config.batch_size * config.batches_per_chunk)),1)
@@ -331,8 +340,18 @@ def train_model(expid):
                 if dataset_generator.number_of_samples == 0:
                     continue
 
-                chunk_losses = None
-                chunk_labels = None
+                validation_predictions = None
+
+                # Keep the labels of the validation data for later.
+                output_keys_to_store = set()
+                losses_to_store = dict()
+                for key,ob in objectives["validate"].iteritems():
+                    if ob.mean_over_samples:
+                        losses_to_store[key] = None
+                    else:
+                        output_keys_to_store.add(ob.target_key)
+                chunk_labels = {k:None for k in output_keys_to_store}
+                store_network_output = (len(output_keys_to_store)>0)
 
                 # loop over all validation data chunks
                 data_load_time.start()
@@ -345,41 +364,70 @@ def train_model(expid):
                     for key in xs_shared:
                         xs_shared[key].set_value(validation_data["input"][key])
 
-                    # Keep the labels of the validation data for later.
-                    output_keys = set()
-                    for key,ob in objectives["validate"].iteritems():
-                        output_keys.add(ob.target_key)
+                    # store all the output keys required for finding the validation error
+                    for key in output_keys_to_store:
+                        new_data = validation_data["output"][key][:validation_data["valid_samples"]]
 
-                    # quick-fix: use less different objectives on one trainset in validation
-                    assert len(output_keys)==1, "Can only have one target value as validation target variable (TODO: fix this)"
-
-                    new_data = validation_data["output"][output_keys.pop()]
-                    if chunk_labels is None:
-                        chunk_labels = new_data
-                    else:
-                        chunk_labels = np.concatenate((chunk_labels, new_data), axis=0)
+                        if chunk_labels[key] is None:
+                            chunk_labels[key] = new_data
+                        else:
+                            chunk_labels[key] = np.concatenate((chunk_labels[key], new_data), axis=0)
 
                     # loop over the batches of one chunk, and keep the predictions
+                    chunk_predictions = None
                     for b in xrange(num_batches_chunk_eval):
                         gpu_time.start()
                         th_result = iter_predict(b)
                         gpu_time.stop()
-                        resulting_losses = np.stack(th_result[:len(network_outputs)], axis=0)
-                        if chunk_losses is None:
-                            chunk_losses = resulting_losses
+                        resulting_predictions = np.stack(th_result[:len(network_outputs)], axis=0)
+                        assert len(network_outputs)==1, "Multiple outputs not implemented yet"
+                        if chunk_predictions is None:
+                            chunk_predictions = resulting_predictions
                         else:
-                            chunk_losses = np.concatenate((chunk_losses, resulting_losses), axis=1)
+                            chunk_predictions = np.concatenate((chunk_predictions, resulting_predictions), axis=1)
+
+
+                    # Check for NaN's. Panic if there are NaN's during validation.
+                    utils.detect_nans(chunk_predictions, xs_shared, ys_shared, all_params)
+
+                    # add the predictions of this chunk, to the global predictions (if needed)
+                    if chunk_predictions is not None:
+                        chunk_predictions = chunk_predictions[:validation_data[VALID_SAMPLES]]
+                        if store_network_output:
+                            if validation_predictions is None:
+                                validation_predictions = chunk_predictions
+                            else:
+                                validation_predictions = np.concatenate((validation_predictions, chunk_predictions), axis=1)
+
+                    # if you can calculate the losses per chunk, and take the mean afterwards, do that.
+                    for key,ob in objectives["validate"].iteritems():
+                        if ob.mean_over_samples:
+                            new_losses = []
+                            for i in xrange(validation_data[VALID_SAMPLES]):
+                                loss = ob.get_loss_from_lists(
+                                    chunk_predictions[0,i:i+1],
+                                    validation_data["output"][ob.target_key][i:i+1]
+                                )
+                                new_losses.append(loss)
+
+                            new_losses = np.array(new_losses)
+                            if losses_to_store[key] is None:
+                                losses_to_store[key] = new_losses
+                            else:
+                                losses_to_store[key] = np.concatenate((losses_to_store[key], new_losses), axis=0)
+
+
                     data_load_time.start()
                 data_load_time.stop()
 
-                # Check for NaN's. Panic if there are NaN's during validation.
-                utils.detect_nans(chunk_losses, xs_shared, ys_shared, all_params)
-
                 # Compare the predictions with the actual labels and print them.
                 for key,ob in objectives["validate"].iteritems():
-                    loss = ob.get_loss_from_lists(chunk_losses[0,:], chunk_labels)
-                    losses[VALIDATION][dataset_name][loss_name].append(loss)
-                    print string.rjust(loss_name+":",17), "%.6f" % loss
+                    if ob.mean_over_samples:
+                        loss = np.mean(losses_to_store[key])
+                    else:
+                        loss = ob.get_loss_from_lists(validation_predictions[0,:], chunk_labels[ob.target_key])
+                    losses[VALIDATION][dataset_name][key].append(loss)
+                    print string.rjust(key+":",17), "%.6f" % loss
                 print
 
         # Good, we did one chunk. Let us check how much time this took us. Print out some stats.

@@ -9,6 +9,7 @@ from interfaces.data_loader import INPUT, OUTPUT
 
 DEFAULT_AUGMENTATION_PARAMETERS = {
     "scale": [1, 1, 1],  # factor
+    "uniform scale": 1, # factor, same scale in all directions
     "rotation": [0, 0, 0],  # degrees
     "shear": [0, 0, 0],  # degrees
     "translation": [0, 0, 0],  # mm
@@ -56,13 +57,22 @@ def augment_3d(volume, pixel_spacing, output_shape, norm_patch_shape, augment_p,
 
 
 def sample_augmentation_parameters(augm):
-    augm_ = dict(augm)
-    augm_["scale"] = [log_uniform(v) for v in augm["scale"]]
-    augm_["rotation"] = [uniform(v) for v in augm["rotation"]]
-    augm_["shear"] = [uniform(v) for v in augm["shear"]]
-    augm_["translation"] = [uniform(v) for v in augm["translation"]]
-    augm_["reflection"] = [bernoulli(v) for v in augm["reflection"]]
-    return augm_
+    new_augm = dict(DEFAULT_AUGMENTATION_PARAMETERS)
+    if "scale" in augm:
+        new_augm["scale"] = [log_uniform(v) for v in augm["scale"]]
+    if "uniform scale" in augm:
+        uscale = log_uniform(augm["uniform scale"])
+        new_augm["scale"] = [v*uscale for v in new_augm["scale"]]
+    if "rotation" in augm:
+        new_augm["rotation"] = [uniform(v) for v in augm["rotation"]]
+    if "shear" in augm:
+        new_augm["shear"] = [uniform(v) for v in augm["shear"]]
+    if "translation" in augm:
+        new_augm["translation"] = [uniform(v) for v in augm["translation"]]
+    if "reflection" in augm:
+        new_augm["reflection"] = [bernoulli(v) for v in augm["reflection"]]
+    del new_augm["uniform scale"]
+    return new_augm
 
 
 class Augment3D(BasePreprocessor):
