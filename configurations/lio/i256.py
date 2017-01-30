@@ -1,4 +1,3 @@
-from application.preprocessors.in_the_middle import PutInTheMiddle
 from configurations.default import *
 
 import lasagne
@@ -8,17 +7,14 @@ import numpy as np
 from functools import partial
 
 from application.objectives import CrossEntropyObjective
-#from application.data import PatientDataLoader
 from application.bcolz_all_data import BcolzAllDataLoader
 from interfaces.data_loader import VALIDATION, TRAINING, TEST, TRAIN
 from application.preprocessors.augmentation_3d import Augment3D
 from application.preprocessors.normalize_scales import DefaultNormalizer
-from deep_learning.deep_learning_layers import ConvolutionLayer, PoolLayer
 
 #####################
 #   running speed   #
 #####################
-from interfaces.preprocess import NormalizeInput
 
 "This is the number of samples in each batch"
 batch_size = 4
