@@ -8,8 +8,14 @@ MINIMIZE = "minimize"
 MAXIMIZE = "maximize"
 
 class TargetVarDictObjective(object):
-
+    """
+    This is the general objective, which takes an output of the network and pushes it to a certain label
+    """
+    # Is the optimal high or low? Which way to optimize?
     optimize = MINIMIZE
+    # Can you take the loss per sample, and average later? Or is this like AUC, where you need all outputs and labels?
+    mean_over_samples = True
+
     def __init__(self, *args, **kwargs):
         # create target vars, but only if super class doesn't have them
         try:
