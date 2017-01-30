@@ -17,7 +17,7 @@ from application.preprocessors.normalize_scales import DefaultNormalizer
 #####################
 
 "This is the number of samples in each batch"
-batch_size = 16
+batch_size = 32
 "This is the number of batches in each chunk. Computation speeds up if this is as big as possible." \
 "However, when too big, the GPU will run out of memory"
 batches_per_chunk = 1
