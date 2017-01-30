@@ -8,5 +8,5 @@ print len(files)
 
 for f in files:
     print f
-    a = bcolz.open(f)[:]
+    a = bcolz.open(f, mode="r")[:]
     print a.shape, a.dtype
