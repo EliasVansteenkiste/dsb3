@@ -129,7 +129,7 @@ def build_objectives(interface_layers):
         input_layers=interface_layers["outputs"],
         target_name="luna",
     )
-
+    
     obj_dice = SoerensonDiceCoefficientObjective(
         smooth=1e-5,
         input_layers=interface_layers["outputs"],

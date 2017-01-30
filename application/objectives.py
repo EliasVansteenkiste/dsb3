@@ -52,11 +52,11 @@ class CrossEntropyObjective(TargetVarDictObjective):
 
 class VolumeSegmentationObjective(TargetVarDictObjective):
 
-    def __init__(self, input_layers, target_name, *args, **kwargs):
-        super(VolumeSegmentationObjective, self).__init__(input_layers, *args, **kwargs)
-        self.target_key = target_name + ":segmentation"
+    def __init__(self, input_layer, target_name, *args, **kwargs):
+        super(VolumeSegmentationObjective, self).__init__(input_layer, *args, **kwargs)
+        self.target_key = target_name
         self.target_vars[self.target_key]  = T.ftensor4("target_segmentation")
-        self.prediction = input_layers["predicted_segmentation"]
+        self.prediction = input_layer
 
     def get_loss(self, *args, **kwargs):
         raise NotImplementedError()

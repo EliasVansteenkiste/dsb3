@@ -151,6 +151,9 @@ class LunaDataLoader(StandardDataLoader):
             if "segmentation" in tags:
                 sample[OUTPUT][tag] =  self.generate_mask(self.labels[set][sample_index], patientdata)
 
+            if "gaussian" in tags:
+                sample[OUTPUT][tag] =  self.generate_gaussian_mask(self.labels[set][sample_index], patientdata)
+
         return sample
 
 
@@ -195,6 +198,22 @@ class LunaDataLoader(StandardDataLoader):
             xt, yt, zt = self.world_to_voxel_coordinates(position, origin, spacing)
             distance2 = ((spacing[0]*(x-xt))**2 + (spacing[1]*(y-yt))**2 + (spacing[2]*(z-zt))**2)
             mask[(distance2 <= (diameter_in_mm/2.0)**2)] = 1
+        return mask
+
+
+    def generate_gaussian_mask(self, labels, patient_data):
+        origin, spacing = patient_data["origin"], patient_data["spacing"]
+        mask = np.zeros(shape=patient_data["pixeldata"].shape, dtype='float32')
+        x,y,z = np.ogrid[:mask.shape[0],:mask.shape[1],:mask.shape[2]]
+
+        for label in labels:
+            position = np.array(label[:3])
+            diameter_in_mm = label[3]
+            xt, yt, zt = self.world_to_voxel_coordinates(position, origin, spacing)
+            distance2 = ((spacing[0]*(x-xt))**2 + (spacing[1]*(y-yt))**2 + (spacing[2]*(z-zt))**2)
+            gaussian = np.exp(- distance2 / (2*diameter_in_mm**2))
+            mask += gaussian
+        mask = mask/np.max(mask)
         return mask
 
 

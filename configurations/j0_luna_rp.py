@@ -120,40 +120,40 @@ test_data = None
 def build_objectives(interface_layers):
     obj_weighted = WeightedSegmentationCrossEntropyObjective(
         classweights=[10000, 1],
-        input_layers=interface_layers["outputs"],
-        target_name="luna",
+        input_layer=interface_layers["outputs"]["predicted_segmentation"],
+        target_name="luna:gaussian",
     )
 
     obj_jaccard = JaccardIndexObjective(
         smooth=1e-5,
-        input_layers=interface_layers["outputs"],
-        target_name="luna",
+        input_layer=interface_layers["outputs"]["predicted_segmentation"],
+        target_name="luna:gaussian",
     )
 
     obj_dice = SoerensonDiceCoefficientObjective(
         smooth=1e-5,
-        input_layers=interface_layers["outputs"],
-        target_name="luna",
+        input_layer=interface_layers["outputs"]["predicted_segmentation"],
+        target_name="luna:gaussian",
     )
 
     obj_precision = PrecisionObjective(
         smooth=1e-5,
-        input_layers=interface_layers["outputs"],
-        target_name="luna",
+        input_layer=interface_layers["outputs"]["predicted_segmentation"],
+        target_name="luna:gaussian",
     )
 
     obj_recall = RecallObjective(
         smooth=1e-5,
-        input_layers=interface_layers["outputs"],
-        target_name="luna",
+        input_layer=interface_layers["outputs"]["predicted_segmentation"],
+        target_name="luna:gaussian",
     )
 
     obj_custom = ClippedFObjective(
         smooth=1e-5,
         recall_weight = 1.0001,
         precision_weight = 3.0,
-        input_layers=interface_layers["outputs"],
-        target_name="luna",
+        input_layer=interface_layers["outputs"]["predicted_segmentation"],
+        target_name="luna:gaussian",
     )
 
     return {
@@ -207,35 +207,8 @@ def build_model():
 
     net['contr_2_1'] = conv3d(net['pool1'], base_n_filters * 2)
     net['contr_2_2'] = conv3d(net['contr_2_1'], base_n_filters * 2)
-    net['pool2'] = max_pool3d(net['contr_2_2'])
 
-    net['contr_3_1'] = conv3d(net['pool2'], base_n_filters * 4)
-    net['contr_3_2'] = conv3d(net['contr_3_1'], base_n_filters * 4)
-    net['pool3'] = max_pool3d(net['contr_3_2'])
-
-    net['contr_4_1'] = conv3d(net['pool3'], base_n_filters * 8)
-    net['contr_4_2'] = conv3d(net['contr_4_1'], base_n_filters * 8)
-    l = net['pool4'] = max_pool3d(net['contr_4_2'])
-
-    net['encode_1'] = conv3d(l, base_n_filters * 16)
-    net['encode_2'] = conv3d(net['encode_1'], base_n_filters * 16)
-    net['upscale1'] = Upscale3DLayer(net['encode_2'], 2)
-
-    net['concat1'] = lasagne.layers.ConcatLayer([net['upscale1'], net['contr_4_2']],
-                                           cropping=(None, None, "center", "center", "center"))
-    net['expand_1_1'] = conv3d(net['concat1'], base_n_filters * 8)
-    net['expand_1_2'] = conv3d(net['expand_1_1'], base_n_filters * 8)
-    net['upscale2'] = Upscale3DLayer(net['expand_1_2'], 2)
-
-    net['concat2'] = lasagne.layers.ConcatLayer([net['upscale2'], net['contr_3_2']],
-                                           cropping=(None, None, "center", "center", "center"))
-    net['expand_2_1'] = conv3d(net['concat2'], base_n_filters * 4)
-    net['expand_2_2'] = conv3d(net['expand_2_1'], base_n_filters * 4)
-    net['upscale3'] = Upscale3DLayer(net['expand_2_2'], 2)
-
-    net['concat3'] = lasagne.layers.ConcatLayer([net['upscale3'], net['contr_2_2']],
-                                           cropping=(None, None, "center", "center", "center"))
-    net['expand_3_1'] = conv3d(net['concat3'], base_n_filters * 2)
+    net['expand_3_1'] = conv3d(net['contr_2_2'], base_n_filters * 2)
     net['expand_3_2'] = conv3d(net['expand_3_1'], base_n_filters * 2)
     net['upscale4'] = Upscale3DLayer(net['expand_3_2'], 2)
 
