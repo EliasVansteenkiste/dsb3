@@ -32,6 +32,7 @@ save_every_chunks = 10
 
 multiprocessing_on = True
 print_gradnorm = True
+print_score_every_chunk = True
 
 
 #####################
