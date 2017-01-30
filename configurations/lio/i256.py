@@ -168,6 +168,11 @@ dense = partial(lasagne.layers.DenseLayer,
     b=lasagne.init.Constant(0.0),
     nonlinearity=lasagne.nonlinearities.rectify)
 
+nin = partial(lasagne.layers.NINLayer,
+    W=lasagne.init.Orthogonal('relu'),
+    b=lasagne.init.Constant(0.0),
+    nonlinearity=lasagne.nonlinearities.rectify)
+
 drop = lasagne.layers.DropoutLayer
 
 bn = lasagne.layers.batch_norm
@@ -181,33 +186,37 @@ def build_model():
 
     l = lasagne.layers.DimshuffleLayer(l_in, pattern=(0, 'x', 1, 2, 3))
 
-    n = 16
+    n = 8
     l = conv3d(l, n, filter_size=7, stride=2)
-    # l = max_pool3d(l)
 
     n *= 2
-    l = bn(conv3d(l, n))
-    l = bn(conv3d(l, n))
+    l = conv3d(l, n, filter_size=5, stride=2)
+
+    n *= 2
+    l = conv3d(l, n)
+    l = conv3d(l, n)
     l = max_pool3d(l)
 
     n *= 2
-    l = bn(conv3d(l, n))
-    l = bn(conv3d(l, n))
+    l = conv3d(l, n)
+    l = conv3d(l, n)
     l = max_pool3d(l)
 
     n *= 2
-    l = bn(conv3d(l, n))
-    l = bn(conv3d(l, n))
+    l = conv3d(l, n)
+    l = conv3d(l, n)
     l = max_pool3d(l)
 
     n *= 2
-    l = bn(conv3d(l, n))
-    l = bn(conv3d(l, n))
+    l = conv3d(l, n)
+    l = conv3d(l, n)
     l = max_pool3d(l)
 
+    # l = nin(l, 128)
+
     n *= 2
-    l = bn(dense(drop(l), n))
-    l = bn(dense(drop(l), n))
+    l = dense(drop(l), n)
+    l = dense(drop(l), n)
 
     l = lasagne.layers.DenseLayer(l,
                                  num_units=1,
