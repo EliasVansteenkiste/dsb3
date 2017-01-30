@@ -453,12 +453,12 @@ def train_model(expid):
             # Shit happens
             print "  This will take really long, like REALLY long."
         if hasattr(config, "print_score_every_chunk") and config.print_score_every_chunk\
-                and len(losses[VALIDATION]["training set"]) > 0:
+                and len(losses[VALIDATION]["training set"]["objective"]) > 0:
             print "  train: best %3f latest %3f, valid: best %3f latest %3f " % (
-                np.min(losses[VALIDATION]["training set"]),
-                losses[VALIDATION]["training set"][-1],
-                np.min(losses[VALIDATION]["validation set"]),
-                losses[VALIDATION]["validation set"][-1]
+                np.min(losses[VALIDATION]["training set"]["objective"]),
+                losses[VALIDATION]["training set"]["objective"][-1],
+                np.min(losses[VALIDATION]["validation set"]["objective"]),
+                losses[VALIDATION]["validation set"]["objective"][-1]
             )
 
         # Save the data every config.save_every_chunks chunks. Or at the end of the training.
