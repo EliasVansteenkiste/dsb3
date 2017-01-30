@@ -156,7 +156,7 @@ class BcolzAllDataLoader(StandardDataLoader):
                 sample[INPUT][tag] = volume
 
             if "pixelspacing" in tags:
-                sample[INPUT][tag] = self.spacings[set][sample_index]  # in mm per pixel
+                sample[INPUT][tag] = self.spacings[set][sample_index][::-1]  # in mm per pixel
 
             if "shape" in tags:
                 sample[INPUT][tag] = volume.shape
@@ -200,36 +200,62 @@ def diameter_to_prob(diam):
     return np.clip(p ,0.,1.)
 
 
-def test_loader():
-    # pnts = [diameter_to_prob(i/100.*40.) for i in range(100)]
-    # import matplotlib.pyplot as plt
-    # plt.plot(pnts)
-    # plt.show()
+def test_diameter_to_prob():
+    pnts = [diameter_to_prob(i/100.*40.) for i in range(100)]
+    import matplotlib.pyplot as plt
+    plt.plot(pnts)
+    plt.show()
 
-    import utils.plt
+
+def test_loader():
+    from application.preprocessors.augmentation_3d import Augment3D
+    from application.preprocessors.normalize_scales import DefaultNormalizer
+    nn_input_shape = (128, 128, 64)
+    norm_patch_shape = (340, 340, 320)  # median
+    preprocessors = [
+        Augment3D(
+            tags=["bcolzall:3d"],
+            output_shape=nn_input_shape,
+            norm_patch_shape=norm_patch_shape,
+            augmentation_params={
+                "scale": [1, 1, 1],  # factor
+                "uniform scale": 1,  # factor
+                "rotation": [0, 0, 0],  # degrees
+                "shear": [0, 0, 0],  # deg
+                # rees
+                "translation": [0, 0, 0],  # mm
+                "reflection": [0, 0, 0]},  # Bernoulli p
+            interp_order=1),
+        DefaultNormalizer(tags=["bcolzall:3d"])
+    ]
+
     # paths.ALL_DATA_PATH = "/home/lio/data/dsb3/stage1+luna_bcolz/",
     # paths.SPACINGS_PATH =  "/home/lio/data/dsb3/spacings.pkl.gz",
-    l = BcolzAllDataLoader(multiprocess=False)#, location="/home/lio/data/dsb3/stage1+luna_bcolz/")
+    l = BcolzAllDataLoader(
+        multiprocess=False,
+        location="/home/lio/data/dsb3/stage1+luna_bcolz/",
+        sets=TRAINING,
+        preprocessors=preprocessors)
     l.prepare()
 
-    import sklearn.metrics
+    chunk_size = 1
 
-    lbls = l.labels[VALIDATION]
-    print lbls
-    preds = [0.25 for _ in lbls]
+    batches = l.generate_batch(
+        chunk_size=chunk_size,
+        required_input={"bcolzall:pixelspacing": (chunk_size, 3), "bcolzall:3d":(chunk_size,)+nn_input_shape},
+        required_output=dict()  # {"luna:segmentation":None, "luna:sample_id":None},
+    )
 
-    print sklearn.metrics.log_loss(lbls, preds)
-
-
-
-
-
-
-
-
+    # import sklearn.metrics
+    # lbls = l.labels[VALIDATION]
+    # preds = [0.25 for _ in lbls]
+    # print sklearn.metrics.log_loss(lbls, preds)
 
     # sample = l.load_sample(l.indices[TRAIN][0], ["bcolzall:3d", "pixelspacing"], ["target"])
-    # utils.plt.show_animate(sample[INPUT]["bcolzall:3d"], 50)
+    for sample in batches:
+        import utils.plt
+        print sample[INPUT]["bcolzall:3d"].shape, sample[INPUT]["bcolzall:pixelspacing"]
+        utils.plt.show_animate(sample[INPUT]["bcolzall:3d"][0], 50)
 
 
 if __name__ == '__main__':
