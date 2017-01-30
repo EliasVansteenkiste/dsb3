@@ -26,8 +26,11 @@ class BcolzAllDataLoader(StandardDataLoader):
 
     datasets = [TRAIN, VALIDATION, TEST]
 
-    def __init__(self, location=paths.ALL_DATA_PATH, *args, **kwargs):
+    def __init__(self,
+                 use_luna=False,
+                 location=paths.ALL_DATA_PATH, *args, **kwargs):
         super(BcolzAllDataLoader, self).__init__(location=location, *args, **kwargs)
+        self.use_luna = use_luna
 
     def prepare(self):
         """
@@ -61,15 +64,10 @@ class BcolzAllDataLoader(StandardDataLoader):
         ids_per_label = [[patient_id for patient_id,label in labels.iteritems() if label==l] for l in [0,1]]
         validation_patients = sum([random.sample(sorted(ids), int(VALIDATION_SET_SIZE*len(ids))) for ids in ids_per_label],[])
 
-        # luna_labels = {}
-        # with open(paths.LUNA_LABELS_PATH, "rb") as csvfile:
-        #     reader = csv.reader(csvfile, delimiter=',', quotechar='|')
-        #     next(reader)  # skip the header
-        #     for row in reader:
-        #         luna_labels[str(row[0])] = diameter_to_prob(float(row[4]))
-
-        # print len(luna_labels)
-        # labels.update(luna_labels)
+        if self.use_luna:
+            luna_labels = load_luna_labels(patients)
+            print len(luna_labels), "luna labels added"
+            labels.update(luna_labels)
 
         # make the static data empty
         for s in self.datasets:
@@ -174,13 +172,44 @@ class BcolzAllDataLoader(StandardDataLoader):
         return sample
 
 
+def load_luna_labels(patients):
+    luna_labels = {}
+    patient_ids = set([str(p.split(path.sep)[-2]) for p in patients])
+    with open(paths.LUNA_LABELS_PATH, "rb") as csvfile:
+        reader = csv.reader(csvfile, delimiter=',', quotechar='|')
+        next(reader)  # skip the header
+        for row in reader:
+            name = str(row[0])
+            if name not in patient_ids: continue
+            if name not in luna_labels:
+                luna_labels[name] = [diameter_to_prob(float(row[4]))]
+            else:
+                luna_labels[name].append(diameter_to_prob(float(row[4])))
+    for name, probs in luna_labels.items():
+        probs = np.asarray(probs)
+        prob = 1. - np.prod(1. - probs)  # nodules assumed independent
+        luna_labels[name] = prob
+
+
+
+    return luna_labels
+
 
 # 6% to 28% for nodules 5 to 10 mm,
-slope10 = (0.28-0.06) / (10.-5.)
-offset10 = 0.06 - slope10*5.
+prob5 = (0.01+0.06)/2.
+slope10 = (0.28-prob5) / (10.-5.)
+offset10 = prob5 - slope10*5.
+
+slope20 = (0.64-0.28) / (20.-10.)
+offset20 = 0.28 - slope20*10.
+
 # and 64% to 82% for nodules >20 mm in diameter
-slope30 = (0.82-0.64) / (30.-20.)
-offset30 = 0.64 - slope30*20.
+slope25 = (0.82-0.64) / (25.-20.)
+offset25 = 0.64 - slope25*20.
+
+slope30 = (0.93-0.82) / (30.-25.)
+offset30 = 0.82 - slope30*25.
+
 # For nodules more than 3 cm in diameter, 93% to 97% are malignant
 slope40 = (0.97-0.93) / (40.-30.)
 offset40 = 0.93 - slope40*30.
@@ -188,11 +217,13 @@ offset40 = 0.93 - slope40*30.
 def diameter_to_prob(diam):
     # The prevalence of malignancy is 0% to 1% for nodules <5 mm,
     if diam < 5:
-        p = 0.01*diam/5.
+        p = prob5*diam/5.
     elif diam < 10:
         p = slope10*diam+offset10
     elif diam < 20:
-        p = (slope10*diam+offset10 + slope30*diam+offset30)/2.
+        p = slope20*diam+offset20
+    elif diam < 25:
+        p = slope25*diam+offset25
     elif diam < 30:
         p = slope30*diam+offset30
     else:
@@ -201,10 +232,36 @@ def diameter_to_prob(diam):
 
 
 def test_diameter_to_prob():
-    pnts = [diameter_to_prob(i/100.*40.) for i in range(100)]
+    n = 1000
+    xs = [i/float(n)*40. for i in range(n)]
+    pnts = [diameter_to_prob(x) for x in xs]
     import matplotlib.pyplot as plt
-    plt.plot(pnts)
+    plt.xlabel("diameter (mm)")
+    plt.ylabel("cancer prob")
+    plt.plot(xs, pnts)
     plt.show()
+
+    patients = sorted(glob.glob(paths.ALL_DATA_PATH + '/*/'))
+    lbls = load_luna_labels(patients)
+
+    for name, prob in lbls.items(): print name, prob
+
+
+def test_diagnosis():
+    patients = sorted(glob.glob(paths.ALL_DATA_PATH + '/*/'))
+    patient_ids = set([str(p.split(path.sep)[-2]) for p in patients])
+    print len(patient_ids)
+    lbls = {}
+    with open(paths.DIAGNOSIS_PATH, "rb") as csvfile:
+        reader = csv.reader(csvfile, delimiter=',')
+        next(reader)  # skip the header
+        for row in reader:
+            name = str(row[0])
+            if name not in patient_ids:
+                print name
+            else:
+                lbls[name] = int(row[1])
+    print len(lbls), lbls
 
 
 def test_loader():
@@ -218,12 +275,11 @@ def test_loader():
             output_shape=nn_input_shape,
             norm_patch_shape=norm_patch_shape,
             augmentation_params={
-                "scale": [1, 1, 1],  # factor
-                "uniform scale": 1,  # factor
-                "rotation": [0, 0, 0],  # degrees
-                "shear": [0, 0, 0],  # deg
-                # rees
-                "translation": [0, 0, 0],  # mm
+                "scale": [1.05, 1.05, 1.05],  # factor
+                "uniform scale": 1.2,  # factor
+                "rotation": [5, 5, 5],  # degrees
+                "shear": [3, 3, 3],  # deg
+                "translation": [50, 50, 50],  # mm
                 "reflection": [0, 0, 0]},  # Bernoulli p
             interp_order=1),
         DefaultNormalizer(tags=["bcolzall:3d"])
@@ -255,8 +311,10 @@ def test_loader():
     for sample in batches:
         import utils.plt
         print sample[INPUT]["bcolzall:3d"].shape, sample[INPUT]["bcolzall:pixelspacing"]
-        utils.plt.show_animate(sample[INPUT]["bcolzall:3d"][0], 50)
+        utils.plt.show_animate(sample[INPUT]["bcolzall:3d"][0], 200)
 
 
 if __name__ == '__main__':
     test_loader()
+    # test_diameter_to_prob()
+    # test_diagnosis()
