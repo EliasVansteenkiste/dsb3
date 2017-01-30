@@ -133,6 +133,12 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
         print chunk_idx, loss
         tmp_losses_train.append(loss)
 
+        pp = iter_get_predictions(b)
+        tt = iter_get_targets(b)
+        ii = iter_get_inputs(b)
+        plot_2d_3dimg3(ii[0, 0], tt[0, 0], pp[0, 0], 0, str(chunk_idx) + str(id_train), img_dir=logs_dir)
+        print 'Saved images'
+
     if ((chunk_idx + 1) % config().validate_every) == 0:
         print
         print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks)

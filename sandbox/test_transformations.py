@@ -1,3 +1,6 @@
+import matplotlib
+
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import pathfinder
@@ -6,6 +9,9 @@ import utils_lung
 import os
 import data_transforms
 from configuration import set_configuration, config
+import warnings
+
+warnings.simplefilter('ignore')
 
 set_configuration('test_config')
 
@@ -26,9 +32,32 @@ def plot_2d_3dimg(image3d, mask3d, axis, pid, img_dir=None, idx=None):
         ax[0, 0].imshow(image3d[:, :, idx], cmap=plt.cm.gray)
         ax[0, 1].imshow(mask3d[:, :, idx], cmap=plt.cm.gray)
         ax[1, 0].imshow(image3d[:, :, idx] * mask3d[:, :, idx], cmap=plt.cm.gray)
-    plt.show()
+    # plt.show()
     if img_dir is not None:
-        fig.savefig(img_dir + '/%s.png' % pid, bbox_inches='tight')
+        fig.savefig(img_dir + '/%s%s.png' % (pid, axis), bbox_inches='tight')
+    fig.clf()
+    plt.close('all')
+
+
+def plot_2d_3dimg3(input, mask3d, prediction, axis, pid, img_dir=None, idx=None):
+    fig, ax = plt.subplots(2, 2, figsize=[8, 8])
+    fig.canvas.set_window_title(pid)
+    idx = input.shape[axis] / 2 if idx is None else idx
+    if axis == 0:  # sax
+        ax[0, 0].imshow(prediction[idx, :, :], cmap=plt.cm.gray)
+        ax[1, 0].imshow(input[idx, :, :], cmap=plt.cm.gray)
+        ax[0, 1].imshow(mask3d[idx, :, :], cmap=plt.cm.gray)
+    if axis == 1:  # 2 lungs
+        ax[0, 0].imshow(prediction[:, idx, :], cmap=plt.cm.gray)
+        ax[1, 0].imshow(input[:, idx, :], cmap=plt.cm.gray)
+        ax[0, 1].imshow(mask3d[:, idx, :], cmap=plt.cm.gray)
+    if axis == 2:  # side view
+        ax[0, 0].imshow(prediction[:, :, idx], cmap=plt.cm.gray)
+        ax[1, 0].imshow(input[:, :, idx], cmap=plt.cm.gray)
+        ax[0, 1].imshow(mask3d[:, :, idx], cmap=plt.cm.gray)
+    # plt.show()
+    if img_dir is not None:
+        fig.savefig(img_dir + '/%s%s.png' % (pid, axis), bbox_inches='tight')
     fig.clf()
     plt.close('all')
 
@@ -63,7 +92,7 @@ def plot_2d_4(img, img_prev, img_next, mask, pid, img_dir):
 def test1():
     image_dir = utils.get_dir_path('analysis', pathfinder.METADATA_PATH)
     image_dir = image_dir + '/test_luna/'
-    utils.automakedir(image_dir)
+    utils.auto_make_dir(image_dir)
 
     id2zyxd = utils_lung.read_luna_labels(pathfinder.LUNA_LABELS_PATH)
 
@@ -103,36 +132,44 @@ def test1():
 def test_luna3d():
     image_dir = utils.get_dir_path('analysis', pathfinder.METADATA_PATH)
     image_dir = image_dir + '/test_luna/'
-    utils.automakedir(image_dir)
+    utils.auto_make_dir(image_dir)
 
     id2zyxd = utils_lung.read_luna_labels(pathfinder.LUNA_LABELS_PATH)
 
     luna_data_paths = utils_lung.get_patient_data_paths(pathfinder.LUNA_DATA_PATH)
     luna_data_paths = [p for p in luna_data_paths if '.mhd' in p]
 
-    # luna_data_paths = [pathfinder.LUNA_DATA_PATH + '/1.3.6.1.4.1.14519.5.2.1.6279.6001.249530219848512542668813996730.mhd']
+    # luna_data_paths = [pathfinder.LUNA_DATA_PATH + '/1.3.6.1.4.1.14519.5.2.1.6279.6001.223098610241551815995595311693.mhd']
+    # luna_data_paths = [pathfinder.LUNA_DATA_PATH + '/1.3.6.1.4.1.14519.5.2.1.6279.6001.202811684116768680758082619196.mhd']
+    # luna_data_paths = [pathfinder.LUNA_DATA_PATH + '/1.3.6.1.4.1.14519.5.2.1.6279.6001.174168737938619557573021395302.mhd']
+    luna_data_paths = [
+        pathfinder.LUNA_DATA_PATH + '/1.3.6.1.4.1.14519.5.2.1.6279.6001.287966244644280690737019247886.mhd']
     for k, p in enumerate(luna_data_paths):
         img, origin, pixel_spacing = utils_lung.read_mhd(p)
-        img = data_transforms.hu2normHU(img)
         id = os.path.basename(p).replace('.mhd', '')
         print id
 
         annotations = id2zyxd[id]
 
-        img_out, annotations_out = data_transforms.transform_scan3d(img,
-                                                                    pixel_spacing=pixel_spacing,
-                                                                    p_transform=config().p_transform,
-                                                                    p_transform_augment=None,
-                                                                    # config().p_transform_augment,
-                                                                    luna_annotations=annotations,
-                                                                    luna_origin=origin)
+        _, annotations_out = data_transforms.transform_scan3d(img,
+                                                              pixel_spacing=pixel_spacing,
+                                                              p_transform=config().p_transform,
+                                                              p_transform_augment=None,
+                                                              # config().p_transform_augment,
+                                                              luna_annotations=annotations,
+                                                              luna_origin=origin)
 
-        mask = data_transforms.make_3d_mask_from_annotations(img_out.shape, annotations_out, shape='sphere')
+        img_out, mask = config().data_prep_function_test(img,
+                                                         pixel_spacing=pixel_spacing,
+                                                         luna_annotations=annotations,
+                                                         luna_origin=origin,
+                                                         )
 
         plot_2d_3dimg(img_out, mask, 0, id)
         plot_2d_3dimg(img_out, mask, 1, id)
         plot_2d_3dimg(img_out, mask, 2, id)
 
+        mask[mask == 0.] = 0.1
         for zyxd in annotations_out:
             plot_2d_3dimg(img_out, mask, 0, id, idx=zyxd[0])
             plot_2d_3dimg(img_out, mask, 1, id, idx=zyxd[1])
@@ -175,7 +212,7 @@ def count_proportion():
 def test_kaggle3d():
     image_dir = utils.get_dir_path('analysis', pathfinder.METADATA_PATH)
     image_dir = image_dir + '/test_1/'
-    utils.automakedir(image_dir)
+    utils.auto_make_dir(image_dir)
 
     patient_data_paths = utils_lung.get_patient_data_paths(pathfinder.DATA_PATH)
     print len(patient_data_paths)
@@ -221,7 +258,53 @@ def test_kaggle3d():
         # plot_2d_3dimg(img_out, img_out, axis=2, pid=pid + 'x', img_dir=image_dir)
 
 
+def test_luna_patches_3d():
+    image_dir = utils.get_dir_path('analysis', pathfinder.METADATA_PATH)
+    image_dir = image_dir + '/test_luna/'
+    utils.auto_make_dir(image_dir)
+
+    id2zyxd = utils_lung.read_luna_labels(pathfinder.LUNA_LABELS_PATH)
+
+    luna_data_paths = utils_lung.get_patient_data_paths(pathfinder.LUNA_DATA_PATH)
+    luna_data_paths = [p for p in luna_data_paths if '.mhd' in p]
+
+    luna_data_paths = [
+        pathfinder.LUNA_DATA_PATH + '/1.3.6.1.4.1.14519.5.2.1.6279.6001.287966244644280690737019247886.mhd']
+    for k, p in enumerate(luna_data_paths):
+        img, origin, pixel_spacing = utils_lung.read_mhd(p)
+        # img = data_transforms.hu2normHU(img)
+        id = os.path.basename(p).replace('.mhd', '')
+        print id
+
+        annotations = id2zyxd[id]
+
+        for zyxd in annotations:
+            img_out, patch_center_out, annotations_out = data_transforms.transform_patch3d(img,
+                                                                                           pixel_spacing=pixel_spacing,
+                                                                                           p_transform=config().p_transform,
+                                                                                           p_transform_augment=config().p_transform_augment,
+                                                                                           patch_center=zyxd,
+                                                                                           luna_annotations=annotations,
+                                                                                           luna_origin=origin)
+            img_out, mask = config().data_prep_function_train(img,
+                                                              pixel_spacing=pixel_spacing,
+                                                              p_transform=config().p_transform,
+                                                              p_transform_augment=config().p_transform_augment,
+                                                              patch_center=zyxd,
+                                                              luna_annotations=annotations,
+                                                              luna_origin=origin)
+            print patch_center_out
+            # print annotations_out
+            # mask = data_transforms.make_3d_mask_from_annotations(img_out.shape, annotations_out, 'cube')
+            mask[mask == 0] = 0.1
+            plot_2d_3dimg(img_out, mask, 0, id, idx=patch_center_out[0])
+            plot_2d_3dimg(img_out, mask, 1, id, idx=patch_center_out[1])
+            plot_2d_3dimg(img_out, mask, 2, id, idx=patch_center_out[2])
+            print '-------------------------'
+
+
 if __name__ == '__main__':
     # test_kaggle3d()
-    test_luna3d()
+    # test_luna3d()
+    test_luna_patches_3d()
     # count_proportion()

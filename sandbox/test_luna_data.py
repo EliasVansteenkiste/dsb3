@@ -17,18 +17,6 @@ def make_circular_mask(img_shape, roi_center, roi_radii):
     return mask
 
 
-def resample(image, spacing, new_spacing=[1, 1]):
-    # Determine current pixel spacing
-    spacing = np.array(spacing)
-    resize_factor = spacing / new_spacing
-    new_real_shape = image.shape * resize_factor
-    new_shape = np.round(new_real_shape)
-    real_resize_factor = new_shape / image.shape
-    new_spacing = spacing / real_resize_factor
-    image = scipy.ndimage.interpolation.zoom(image, real_resize_factor)
-    return image, new_spacing
-
-
 def plot_2d(img, mask, pid, img_dir):
     # fig = plt.figure()
     fig, ax = plt.subplots(2, 2, figsize=[8, 8])
@@ -45,7 +33,7 @@ def plot_2d(img, mask, pid, img_dir):
 def test1():
     image_dir = utils.get_dir_path('analysis', pathfinder.METADATA_PATH)
     image_dir = image_dir + '/test_luna/'
-    utils.automakedir(image_dir)
+    utils.auto_make_dir(image_dir)
 
     # sys.stdout = logger.Logger(image_dir + '/test_luna.log')
     # sys.stderr = sys.stdout
@@ -83,25 +71,36 @@ def test1():
 
 
 def test2():
+    image_dir = utils.get_dir_path('analysis', pathfinder.METADATA_PATH)
     luna_data_paths = utils_lung.get_patient_data_paths(pathfinder.LUNA_DATA_PATH)
     luna_data_paths = [p for p in luna_data_paths if '.mhd' in p]
     print len(luna_data_paths)
-    pixel_spacings_xy = []
-    n_slices = []
+    pid2mm_shape = {}
 
     for k, p in enumerate(luna_data_paths):
         img, origin, spacing = utils_lung.read_mhd(p)
         id = os.path.basename(p).replace('.mhd', '')
-        assert spacing[1] == spacing[2]
-        pixel_spacings_xy.append(spacing[1])
-        n_slices.append(img.shape[0])
-        print id, pixel_spacings_xy[-1], n_slices[-1]
+        mm_shape = img.shape * spacing
+        pid2mm_shape[id] = mm_shape
+        print k, id, mm_shape
+        if k % 50 == 0:
+            print 'Saved'
+            utils.save_pkl(pid2mm_shape, image_dir + '/pid2mm.pkl')
 
-    print 'nslices', np.max(n_slices), np.min(n_slices), np.mean(n_slices)
-    counts = collections.Counter(pixel_spacings_xy)
-    new_list = sorted(pixel_spacings_xy, key=counts.get, reverse=True)
-    print 'spacing', new_list
+    utils.save_pkl(pid2mm_shape, image_dir + '/pid2mm.pkl')
+
+
+def test3():
+    image_dir = utils.get_dir_path('analysis', pathfinder.METADATA_PATH)
+    id2mm_shape = utils.load_pkl(image_dir + '/pid2mm.pkl')
+    s = [(key, value) for (key, value) in sorted(id2mm_shape.items(), key=lambda x: x[1][0])]
+    for i in xrange(5):
+        print s[i]
+    print '--------------------------'
+    for i in xrange(1,6):
+        print s[-i]
 
 
 if __name__ == '__main__':
-    test1()
+    # test2()
+    test3()

@@ -32,5 +32,5 @@ def preprocess(in_data_path):
 
     for d_in, d_out in zip(in_patient_dirs, out_patient_dirs):
         print '\n******** %s *********' % d_in
-        utils.automakedir(d_out)
+        utils.auto_make_dir(d_out)
         convert_patient_dicom2pkl(d_in, d_out)

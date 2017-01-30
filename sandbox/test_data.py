@@ -43,7 +43,7 @@ def plot_2d(image3d, axis, pid, img_dir):
 def test1():
     image_dir = utils.get_dir_path('analysis', pathfinder.METADATA_PATH)
     image_dir = image_dir + '/test_1/'
-    utils.automakedir(image_dir)
+    utils.auto_make_dir(image_dir)
 
     sys.stdout = logger.Logger(image_dir + '/%s.log' % 'test1_log')
     sys.stderr = sys.stdout

@@ -10,7 +10,7 @@ import os
 maxfloat = np.finfo(np.float32).max
 
 
-def automakedir(path):
+def auto_make_dir(path):
     if not os.path.exists(path):
         os.makedirs(path)
         print 'Created dir', path
@@ -41,8 +41,7 @@ def check_data_paths(data_path):
 
 def get_dir_path(dir_name, root_dir):
     username = pwd.getpwuid(os.getuid())[0]
-    platform_name = hostname()
-    dir_path = root_dir + '/' + dir_name + '/%s-%s' % (username, platform_name)
+    dir_path = root_dir + '/' + dir_name + '/%s' % username
     if not os.path.isdir(dir_path):
         os.makedirs(dir_path)
     return dir_path
@@ -65,7 +64,7 @@ def hostname():
 
 
 def generate_expid(arch_name):
-    return "%s-%s-%s" % (arch_name, hostname(), timestamp())
+    return "%s-%s" % (arch_name, timestamp())
 
 
 def get_git_revision_hash():

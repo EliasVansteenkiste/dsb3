@@ -22,19 +22,21 @@ if len(sys.argv) < 2:
 
 config_name = sys.argv[1]
 set_configuration(config_name)
-expid = utils.generate_expid(config_name)
-print
-print "Experiment ID: %s" % expid
-print
 
 # metadata
 metadata_dir = utils.get_dir_path('models', pathfinder.METADATA_PATH)
-metadata_path = metadata_dir + '/%s.pkl' % expid
+if len(sys.argv) == 4:
+    metadata_path = metadata_dir + '/' + sys.argv[3]
+else:
+    metadata_path = utils.find_model_metadata(metadata_dir, config_name)
 
-# logs
-logs_dir = utils.get_dir_path('logs', pathfinder.METADATA_PATH)
-sys.stdout = logger.Logger(logs_dir + '/%s.log' % expid)
-sys.stderr = sys.stdout
+metadata = utils.load_pkl(metadata_path)
+expid = metadata['experiment_id']
+
+# predictions path
+predictions_dir = utils.get_dir_path('predictions', pathfinder.METADATA_PATH)
+output_path = predictions_dir + '/' + expid
+utils.auto_make_dir(output_path)
 
 print 'Build model'
 model = config().build_model()
@@ -51,32 +53,23 @@ for layer in all_layers:
     num_param = string.ljust(num_param.__str__(), 10)
     print '    %s %s %s' % (name, num_param, layer.output_shape)
 
-train_loss = config().build_objective(model, deterministic=False)
-valid_loss = config().build_objective(model, deterministic=True)
+nn.layers.set_all_param_values(model.l_out, metadata['param_values'])
 
-learning_rate_schedule = config().learning_rate_schedule
-learning_rate = theano.shared(np.float32(learning_rate_schedule[0]))
-updates = config().build_updates(train_loss, model, learning_rate)
+valid_loss = config().build_objective(model, deterministic=True)
 
 x_shared = nn.utils.shared_empty(dim=len(model.l_in.shape))
 y_shared = nn.utils.shared_empty(dim=len(model.l_target.shape))
-
-idx = T.lscalar('idx')
-givens_train = {}
-givens_train[model.l_in.input_var] = x_shared[idx * config().batch_size:(idx + 1) * config().batch_size]
-givens_train[model.l_target.input_var] = y_shared[idx * config().batch_size:(idx + 1) * config().batch_size]
 
 givens_valid = {}
 givens_valid[model.l_in.input_var] = x_shared
 givens_valid[model.l_target.input_var] = y_shared
 
 # theano functions
-iter_train = theano.function([idx], train_loss, givens=givens_train, updates=updates)
-iter_get_predictions = theano.function([idx], nn.layers.get_output(model.l_out), givens=givens_train,
+iter_get_predictions = theano.function([], nn.layers.get_output(model.l_out), givens=givens_valid,
                                        on_unused_input='ignore')
-iter_get_targets = theano.function([idx], nn.layers.get_output(model.l_target), givens=givens_train,
+iter_get_targets = theano.function([], nn.layers.get_output(model.l_target), givens=givens_valid,
                                    on_unused_input='ignore')
-iter_get_inputs = theano.function([idx], nn.layers.get_output(model.l_in), givens=givens_train,
+iter_get_inputs = theano.function([], nn.layers.get_output(model.l_in), givens=givens_valid,
                                   on_unused_input='ignore')
 iter_validate = theano.function([], valid_loss, givens=givens_valid)
 
