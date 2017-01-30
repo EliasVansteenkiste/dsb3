@@ -154,7 +154,7 @@ class BcolzAllDataLoader(StandardDataLoader):
                 sample[INPUT][tag] = volume
 
             if "pixelspacing" in tags:
-                sample[INPUT][tag] = self.spacings[set][sample_index][::-1]  # in mm per pixel
+                sample[INPUT][tag] = self.spacings[set][sample_index]  # in mm per pixel
 
             if "shape" in tags:
                 sample[INPUT][tag] = volume.shape
@@ -311,10 +311,10 @@ def test_loader():
     for sample in batches:
         import utils.plt
         print sample[INPUT]["bcolzall:3d"].shape, sample[INPUT]["bcolzall:pixelspacing"]
-        utils.plt.show_animate(sample[INPUT]["bcolzall:3d"][0], 200)
+        utils.plt.show_animate(sample[INPUT]["bcolzall:3d"][0], 50)
 
 
 if __name__ == '__main__':
-    test_loader()
+    # test_loader()
     # test_diameter_to_prob()
-    # test_diagnosis()
+    test_diagnosis()
