@@ -85,7 +85,7 @@ training_data = BcolzAllDataLoader(
     crash_on_exception=True)
 
 "Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate." 
-lr = 0.001
+lr = 0.0001
 lr_min = lr/1000.
 lr_decay = 0.9
 learning_rate_schedule = {}
@@ -182,31 +182,31 @@ def build_model():
     l = lasagne.layers.DimshuffleLayer(l_in, pattern=(0, 'x', 1, 2, 3))
 
     n = 16
-    l = bn(conv3d(l, n, filter_size=7, stride=2))
+    l = bn(conv3d(l, n, filter_size=5, stride=2))
     # l = max_pool3d(l)
 
     n *= 2
     l = bn(conv3d(l, n))
-    l = bn(conv3d(l, n))
+    # l = bn(conv3d(l, n))
     l = max_pool3d(l)
 
     n *= 2
     l = bn(conv3d(l, n))
-    l = bn(conv3d(l, n))
+    # l = bn(conv3d(l, n))
     l = max_pool3d(l)
 
     n *= 2
     l = bn(conv3d(l, n))
-    l = bn(conv3d(l, n))
+    # l = bn(conv3d(l, n))
     l = max_pool3d(l)
 
     n *= 2
     l = bn(conv3d(l, n))
-    l = bn(conv3d(l, n))
+    # l = bn(conv3d(l, n))
     l = max_pool3d(l)
 
     n *= 2
-    l = bn(dense(drop(l), n))
+    # l = bn(dense(drop(l), n))
     l = bn(dense(drop(l), n))
 
     l = lasagne.layers.DenseLayer(l,
