@@ -147,24 +147,24 @@ def train_model(expid):
     # build the update step for Theano
     updates = config.build_updates(train_loss_theano, all_params, learning_rate)
 
-    train_outputs = train_losses_theano.values() + theano_printer.get_the_stuff_to_print()
-
     if hasattr(config, "print_gradnorm") and config.print_gradnorm:
         all_grads = theano.grad(train_loss_theano, all_params, disconnected_inputs='warn')
         grad_norm = T.sqrt(T.sum([(g ** 2).sum() for g in all_grads]) + 1e-9)
         grad_norm.name = "grad_norm"
-        train_outputs += [grad_norm]
-        # theano_printer.print_me_this("  grad_norm", grad_norm)
+        theano_printer.print_me_this("  grad norm", grad_norm)
         # train_losses_theano["grad_norm"] = grad_norm
 
 
     # Compile the Theano function of your model+objective
     print "Compiling..."
     iter_train = theano.function([idx],
-                                 train_outputs,
+                                 train_losses_theano.values() + theano_printer.get_the_stuff_to_print(),
                                  givens=givens, on_unused_input="ignore", updates=updates,
                                  # mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=True)
                                  )
+
+    if hasattr(config, "print_gradnorm") and config.print_gradnorm:
+        del theano_printer._stuff_to_print[-1]
 
     # For validation, we also like to have something which returns the output of our model without the objective
     network_outputs = [
