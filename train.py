@@ -454,7 +454,7 @@ def train_model(expid):
             print "  This will take really long, like REALLY long."
         if hasattr(config, "print_score_every_chunk") and config.print_score_every_chunk\
                 and len(losses[VALIDATION]["training set"]["objective"]) > 0:
-            print "  train: best %3f latest %3f, valid: best %3f latest %3f " % (
+            print "  train: best %.3f latest %.3f, valid: best %.3f latest %.3f " % (
                 np.min(losses[VALIDATION]["training set"]["objective"]),
                 losses[VALIDATION]["training set"]["objective"][-1],
                 np.min(losses[VALIDATION]["validation set"]["objective"]),
