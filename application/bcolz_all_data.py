@@ -137,7 +137,10 @@ class BcolzAllDataLoader(StandardDataLoader):
 
         patient_name = self.names[set][sample_index]
         try:
-            volume = bcolz.open(self.data[set][sample_index], 'r')[:].T  # move from zyx to xyz
+            carray = bcolz.open(self.data[set][sample_index], 'r')
+            volume = carray[:].T  # move from zyx to xyz
+            carray.free_cachemem()
+            del carray
         except:
             print patient_name
             raise

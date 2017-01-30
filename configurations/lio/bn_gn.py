@@ -30,7 +30,8 @@ restart_from_save = False
 "After how many chunks sho uld you save parameters. Keep this number high for better performance. It will always store at end anyway"
 save_every_chunks = 10
 
-multiprocessing_on = False
+multiprocessing_on = True
+print_gradnorm = True
 
 
 #####################
@@ -109,13 +110,13 @@ validation_data = {
     "validation set": BcolzAllDataLoader(sets=VALIDATION,
         epochs=1,
         preprocessors=preprocessors_valid,
-        process_last_chunk=False,
+        process_last_chunk=True,
         multiprocess=multiprocessing_on,
         crash_on_exception=True),
     "training set":  BcolzAllDataLoader(sets=TRAINING,
         epochs=0.2,
         preprocessors=preprocessors_valid,
-        process_last_chunk=False,
+        process_last_chunk=True,
         multiprocess=multiprocessing_on,
         crash_on_exception=True)
     }
