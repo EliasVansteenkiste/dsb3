@@ -151,8 +151,8 @@ def train_model(expid):
         all_grads = theano.grad(train_loss_theano, all_params, disconnected_inputs='warn')
         grad_norm = T.sqrt(T.sum([(g ** 2).sum() for g in all_grads]) + 1e-9)
         grad_norm.name = "grad_norm"
-        # theano_printer.print_me_this("  grad_norm", grad_norm)
-        train_losses_theano["grad_norm"] = grad_norm
+        theano_printer.print_me_this("  grad_norm", grad_norm)
+        # train_losses_theano["grad_norm"] = grad_norm
 
 
     # Compile the Theano function of your model+objective
