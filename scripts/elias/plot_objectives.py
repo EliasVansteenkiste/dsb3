@@ -32,14 +32,16 @@ for line in file:
 			validation_errors.append(float(line.split(':')[1].rsplit()[0]))
 			validation_set_found = False
 
+print 'training errors'
 print training_errors
+print 'validation errors'
 print validation_errors
 
 plt.plot(training_errors, label='training errors')
 plt.plot(validation_errors, label='validation errors')
-plt.legend()
+plt.legend(loc="upper right")
 plt.title(sys.argv[1])
-plt.xlabel('Validation moment(fixed)')
+plt.xlabel('Epoch')
 plt.ylabel('Error')	
 plt.savefig(sys.argv[2])
 
