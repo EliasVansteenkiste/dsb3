@@ -8,22 +8,43 @@ import scipy.ndimage
 def load_scan(path, stop_before_pixels=False):
     slices = [dicom.read_file(path + '/' + s, stop_before_pixels=stop_before_pixels) for s in os.listdir(path)]
     slices.sort(key=lambda x: int(x.InstanceNumber))
+    i1 = [s.InstanceNumber for s in slices]
 
     # One metadata field is missing, the pixel size in the Z direction, which is the slice thickness.
     # Fortunately we can infer this, and we add this to the metadata.
+    try:
+        slice_thickness1 = slices[0].ImagePositionPatient[2] - slices[1].ImagePositionPatient[2]
+    except:
+        slice_thickness1 = slices[0].SliceLocation - slices[1].SliceLocation
+
+
+
+    slices.sort(key=lambda x: int(x.ImagePositionPatient[2]), reverse=slice_thickness1>0)
+    i2 = [s.InstanceNumber for s in slices]
+
     try:
         slice_thickness = slices[0].ImagePositionPatient[2] - slices[1].ImagePositionPatient[2]
     except:
         slice_thickness = slices[0].SliceLocation - slices[1].SliceLocation
 
+    same = True
+    if i1 == i2: pass
+        # print slice_thickness1, slice_thickness
+        # same = False
+    else:
+        same = False
+        print slice_thickness1, slice_thickness
+        print i1
+        print i2
+
     for s in slices:
         s.SliceThickness = slice_thickness
 
-    return slices
+    return slices, same
 
 
-def get_pixels_hu(scans):
-    image = np.stack([s.pixel_array for s in scans])
+def get_pixels_hu(slices):
+    image = np.stack([s.pixel_array for s in slices])
     # Convert to int16 (from sometimes int16),
     # should be possible as values should always be low enough (<32k)
     image = image.astype(np.int16)
@@ -33,16 +54,24 @@ def get_pixels_hu(scans):
     image[image == -2000] = 0
 
     # Convert to Hounsfield units (HU)
-    intercept = scans[0].RescaleIntercept
-    slope = scans[0].RescaleSlope
+    same = True
+    intercept0 = slices[0].RescaleIntercept
+    slope0 = slices[0].RescaleSlope
+    for slice_number in range(len(slices)):
 
-    if slope != 1:
-        image = slope * image.astype(np.float64)
-        image = image.astype(np.int16)
+        intercept = slices[slice_number].RescaleIntercept
+        slope = slices[slice_number].RescaleSlope
+        if intercept != intercept0 and slope != slope0:
+            same = False
+            print intercept, intercept0, slope, slope0
 
-    image += np.int16(intercept)
+        if slope != 1:
+            image[slice_number] = slope * image[slice_number].astype(np.float64)
+            image[slice_number] = image[slice_number].astype(np.int16)
 
-    return np.array(image, dtype=np.int16)
+        image[slice_number] += np.int16(intercept)
+
+    return np.array(image, dtype=np.int16), same
 
 
 def get_spacing(_slice):

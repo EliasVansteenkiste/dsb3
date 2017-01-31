@@ -111,6 +111,7 @@ class BcolzAllDataLoader(StandardDataLoader):
                 last_index = self.indices[set][-1]
             print set, len(self.indices[set]), "samples"
 
+        # self.original_labels = labels
 
     def load_sample(self, sample_id, input_keys_to_do, output_keys_to_do):
         ###################
@@ -136,6 +137,7 @@ class BcolzAllDataLoader(StandardDataLoader):
         sample[OUTPUT] = dict()
 
         patient_name = self.names[set][sample_index]
+        # print patient_name, self.data[set][sample_index], self.labels[set][sample_index], self.original_labels[patient_name]
         try:
             carray = bcolz.open(self.data[set][sample_index], 'r')
             volume = carray[:].T  # move from zyx to xyz
@@ -151,7 +153,7 @@ class BcolzAllDataLoader(StandardDataLoader):
             if "bcolzall" not in tags: continue
 
             if "filename" in tags:
-                sample[INPUT][tag] = patient_name
+                sample[INPUT][tag] = np.asarray([patient_name])
 
             if "3d" in tags or "default" in tags:
                 sample[INPUT][tag] = volume
@@ -192,8 +194,6 @@ def load_luna_labels(patients):
         probs = np.asarray(probs)
         prob = 1. - np.prod(1. - probs)  # nodules assumed independent
         luna_labels[name] = prob
-
-
 
     return luna_labels
 
@@ -301,8 +301,10 @@ def test_loader():
 
     batches = l.generate_batch(
         chunk_size=chunk_size,
-        required_input={"bcolzall:pixelspacing": (chunk_size, 3), "bcolzall:3d":(chunk_size,)+nn_input_shape},
-        required_output=dict()  # {"luna:segmentation":None, "luna:sample_id":None},
+        required_input={
+            # "bcolzall:filename": None,
+            "bcolzall:pixelspacing": (chunk_size, 3), "bcolzall:3d":(chunk_size,)+nn_input_shape},
+        required_output= dict()#{"bcolzall:target":None, "bcolzall:sample_id":None} # {"luna:segmentation":None, "luna:sample_id":None},
     )
 
     # import sklearn.metrics
@@ -314,6 +316,8 @@ def test_loader():
     for sample in batches:
         import utils.plt
         print sample[INPUT]["bcolzall:3d"].shape, sample[INPUT]["bcolzall:pixelspacing"]
+        # print l.data[TRAINING][sample[OUTPUT]["bcolzall:sample_id"]]
+        # print sample[INPUT]["bcolzall:filename"], sample[OUTPUT]["bcolzall:target"]
         utils.plt.show_animate(sample[INPUT]["bcolzall:3d"][0], 50)
 
 

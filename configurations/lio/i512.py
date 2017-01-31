@@ -1,4 +1,3 @@
-from application.preprocessors.in_the_middle import PutInTheMiddle
 from configurations.default import *
 
 import lasagne
@@ -8,27 +7,24 @@ import numpy as np
 from functools import partial
 
 from application.objectives import CrossEntropyObjective
-#from application.data import PatientDataLoader
 from application.bcolz_all_data import BcolzAllDataLoader
 from interfaces.data_loader import VALIDATION, TRAINING, TEST, TRAIN
 from application.preprocessors.augmentation_3d import Augment3D
 from application.preprocessors.normalize_scales import DefaultNormalizer
-from deep_learning.deep_learning_layers import ConvolutionLayer, PoolLayer
 
 #####################
 #   running speed   #
 #####################
-from interfaces.preprocess import NormalizeInput
 
 "This is the number of samples in each batch"
-batch_size = 32
+batch_size = 1
 "This is the number of batches in each chunk. Computation speeds up if this is as big as possible." \
 "However, when too big, the GPU will run out of memory"
 batches_per_chunk = 1
 "Reload the parameters from last time and continue, or start anew when you run this config file again"
 restart_from_save = False
 "After how many chunks sho uld you save parameters. Keep this number high for better performance. It will always store at end anyway"
-save_every_chunks = 10
+save_every_chunks = 1000. / float(batch_size)
 
 multiprocessing_on = True
 print_gradnorm = True
@@ -41,7 +37,7 @@ print_score_every_chunk = True
 
 "Put in here the preprocessors for your data." \
 "They will be run consequently on the datadict of the dataloader in the order of your list."
-nn_input_shape = (128, 128, 64)
+nn_input_shape = (512, 512, 160)
 norm_patch_shape = (340, 340, 320) #median
 
 preprocessors = [
@@ -85,7 +81,7 @@ training_data = BcolzAllDataLoader(
     crash_on_exception=True)
 
 "Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate." 
-lr = 0.00001
+lr = 0.00001 * batch_size
 lr_min = lr/1000.
 lr_decay = 0.9
 learning_rate_schedule = {}
@@ -159,14 +155,19 @@ conv3d = partial(dnn.Conv3DDNNLayer,
     W=lasagne.init.Orthogonal('relu'),
     b=lasagne.init.Constant(0.0),
     # untie_biases=True,
-    nonlinearity=lasagne.nonlinearities.rectify)
+    nonlinearity=lasagne.nonlinearities.leaky_rectify)
 
 max_pool3d = partial(dnn.MaxPool3DDNNLayer, pool_size=2)
 
 dense = partial(lasagne.layers.DenseLayer,
     W=lasagne.init.Orthogonal('relu'),
     b=lasagne.init.Constant(0.0),
-    nonlinearity=lasagne.nonlinearities.rectify)
+    nonlinearity=lasagne.nonlinearities.leaky_rectify)
+
+nin = partial(lasagne.layers.NINLayer,
+    W=lasagne.init.Orthogonal('relu'),
+    b=lasagne.init.Constant(0.0),
+    nonlinearity=lasagne.nonlinearities.leaky_rectify)
 
 drop = lasagne.layers.DropoutLayer
 
@@ -182,32 +183,31 @@ def build_model():
     l = lasagne.layers.DimshuffleLayer(l_in, pattern=(0, 'x', 1, 2, 3))
 
     n = 16
-    l = bn(conv3d(l, n, filter_size=5, stride=2))
-    # l = max_pool3d(l)
+    l = conv3d(l, n, filter_size=7, stride=2)
+    #256
+    n *= 2
+    l = conv3d(l, n, filter_size=5, stride=2)
+    # 128
+    n *= 2
+    l = conv3d(l, n, filter_size=5, stride=2)
+    # 64
+    n *= 2
+    l = conv3d(l, n, filter_size=5, stride=2)
+    # 32
+    n *= 2
+    l = conv3d(l, n, filter_size=5, stride=2)
+    # 16
+    n *= 2
+    l = conv3d(l, n, filter_size=5, stride=2)
+    # 8
+    n *= 2
+    l = conv3d(l, n, filter_size=5, stride=2)
+
+    # l = nin(l, 128)
 
     n *= 2
-    l = bn(conv3d(l, n))
-    # l = bn(conv3d(l, n))
-    l = max_pool3d(l)
-
-    n *= 2
-    l = bn(conv3d(l, n))
-    # l = bn(conv3d(l, n))
-    l = max_pool3d(l)
-
-    n *= 2
-    l = bn(conv3d(l, n))
-    # l = bn(conv3d(l, n))
-    l = max_pool3d(l)
-
-    n *= 2
-    l = bn(conv3d(l, n))
-    # l = bn(conv3d(l, n))
-    l = max_pool3d(l)
-
-    n *= 2
-    # l = bn(dense(drop(l), n))
-    l = bn(dense(drop(l), n))
+    l = dense(drop(l), n)
+    # l = dense(drop(l), n)
 
     l = lasagne.layers.DenseLayer(l,
                                  num_units=1,
