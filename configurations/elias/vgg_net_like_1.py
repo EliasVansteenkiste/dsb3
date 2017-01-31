@@ -140,7 +140,7 @@ conv3d = partial(dnn.Conv3DDNNLayer,
     pad='same',
     W=lasagne.init.HeNormal('relu'),
     b=lasagne.init.Constant(0.0),
-    nonlinearity=lasagne.nonlinearities.very_leaky_rectify)
+    nonlinearity=None)
 
 nl = partial(NonlinearityLayer,
     nonlinearity=lasagne.nonlinearities.very_leaky_rectify)

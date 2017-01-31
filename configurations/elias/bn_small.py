@@ -62,7 +62,7 @@ preprocessors = [
 "You can set the number of epochs, the datasets and if you want it multiprocessed"
 training_data = BcolzAllDataLoader(
     sets=TRAINING,
-    epochs=None, #infinite
+    epochs=50, #infinite
     preprocessors=preprocessors,
     multiprocess=True,
     crash_on_exception=True)
@@ -96,7 +96,7 @@ validation_data = {
         crash_on_exception=True),
  #   "training set": None
     "training set":  BcolzAllDataLoader(sets=TRAINING,
-                                         epochs=0.01,
+                                         epochs=0.2,
                                          preprocessors=preprocessors,
                                          process_last_chunk=True,
                                   multiprocess=True,
