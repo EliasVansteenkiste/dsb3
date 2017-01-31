@@ -211,7 +211,7 @@ class LunaDataLoader(StandardDataLoader):
             diameter_in_mm = label[3]
             xt, yt, zt = self.world_to_voxel_coordinates(position, origin, spacing)
             distance2 = ((spacing[0]*(x-xt))**2 + (spacing[1]*(y-yt))**2 + (spacing[2]*(z-zt))**2)
-            gaussian = np.exp(- distance2 / (2*diameter_in_mm**2))
+            gaussian = np.exp(- 1.*distance2 / (2*diameter_in_mm**2))
             mask += gaussian
         mask = mask/np.max(mask)
         return mask
