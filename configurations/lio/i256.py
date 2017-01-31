@@ -17,14 +17,14 @@ from application.preprocessors.normalize_scales import DefaultNormalizer
 #####################
 
 "This is the number of samples in each batch"
-batch_size = 1
+batch_size = 4
 "This is the number of batches in each chunk. Computation speeds up if this is as big as possible." \
 "However, when too big, the GPU will run out of memory"
 batches_per_chunk = 1
 "Reload the parameters from last time and continue, or start anew when you run this config file again"
 restart_from_save = False
 "After how many chunks sho uld you save parameters. Keep this number high for better performance. It will always store at end anyway"
-save_every_chunks = 10
+save_every_chunks = 1000. / float(batches_size)
 
 multiprocessing_on = True
 print_gradnorm = True
