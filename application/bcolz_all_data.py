@@ -149,6 +149,7 @@ class BcolzAllDataLoader(StandardDataLoader):
         assert sample_id in set_indices, "Sample ID %d is not known in any of the sets?" % sample_id
 
         sample_index = set_indices.index(sample_id)
+        if self.balance_train: sample_index = sample_id
 
         # prepare empty dicts which will contain the result
         sample = dict()
