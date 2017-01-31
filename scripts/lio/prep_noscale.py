@@ -14,6 +14,7 @@ from utils import paths
 INPUT_FOLDER_STAGE1 = paths.DATA_PATH
 INPUT_FOLDER_LUNA = paths.LUNA_DATA_PATH
 OUTPUT_FOLDER = paths.INTERMEDIATE_DATA_PATH
+DATA_FOLDER = paths.ALL_DATA_PATH
 
 if not os.path.exists(OUTPUT_FOLDER): os.mkdir(OUTPUT_FOLDER)
 
@@ -31,7 +32,7 @@ for i, patient in enumerate(patients):
     origin = np.array(itkimage.GetOrigin())
     spacing = np.array(itkimage.GetSpacing())
     image = image[::-1,:,:]  # to match the kaggle data order
-    spacing = spacing[[2,1,0]]  # go from XYZ to ZYX
+    spacing = spacing  # go from XYZ to XYZ
     origin = origin  # go from XYZ to XYZ
     # if i > -1: preptools.plot_3d(image, theshold=-500, spacing=spacing)
     name = os.path.basename(patient)[:-4]
@@ -41,7 +42,7 @@ for i, patient in enumerate(patients):
     #                           chunklen=image.shape[0],
     #                           dtype="int16",
     #                           cparams=bcolz.cparams(clevel=1, cname="zlib"),  # lz4hc zlib blosc
-    #                           rootdir=OUTPUT_FOLDER + name,
+    #                           rootdir=DATA_FOLDER + name,
     #                           mode="w")
     # data_bcolz.flush()
     print "%i/%i" % (i + 1, len(patients)), spacing
@@ -51,7 +52,7 @@ with gzip.open(OUTPUT_FOLDER+"spacings.pkl.gz", "wb") as f:
     cPickle.dump(spacings, f, protocol=cPickle.HIGHEST_PROTOCOL)
 
 with gzip.open(OUTPUT_FOLDER+"origins.pkl.gz", "wb") as f:
-    cPickle.dump(spacings, f, protocol=cPickle.HIGHEST_PROTOCOL)
+    cPickle.dump(origins, f, protocol=cPickle.HIGHEST_PROTOCOL)
 
 # STAGE1
 
@@ -72,7 +73,7 @@ for i, patient in enumerate(patients):
                               chunklen=pixels.shape[0],
                               dtype="int16",
                               cparams=bcolz.cparams(clevel=1, cname="zlib"),  #lz4hc zlib blosc
-                                rootdir=OUTPUT_FOLDER + patient,
+                                rootdir=DATA_FOLDER + patient,
                               mode="w")
     data_bcolz.flush()
     print "%i/%i" % (i + 1, len(patients)), patient, spacing#, pixels.shape

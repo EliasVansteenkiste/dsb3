@@ -1,6 +1,6 @@
 from functools import partial
 from lasagne.layers import dnn
-from application.luna import LunaDataLoader, OnlyPositiveLunaDataLoader
+from application.luna import LunaDataLoader, OnlyPositiveLunaDataLoader, BcolzLunaDataLoader
 from application.preprocessors.in_the_middle import PutInTheMiddle
 from application.preprocessors.lio_augmentation import LioAugment, LioAugmentOnlyPositive
 from configurations.default import *
@@ -22,10 +22,10 @@ from deep_learning.deep_learning_layers import ConvolutionLayer, PoolLayer
 from interfaces.preprocess import NormalizeInput, ZMUV
 
 "This is the number of samples in each batch"
-batch_size = 1
+batch_size = 4
 "This is the number of batches in each chunk. Computation speeds up if this is as big as possible." \
 "However, when too big, the GPU will run out of memory"
-batches_per_chunk = 16
+batches_per_chunk = 4
 "Reload the parameters from last time and continue, or start anew when you run this config file again"
 restart_from_save = False
 "After how many chunks should you save parameters. Keep this number high for better performance. It will always store at end anyway"
@@ -61,18 +61,20 @@ preprocessors = [
 #####################
 "This is the train dataloader. We will train until this one stops loading data."
 "You can set the number of epochs, the datasets and if you want it multiprocessed"
-training_data = OnlyPositiveLunaDataLoader(
+training_data = BcolzLunaDataLoader(
+    only_positive=True,
     sets=TRAINING,
     epochs=10,
     preprocessors=preprocessors,
     multiprocess=True,
-    crash_on_exception=True,
+    crash_on_exception=False,
 )
 
 "Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate."
 learning_rate_schedule = {
     0.0: 0.00001,
-    9.0: 0.000001,
+    8.0: 0.000001,
+    9.0: 0.0000001,
 }
 "The function to build updates."
 build_updates = lasagne.updates.adam
@@ -86,21 +88,25 @@ epochs_per_validation = 1
 
 "Which data do we want to validate on. We will run all validation objectives on each validation data set."
 validation_data = {
-    "validation set": OnlyPositiveLunaDataLoader(sets=VALIDATION,
-                                        epochs=1,
-                                        preprocessors=preprocessors,
-                                        process_last_chunk=True,
-                                 multiprocess=True,
-                                 crash_on_exception=True,
-                                        ),
-    "training set":  OnlyPositiveLunaDataLoader(sets=TRAINING,
-                                        epochs=0.01,
-                                        preprocessors=preprocessors,
-                                        process_last_chunk=True,
-                                 multiprocess=True,
-                                 crash_on_exception=True,
-                                        ),
-    }
+    "validation set": BcolzLunaDataLoader(
+        only_positive=True,
+        sets=VALIDATION,
+        epochs=1,
+        preprocessors=preprocessors,
+        process_last_chunk=True,
+        multiprocess=True,
+        crash_on_exception=True,
+    ),
+    "training set": BcolzLunaDataLoader(
+        only_positive=True,
+        sets=TRAINING,
+        epochs=0.01,
+        preprocessors=preprocessors,
+        process_last_chunk=True,
+        multiprocess=True,
+        crash_on_exception=True,
+    ),
+}
 
 
 #####################
@@ -121,31 +127,31 @@ def build_objectives(interface_layers):
     obj_weighted = WeightedSegmentationCrossEntropyObjective(
         classweights=[10000, 1],
         input_layer=interface_layers["outputs"]["predicted_segmentation"],
-        target_name="luna:gaussian",
+        target_name="luna:segmentation",
     )
 
     obj_jaccard = JaccardIndexObjective(
         smooth=1e-5,
         input_layer=interface_layers["outputs"]["predicted_segmentation"],
-        target_name="luna:gaussian",
+        target_name="luna:segmentation",
     )
 
     obj_dice = SoerensonDiceCoefficientObjective(
         smooth=1e-5,
         input_layer=interface_layers["outputs"]["predicted_segmentation"],
-        target_name="luna:gaussian",
+        target_name="luna:segmentation",
     )
 
     obj_precision = PrecisionObjective(
         smooth=1e-5,
         input_layer=interface_layers["outputs"]["predicted_segmentation"],
-        target_name="luna:gaussian",
+        target_name="luna:segmentation",
     )
 
     obj_recall = RecallObjective(
         smooth=1e-5,
         input_layer=interface_layers["outputs"]["predicted_segmentation"],
-        target_name="luna:gaussian",
+        target_name="luna:segmentation",
     )
 
     obj_custom = ClippedFObjective(
@@ -153,12 +159,12 @@ def build_objectives(interface_layers):
         recall_weight = 1./0.95,
         precision_weight = 1./0.3,
         input_layer=interface_layers["outputs"]["predicted_segmentation"],
-        target_name="luna:gaussian",
+        target_name="luna:segmentation",
     )
 
     return {
         "train":{
-            "objective": obj_custom,
+            "objective": obj_dice,
             "jaccard": obj_jaccard,
             "weighted": obj_weighted,
             "Dice": obj_dice,
@@ -166,7 +172,7 @@ def build_objectives(interface_layers):
             "recall": obj_recall,
         },
         "validate":{
-            "objective": obj_custom,
+            "objective": obj_dice,
             "jaccard": obj_jaccard,
             "weighted": obj_weighted,
             "Dice": obj_dice,
@@ -200,7 +206,7 @@ def build_model():
     l0 = lasagne.layers.DimshuffleLayer(l_in, pattern=[0,'x',1,2,3])
 
     net = {}
-    base_n_filters = 32
+    base_n_filters = 64
     net['contr_1_1'] = conv3d(l0, base_n_filters)
     net['contr_1_2'] = conv3d(net['contr_1_1'], base_n_filters)
     net['pool1'] = max_pool3d(net['contr_1_2'])

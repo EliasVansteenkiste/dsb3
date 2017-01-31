@@ -1,6 +1,6 @@
 {
   "ALL_DATA_PATH":"/mnt/ssd/dsb3/stage1+luna_bcolz/",
-  "SPACINGS_PATH":"/mnt/ssd/dsb3/spacings.pkl.gz",
+  "INTERMEDIATE_DATA_PATH":"/mnt/ssd/dsb3/compressed/",
   "DATA_PATH":"/mnt/ssd/dsb3/stage1/",
   "LUNA_DATA_PATH":"/mnt/ssd/dsb3/luna/dataset/",
   "LABELS_PATH":"/mnt/ssd/dsb3/stage1_labels.csv",

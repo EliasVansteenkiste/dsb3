@@ -76,7 +76,7 @@ class BcolzAllDataLoader(StandardDataLoader):
             self.names[s] = []
             self.spacings[s] = []
 
-        with gzip.open(paths.SPACINGS_PATH) as f:
+        with gzip.open(paths.INTERMEDIATE_DATA_PATH + 'spacings.pkl.gz') as f:
             spacings = cPickle.load(f)
 
         # load the filenames and put into the right dataset
