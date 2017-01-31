@@ -94,8 +94,6 @@ class BcolzAllDataLoader(StandardDataLoader):
             self.data[dataset].append(patient_folder)
             if patient_id in labels:
                 self.labels[dataset].append(labels[patient_id])
-            else:
-                print dataset, patient_idz
             self.names[dataset].append(patient_id)
             self.spacings[dataset].append(spacings[patient_id])
 
