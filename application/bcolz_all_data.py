@@ -94,6 +94,8 @@ class BcolzAllDataLoader(StandardDataLoader):
             self.data[dataset].append(patient_folder)
             if patient_id in labels:
                 self.labels[dataset].append(labels[patient_id])
+            else:
+                self.labels[dataset].append([])
             self.names[dataset].append(patient_id)
             self.spacings[dataset].append(spacings[patient_id])
 
@@ -276,11 +278,11 @@ def test_loader():
             output_shape=nn_input_shape,
             norm_patch_shape=norm_patch_shape,
             augmentation_params={
-                "scale": [1.05, 1.05, 1.05],  # factor
-                "uniform scale": 1.2,  # factor
-                "rotation": [5, 5, 5],  # degrees
-                "shear": [3, 3, 3],  # deg
-                "translation": [50, 50, 50],  # mm
+                "scale": [1, 1, 1],  # factor
+                "uniform scale": 1,  # factor
+                "rotation": [0, 0, 0],  # degrees
+                "shear": [0, 0, 0],  # deg
+                "translation": [0, 0, 0],  # mm
                 "reflection": [0, 0, 0]},  # Bernoulli p
             interp_order=1),
         DefaultNormalizer(tags=["bcolzall:3d"])
