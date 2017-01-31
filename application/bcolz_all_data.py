@@ -2,8 +2,11 @@ import glob
 import csv
 import random
 from os import path
-import dicom
+import os
+import bcolz
 import sys
+import cPickle
+import gzip
 
 import numpy as np
 
@@ -16,19 +19,18 @@ VALIDATION_SET_SIZE = 0.2
 
 class BcolzAllDataLoader(StandardDataLoader):
 
-    OUTPUT_DATA_SIZE_TYPE = {
-        "lio:prob":     ((), "float32"),
-        "lio:sample_id": ((), "uint32")
-    }
-
     # These are shared between all objects of this type
     labels = dict()
     names = dict()
+    spacings = dict()
 
-    datasets = [TRAIN, VALIDATION]
+    datasets = [TRAIN, VALIDATION, TEST]
 
-    def __init__(self, location=paths.ALL_DATA_PATH, *args, **kwargs):
+    def __init__(self,
+                 use_luna=False,
+                 location=paths.ALL_DATA_PATH, *args, **kwargs):
         super(BcolzAllDataLoader, self).__init__(location=location, *args, **kwargs)
+        self.use_luna = use_luna
 
     def prepare(self):
         """
@@ -36,6 +38,9 @@ class BcolzAllDataLoader(StandardDataLoader):
         In this case, only filenames are loaded prematurely
         :return:
         """
+        
+        print "previous bcolz nthreads:", bcolz.set_nthreads(1);
+
         # step 0: load only when not loaded yet
         if TRAINING in self.data and VALIDATION in self.data: return
 
@@ -46,17 +51,12 @@ class BcolzAllDataLoader(StandardDataLoader):
         # sys.exit()
 
 
-        #TODO
-
         labels = dict()
         with open(paths.LABELS_PATH, 'rb') as csvfile:
             reader = csv.reader(csvfile, delimiter=',', quotechar='|')
             next(reader)  # skip the header
             for row in reader:
-                labels[row[0]] = int(row[1])
-
-        print labels
-        sys.exit()
+                labels[str(row[0])] = int(row[1])
 
         # make a stratified validation set
         # note, the seed decides the validation set, but it is deterministic in the file_names and labels
@@ -64,15 +64,24 @@ class BcolzAllDataLoader(StandardDataLoader):
         ids_per_label = [[patient_id for patient_id,label in labels.iteritems() if label==l] for l in [0,1]]
         validation_patients = sum([random.sample(sorted(ids), int(VALIDATION_SET_SIZE*len(ids))) for ids in ids_per_label],[])
 
+        if self.use_luna:
+            luna_labels = load_luna_labels(patients)
+            print len(luna_labels), "luna labels added"
+            labels.update(luna_labels)
+
         # make the static data empty
         for s in self.datasets:
             self.data[s] = []
             self.labels[s] = []
             self.names[s] = []
+            self.spacings[s] = []
+
+        with gzip.open(paths.SPACINGS_PATH) as f:
+            spacings = cPickle.load(f)
 
         # load the filenames and put into the right dataset
         for i, patient_folder in enumerate(patients):
-            patient_id = patient_folder.split(path.sep)[-2]
+            patient_id = str(patient_folder.split(path.sep)[-2])
             if patient_id in labels:
                 if patient_id in validation_patients:
                     dataset = VALIDATION
@@ -86,6 +95,11 @@ class BcolzAllDataLoader(StandardDataLoader):
             if patient_id in labels:
                 self.labels[dataset].append(labels[patient_id])
             self.names[dataset].append(patient_id)
+            self.spacings[dataset].append(spacings[patient_id])
+
+        print "train", len(self.data[TRAIN])
+        print "valid", len(self.data[VALIDATION])
+        print "test", len(self.data[TEST])
 
         # give every patient a unique number
         last_index = -1
@@ -119,30 +133,38 @@ class BcolzAllDataLoader(StandardDataLoader):
         sample[INPUT] = dict()
         sample[OUTPUT] = dict()
 
+        patient_name = self.names[set][sample_index]
+        try:
+            carray = bcolz.open(self.data[set][sample_index], 'r')
+            volume = carray[:].T  # move from zyx to xyz
+            carray.free_cachemem()
+            del carray
+        except:
+            print patient_name
+            raise
+
         # Iterate over input tags and return a dict with the requested tags filled
         for tag in input_keys_to_do:
             tags = tag.split(':')
-            if "dsb3" not in tags:
-                continue
+            if "bcolzall" not in tags: continue
 
             if "filename" in tags:
-                sample[INPUT][tag] = self.data[set][sample_index]
+                sample[INPUT][tag] = patient_name
 
-            if "all" in tags:
-                sample[INPUT][tag] = self.load_patient_data(self.data[set][sample_index])
+            if "3d" in tags or "default" in tags:
+                sample[INPUT][tag] = volume
 
-            if "3d" in tags:
-                sample[INPUT][tag] = self.get_raw_3d_data(self.data[set][sample_index]).astype('float32')
+            if "pixelspacing" in tags:
+                sample[INPUT][tag] = self.spacings[set][sample_index][::-1]  # in mm per pixel
 
-            if "default" in tags:
-                sample[INPUT][tag] = self.data[set]["data"][sample_index].astype('float32')
+            if "shape" in tags:
+                sample[INPUT][tag] = volume.shape
 
         for tag in output_keys_to_do:
             tags = tag.split(':')
-            if "dsb3" not in tags:
-                continue
+            if "bcolzall" not in tags: continue
 
-            if "class" in tags:
+            if "target" in tags:
                 sample[OUTPUT][tag] = np.int64(self.labels[set][sample_index])
 
             if "sample_id" in tags:
@@ -151,116 +173,149 @@ class BcolzAllDataLoader(StandardDataLoader):
         return sample
 
 
-    def get_raw_3d_data(self, path):
-        """
-        Messy method which loads the 3d data of a patient.
-        Note that the order of slices might be off!
-        :param path:
-        :return:
-        """
-        slices = self.load_patient_data(path)
-        d = []
-        for sl in slices.itervalues():
-            d.append( (sl["InstanceNumber"], sl["PixelData"]) )
-        d.sort()
-        result = np.stack([item[1] for item in d])
-        return result
+def load_luna_labels(patients):
+    luna_labels = {}
+    patient_ids = set([str(p.split(path.sep)[-2]) for p in patients])
+    with open(paths.LUNA_LABELS_PATH, "rb") as csvfile:
+        reader = csv.reader(csvfile, delimiter=',', quotechar='|')
+        next(reader)  # skip the header
+        for row in reader:
+            name = str(row[0])
+            if name not in patient_ids: continue
+            if name not in luna_labels:
+                luna_labels[name] = [diameter_to_prob(float(row[4]))]
+            else:
+                luna_labels[name].append(diameter_to_prob(float(row[4])))
+    for name, probs in luna_labels.items():
+        probs = np.asarray(probs)
+        prob = 1. - np.prod(1. - probs)  # nodules assumed independent
+        luna_labels[name] = prob
 
 
-    def load_patient_data(self, path):
-        """
-        Load all the data a patient has and return as dict of dicts
-        :param path:
-        :return:
-        """
-        images = sorted(glob.glob(path+'*.dcm'))
-        result = dict()
-        for image in images:
-            result[image] = self.read_dicom(image)
 
-        # remove the ones which errored
-        result = dict((k, v) for k, v in result.iteritems() if v)
-        return result
+    return luna_labels
 
 
-    def read_dicom(self,filename):
-        """
-        Load 1 dicom file and return as dict
-        :param filename:
-        :return:
-        """
-        d = dicom.read_file(filename, force=True)
-        data = {}
-        try:
-            for attr in dir(d):
-                   if attr[0].isupper() and attr != 'PixelData':
-                    try:
-                        data[attr] = getattr(d, attr)
-                    except AttributeError:
-                        pass
-            data["PixelData"] = np.array(d.pixel_array)
-            data = self.clean_dicom_data(data)
-        except:
-            print "Failed to load the data in %s" % filename
-            return None
-        return data
+# 6% to 28% for nodules 5 to 10 mm,
+prob5 = (0.01+0.06)/2.
+slope10 = (0.28-prob5) / (10.-5.)
+offset10 = prob5 - slope10*5.
+
+slope20 = (0.64-0.28) / (20.-10.)
+offset20 = 0.28 - slope20*10.
+
+# and 64% to 82% for nodules >20 mm in diameter
+slope25 = (0.82-0.64) / (25.-20.)
+offset25 = 0.64 - slope25*20.
+
+slope30 = (0.93-0.82) / (30.-25.)
+offset30 = 0.82 - slope30*25.
+
+# For nodules more than 3 cm in diameter, 93% to 97% are malignant
+slope40 = (0.97-0.93) / (40.-30.)
+offset40 = 0.93 - slope40*30.
+
+def diameter_to_prob(diam):
+    # The prevalence of malignancy is 0% to 1% for nodules <5 mm,
+    if diam < 5:
+        p = prob5*diam/5.
+    elif diam < 10:
+        p = slope10*diam+offset10
+    elif diam < 20:
+        p = slope20*diam+offset20
+    elif diam < 25:
+        p = slope25*diam+offset25
+    elif diam < 30:
+        p = slope30*diam+offset30
+    else:
+        p = slope40 * diam + offset40
+    return np.clip(p ,0.,1.)
 
 
-    def clean_dicom_data(self, data):
-        """
-        clean the dicom file, such that no dicom-specific data-types (or numbers as strings) are let through
-        Note: this needs to be very robust. Fuck dicom.
-        :param data:
-        :return:
-        """
-        for key,value in data.iteritems():
-            try:
-                if key == 'AcquisitionNumber':
-                    data[key] = int(value) if value != '' else value
-                elif key == 'BitsAllocated' or key=="BitsStored":
-                    data[key] = int(value)
-                elif key == 'BurnedInAnnotation':
-                    data[key] = False if value=="NO" else True
-                elif key == "Columns":
-                    data[key] = int(value)
-                elif key == "HighBit":
-                    data[key] = int(value)
-                elif key == "ImageOrientationPatient" or key=="ImagePositionPatient":
-                    data[key] = [float(v) for v in value]
-                elif key == "InstanceNumber":
-                    data[key] = int(value)
-                elif key == "PixelData":
-                    pass
-                elif key == 'PixelRepresentation':
-                    data[key] = int(value)
-                elif key == "PixelSpacing":
-                    data[key] = [float(v) for v in value]
-                elif key == 'RescaleIntercept' or key == "RescaleSlope" or key == "Rows":
-                    data[key] = int(value)
-                elif key == 'SamplesPerPixel':
-                    data[key] = int(value)
-                elif key == 'SeriesNumber':
-                    data[key] = int(value) if value else -1
-                elif key == 'SliceLocation':
-                    data[key] = float(value)
-                elif key == 'WindowCenter' or key == 'WindowWidth':
-                    try:
-                        data[key] = [int(v) for v in value]
-                    except:
-                        data[key] = int(value)
-                else:
-                    data[key] = str(value)
-            except:
-                print "Could not clean key %s with value %s"%(key,value)
-        return data
+def test_diameter_to_prob():
+    n = 1000
+    xs = [i/float(n)*40. for i in range(n)]
+    pnts = [diameter_to_prob(x) for x in xs]
+    import matplotlib.pyplot as plt
+    plt.xlabel("diameter (mm)")
+    plt.ylabel("cancer prob")
+    plt.plot(xs, pnts)
+    plt.show()
+
+    patients = sorted(glob.glob(paths.ALL_DATA_PATH + '/*/'))
+    lbls = load_luna_labels(patients)
+
+    for name, prob in lbls.items(): print name, prob
+
+
+def test_diagnosis():
+    patients = sorted(glob.glob(paths.ALL_DATA_PATH + '/*/'))
+    patient_ids = set([str(p.split(path.sep)[-2]) for p in patients])
+    print len(patient_ids)
+    lbls = {}
+    with open(paths.DIAGNOSIS_PATH, "rb") as csvfile:
+        reader = csv.reader(csvfile, delimiter=',')
+        next(reader)  # skip the header
+        for row in reader:
+            name = str(row[0])
+            if name not in patient_ids:
+                print name
+            else:
+                lbls[name] = int(row[1])
+    print len(lbls), lbls
 
 
 def test_loader():
-    paths.ALL_DATA_PATH = "/home/lio/data/dsb3/stage1+luna_bcolz/",
-    paths.SPACINGS_PATH =  "/home/lio/data/dsb3/spacings.pkl.gz",
-    l = BcolzAllDataLoader(multiprocess=False)
+    from application.preprocessors.augmentation_3d import Augment3D
+    from application.preprocessors.normalize_scales import DefaultNormalizer
+    nn_input_shape = (128, 128, 64)
+    norm_patch_shape = (340, 340, 320)  # median
+    preprocessors = [
+        Augment3D(
+            tags=["bcolzall:3d"],
+            output_shape=nn_input_shape,
+            norm_patch_shape=norm_patch_shape,
+            augmentation_params={
+                "scale": [1.05, 1.05, 1.05],  # factor
+                "uniform scale": 1.2,  # factor
+                "rotation": [5, 5, 5],  # degrees
+                "shear": [3, 3, 3],  # deg
+                "translation": [50, 50, 50],  # mm
+                "reflection": [0, 0, 0]},  # Bernoulli p
+            interp_order=1),
+        DefaultNormalizer(tags=["bcolzall:3d"])
+    ]
+
+    # paths.ALL_DATA_PATH = "/home/lio/data/dsb3/stage1+luna_bcolz/",
+    # paths.SPACINGS_PATH =  "/home/lio/data/dsb3/spacings.pkl.gz",
+    l = BcolzAllDataLoader(
+        multiprocess=False,
+        location="/mnt/storage/data/dsb3/stage1+luna_bcolz/",
+        sets=TRAINING,
+        preprocessors=preprocessors)
     l.prepare()
+
+    chunk_size = 1
+
+    batches = l.generate_batch(
+        chunk_size=chunk_size,
+        required_input={"bcolzall:pixelspacing": (chunk_size, 3), "bcolzall:3d":(chunk_size,)+nn_input_shape},
+        required_output=dict()  # {"luna:segmentation":None, "luna:sample_id":None},
+    )
+
+    # import sklearn.metrics
+    # lbls = l.labels[VALIDATION]
+    # preds = [0.25 for _ in lbls]
+    # print sklearn.metrics.log_loss(lbls, preds)
+
+    # sample = l.load_sample(l.indices[TRAIN][0], ["bcolzall:3d", "pixelspacing"], ["target"])
+    for sample in batches:
+        import utils.plt
+        print sample[INPUT]["bcolzall:3d"].shape, sample[INPUT]["bcolzall:pixelspacing"]
+        utils.plt.show_animate(sample[INPUT]["bcolzall:3d"][0], 50)
 
 
 if __name__ == '__main__':
     test_loader()
+    # test_diameter_to_prob()
+    # test_diagnosis()
