@@ -268,7 +268,7 @@ def test_diagnosis():
 def test_loader():
     from application.preprocessors.augmentation_3d import Augment3D
     from application.preprocessors.normalize_scales import DefaultNormalizer
-    nn_input_shape = (128, 128, 64)
+    nn_input_shape = (256, 256, 128)
     norm_patch_shape = (340, 340, 320)  # median
     preprocessors = [
         Augment3D(
