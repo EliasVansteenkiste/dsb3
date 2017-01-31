@@ -37,7 +37,7 @@ print_score_every_chunk = True
 
 "Put in here the preprocessors for your data." \
 "They will be run consequently on the datadict of the dataloader in the order of your list."
-nn_input_shape = (256, 256, 128)
+nn_input_shape = (256, 256, 80)
 norm_patch_shape = (340, 340, 320) #median
 
 preprocessors = [
@@ -81,7 +81,7 @@ training_data = BcolzAllDataLoader(
     crash_on_exception=True)
 
 "Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate." 
-lr = 0.00001 * batch_size
+lr = 0.0001 * batch_size
 lr_min = lr/1000.
 lr_decay = 0.9
 learning_rate_schedule = {}
