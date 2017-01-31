@@ -1,92 +1,13 @@
-import matplotlib
-
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
+import os
 import numpy as np
+import data_transforms
 import pathfinder
 import utils
 import utils_lung
-import os
-import data_transforms
 from configuration import set_configuration, config
-import warnings
-
-warnings.simplefilter('ignore')
+from utils_plots import plot_slice_3d_2, plot_2d, plot_2d_4, plot_slice_3d_3
 
 set_configuration('test_config')
-
-
-def plot_2d_3dimg(image3d, mask3d, axis, pid, img_dir=None, idx=None):
-    fig, ax = plt.subplots(2, 2, figsize=[8, 8])
-    fig.canvas.set_window_title(pid)
-    idx = image3d.shape[axis] / 2 if idx is None else idx
-    if axis == 0:  # sax
-        ax[0, 0].imshow(image3d[idx, :, :], cmap=plt.cm.gray)
-        ax[0, 1].imshow(mask3d[idx, :, :], cmap=plt.cm.gray)
-        ax[1, 0].imshow(image3d[idx, :, :] * mask3d[idx, :, :], cmap=plt.cm.gray)
-    if axis == 1:  # 2 lungs
-        ax[0, 0].imshow(image3d[:, idx, :], cmap=plt.cm.gray)
-        ax[0, 1].imshow(mask3d[:, idx, :], cmap=plt.cm.gray)
-        ax[1, 0].imshow(image3d[:, idx, :] * mask3d[:, idx, :], cmap=plt.cm.gray)
-    if axis == 2:  # side view
-        ax[0, 0].imshow(image3d[:, :, idx], cmap=plt.cm.gray)
-        ax[0, 1].imshow(mask3d[:, :, idx], cmap=plt.cm.gray)
-        ax[1, 0].imshow(image3d[:, :, idx] * mask3d[:, :, idx], cmap=plt.cm.gray)
-    # plt.show()
-    if img_dir is not None:
-        fig.savefig(img_dir + '/%s%s.png' % (pid, axis), bbox_inches='tight')
-    fig.clf()
-    plt.close('all')
-
-
-def plot_2d_3dimg3(input, mask3d, prediction, axis, pid, img_dir=None, idx=None):
-    fig, ax = plt.subplots(2, 2, figsize=[8, 8])
-    fig.canvas.set_window_title(pid)
-    idx = input.shape[axis] / 2 if idx is None else idx
-    if axis == 0:  # sax
-        ax[0, 0].imshow(prediction[idx, :, :], cmap=plt.cm.gray)
-        ax[1, 0].imshow(input[idx, :, :], cmap=plt.cm.gray)
-        ax[0, 1].imshow(mask3d[idx, :, :], cmap=plt.cm.gray)
-    if axis == 1:  # 2 lungs
-        ax[0, 0].imshow(prediction[:, idx, :], cmap=plt.cm.gray)
-        ax[1, 0].imshow(input[:, idx, :], cmap=plt.cm.gray)
-        ax[0, 1].imshow(mask3d[:, idx, :], cmap=plt.cm.gray)
-    if axis == 2:  # side view
-        ax[0, 0].imshow(prediction[:, :, idx], cmap=plt.cm.gray)
-        ax[1, 0].imshow(input[:, :, idx], cmap=plt.cm.gray)
-        ax[0, 1].imshow(mask3d[:, :, idx], cmap=plt.cm.gray)
-    # plt.show()
-    if img_dir is not None:
-        fig.savefig(img_dir + '/%s%s.png' % (pid, axis), bbox_inches='tight')
-    fig.clf()
-    plt.close('all')
-
-
-def plot_2d(img, mask, pid, img_dir):
-    # fig = plt.figure()
-    fig, ax = plt.subplots(2, 2, figsize=[8, 8])
-    fig.canvas.set_window_title(pid)
-    ax[0, 0].imshow(img, cmap='gray')
-    ax[0, 1].imshow(mask, cmap='gray')
-    ax[1, 0].imshow(img * mask, cmap='gray')
-    plt.show()
-    fig.savefig(img_dir + '/%s.png' % pid, bbox_inches='tight')
-    fig.clf()
-    plt.close('all')
-
-
-def plot_2d_4(img, img_prev, img_next, mask, pid, img_dir):
-    # fig = plt.figure()
-    fig, ax = plt.subplots(2, 2, figsize=[8, 8])
-    fig.canvas.set_window_title(pid)
-    ax[0, 0].imshow(img, cmap='gray')
-    ax[0, 1].imshow(img_prev, cmap='gray')
-    ax[1, 0].imshow(img_next, cmap='gray')
-    ax[1, 1].imshow(img * mask, cmap='gray')
-    plt.show()
-    fig.savefig(img_dir + '/%s.png' % pid, bbox_inches='tight')
-    fig.clf()
-    plt.close('all')
 
 
 def test1():
@@ -116,7 +37,7 @@ def test1():
             slice_prev = img[voxel_coords[0] - 1, :, :]
             slice_next = img[voxel_coords[0] + 1, :, :]
             roi_center_yx = (voxel_coords[1], voxel_coords[2])
-            mask = data_transforms.make_roi_mask(slice.shape, roi_center_yx, roi_radius, masked_value=0.1)
+            mask = data_transforms.make_2d_mask(slice.shape, roi_center_yx, roi_radius, masked_value=0.1)
             plot_2d(slice, mask, id, image_dir)
 
             plot_2d_4(slice, slice_prev, slice_next, mask, id, image_dir)
@@ -165,15 +86,15 @@ def test_luna3d():
                                                          luna_origin=origin,
                                                          )
 
-        plot_2d_3dimg(img_out, mask, 0, id)
-        plot_2d_3dimg(img_out, mask, 1, id)
-        plot_2d_3dimg(img_out, mask, 2, id)
+        plot_slice_3d_2(img_out, mask, 0, id)
+        plot_slice_3d_2(img_out, mask, 1, id)
+        plot_slice_3d_2(img_out, mask, 2, id)
 
         mask[mask == 0.] = 0.1
         for zyxd in annotations_out:
-            plot_2d_3dimg(img_out, mask, 0, id, idx=zyxd[0])
-            plot_2d_3dimg(img_out, mask, 1, id, idx=zyxd[1])
-            plot_2d_3dimg(img_out, mask, 2, id, idx=zyxd[2])
+            plot_slice_3d_2(img_out, mask, 0, id, idx=zyxd[0])
+            plot_slice_3d_2(img_out, mask, 1, id, idx=zyxd[1])
+            plot_slice_3d_2(img_out, mask, 2, id, idx=zyxd[2])
 
 
 def count_proportion():
@@ -254,7 +175,7 @@ def test_kaggle3d():
                                                    p_transform_augment=config().p_transform_augment)
 
         # plot_2d_3dimg(img_out, img_out, axis=0, pid=pid + 'z', img_dir=image_dir)
-        plot_2d_3dimg(img_out, img_out, axis=1, pid=pid + 'y', img_dir=image_dir)
+        plot_slice_3d_2(img_out, img_out, axis=1, pid=pid + 'y', img_dir=image_dir)
         # plot_2d_3dimg(img_out, img_out, axis=2, pid=pid + 'x', img_dir=image_dir)
 
 
@@ -279,13 +200,6 @@ def test_luna_patches_3d():
         annotations = id2zyxd[id]
 
         for zyxd in annotations:
-            img_out, patch_center_out, annotations_out = data_transforms.transform_patch3d(img,
-                                                                                           pixel_spacing=pixel_spacing,
-                                                                                           p_transform=config().p_transform,
-                                                                                           p_transform_augment=config().p_transform_augment,
-                                                                                           patch_center=zyxd,
-                                                                                           luna_annotations=annotations,
-                                                                                           luna_origin=origin)
             img_out, mask = config().data_prep_function_train(img,
                                                               pixel_spacing=pixel_spacing,
                                                               p_transform=config().p_transform,
@@ -293,14 +207,13 @@ def test_luna_patches_3d():
                                                               patch_center=zyxd,
                                                               luna_annotations=annotations,
                                                               luna_origin=origin)
-            print patch_center_out
-            # print annotations_out
-            # mask = data_transforms.make_3d_mask_from_annotations(img_out.shape, annotations_out, 'cube')
-            mask[mask == 0] = 0.1
-            plot_2d_3dimg(img_out, mask, 0, id, idx=patch_center_out[0])
-            plot_2d_3dimg(img_out, mask, 1, id, idx=patch_center_out[1])
-            plot_2d_3dimg(img_out, mask, 2, id, idx=patch_center_out[2])
-            print '-------------------------'
+            try:
+                plot_slice_3d_2(img_out, mask, 0, id)
+                plot_slice_3d_2(img_out, mask, 1, id)
+                plot_slice_3d_2(img_out, mask, 2, id)
+            except:
+                pass
+        print '------------------------------------------'
 
 
 if __name__ == '__main__':

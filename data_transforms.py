@@ -204,7 +204,7 @@ def luna_transform_slice(data, pixel_spacing, p_transform,
         radius = (int(radius_mm / pixel_spacing[0]),
                   int(radius_mm / pixel_spacing[1]))
 
-        nodule_mask = make_roi_mask(original_size, center, radius, masked_value=0.1)
+        nodule_mask = make_2d_mask(original_size, center, radius, masked_value=0.1)
         segmentation_mask *= nodule_mask
 
     segmentation_mask = fast_warp(segmentation_mask, total_tform, output_shape=patch_size)
@@ -212,7 +212,7 @@ def luna_transform_slice(data, pixel_spacing, p_transform,
     return out_data, segmentation_mask
 
 
-def make_roi_mask(img_shape, roi_center, roi_radii, shape='circle', masked_value=0.):
+def make_2d_mask(img_shape, roi_center, roi_radii, shape='circle', masked_value=0.):
     if shape == 'circle':
         mask = np.ones(img_shape) * masked_value
         rr, cc = skimage.draw.ellipse(roi_center[0], roi_center[1], roi_radii[0], roi_radii[1], img_shape)
@@ -229,16 +229,22 @@ def make_3d_mask(img_shape, center, radius, shape='sphere'):
     mask = np.zeros(img_shape)
     radius = np.rint(radius)
     center = np.rint(center)
-    sz = slice(int(max(center[0] - radius, 0)), int(max(min(center[0] + radius + 1, img_shape[0]), 0)))
-    sy = slice(int(max(center[1] - radius, 0)), int(max(min(center[1] + radius + 1, img_shape[1]), 0)))
-    sx = slice(int(max(center[2] - radius, 0)), int(max(min(center[2] + radius + 1, img_shape[2]), 0)))
+    sz = np.arange(int(max(center[0] - radius, 0)), int(max(min(center[0] + radius + 1, img_shape[0]), 0)))
+    sy = np.arange(int(max(center[1] - radius, 0)), int(max(min(center[1] + radius + 1, img_shape[1]), 0)))
+    sx = np.arange(int(max(center[2] - radius, 0)), int(max(min(center[2] + radius + 1, img_shape[2]), 0)))
+    sz, sy, sx = np.meshgrid(sz, sy, sx)
     if shape == 'cube':
         mask[sz, sy, sx] = 1.
     elif shape == 'sphere':
-        r2 = np.arange(-radius, radius + 1) ** 2
-        dist2 = r2[:, None, None] + r2[:, None] + r2
-        volume = dist2 <= radius ** 2
-        mask[sz, sy, sx] = volume
+        distance2 = ((center[0] - sz) ** 2
+                     + (center[1] - sy) ** 2
+                     + (center[2] - sx) ** 2)
+        distance_matrix = np.ones_like(mask) * np.inf
+        distance_matrix[sz, sy, sx] = distance2
+        mask[(distance_matrix <= radius ** 2)] = 1
+        # z, y, x = np.ogrid[:mask.shape[0], :mask.shape[1], :mask.shape[2]]
+        # distance2 = ((z - center[0]) ** 2 + (y - center[1]) ** 2 + (x - center[2]) ** 2)
+        # mask[(distance2 <= radius ** 2)] = 1
     return mask
 
 

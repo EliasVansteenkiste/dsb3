@@ -22,7 +22,7 @@ def find_model_metadata(metadata_dir, config_name):
         raise ValueError('No metadata files for config %s' % config_name)
     elif len(metadata_paths) > 1:
         raise ValueError('Multiple metadata files for config %s' % config_name)
-    print metadata_paths[0]
+    print 'Loaded model from', metadata_paths[0]
     return metadata_paths[0]
 
 

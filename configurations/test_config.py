@@ -23,12 +23,12 @@ p_transform = {'patch_size': (64, 64, 64),
                'pixel_spacing': (1., 1., 1.)
                }
 p_transform_augment = {
-    'translation_range_z': [-25, 25],
-    'translation_range_y': [-25, 25],
-    'translation_range_x': [-25, 25],
+    'translation_range_z': [-40, 40],
+    'translation_range_y': [-40, 40],
+    'translation_range_x': [-40, 40],
     'rotation_range_z': [-10, 10],
-    'rotation_range_y': [-5, 5],
-    'rotation_range_x': [-5, 5]
+    'rotation_range_y': [-10, 10],
+    'rotation_range_x': [-10, 10]
 }
 
 batch_size = 1
@@ -57,7 +57,7 @@ def data_prep_function_train(data, patch_center, luna_annotations, pixel_spacing
                                                                                p_transform_augment=p_transform_augment,
                                                                                pixel_spacing=pixel_spacing,
                                                                                luna_origin=luna_origin)
-    y = data_transforms.make_3d_mask_from_annotations(img_shape=x.shape, annotations=annotations_tf, shape='cube')
+    y = data_transforms.make_3d_mask_from_annotations(img_shape=x.shape, annotations=annotations_tf, shape='sphere')
     return x, y
 
 

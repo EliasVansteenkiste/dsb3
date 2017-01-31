@@ -7,13 +7,13 @@ _subconfig = None
 def set_configuration(config_name):
     global _config
     _config = importlib.import_module("configurations.%s" % config_name)
-    print "loaded", _config
+    print "Loaded", _config
 
 
 def set_subconfiguration(config_name):
     global _subconfig
     _subconfig = importlib.import_module("configurations.%s" % config_name)
-    print "loaded", _subconfig
+    print "Loaded", _subconfig
 
 
 def config():

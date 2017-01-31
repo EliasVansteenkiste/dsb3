@@ -13,7 +13,6 @@ import theano.tensor as T
 import buffering
 from configuration import config, set_configuration
 import pathfinder
-from sandbox.test_transformations import plot_2d_3dimg3
 
 theano.config.warn_float64 = 'raise'
 
