@@ -190,7 +190,7 @@ def build_model():
     net['input'] = InputLayer(shape=(None,)+nn_input_shape)
     net['dimshuffle1'] = DimshuffleLayer(net['input'], pattern=(0, 'x', 1, 2, 3))
 
-    net['conv1a'] = Conv3DDNNLayer(net['dimshuffle1'], 32, 3, pad='same',nonlinearity=identity)
+    net['conv1a'] = Conv3DDNNLayer(net['dimshuffle1'], 32, 5, stride=(2, 2, 2), pad='same',nonlinearity=identity)
     net['bn1a'] = BatchNormLayer(net['conv1a'])
     net['relu1a'] = NonlinearityLayer(net['bn1a'])
     net['conv1b'] = Conv3DDNNLayer(net['relu1a'], 32, 3, pad='same',
