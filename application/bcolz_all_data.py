@@ -119,15 +119,38 @@ class BcolzAllDataLoader(StandardDataLoader):
 
         if self.balance_train:
             new_inds = []
+            new_data = []
+            new_labels = []
+            new_names = []
+            new_spacings = []
             for ind in self.indices[TRAIN]:
                 if self.labels[TRAIN][ind] == 0:
                     new_inds.append(ind)
+                    new_data.append(self.data[TRAIN][ind])
+                    new_labels.append(self.labels[TRAIN][ind])
+                    new_names.append(self.names[TRAIN][ind])
+                    new_spacings.append(self.spacings[TRAIN][ind])
                 else:
                     new_inds.append(ind)
                     new_inds.append(ind)
                     new_inds.append(ind)
+                    new_data.append(self.data[TRAIN][ind])
+                    new_labels.append(self.labels[TRAIN][ind])
+                    new_names.append(self.names[TRAIN][ind])
+                    new_spacings.append(self.spacings[TRAIN][ind])
+                    new_data.append(self.data[TRAIN][ind])
+                    new_labels.append(self.labels[TRAIN][ind])
+                    new_names.append(self.names[TRAIN][ind])
+                    new_spacings.append(self.spacings[TRAIN][ind])
+                    new_data.append(self.data[TRAIN][ind])
+                    new_labels.append(self.labels[TRAIN][ind])
+                    new_names.append(self.names[TRAIN][ind])
+                    new_spacings.append(self.spacings[TRAIN][ind])
             self.indices[TRAIN] = new_inds
-
+            self.data[TRAIN] = new_data
+            self.labels[TRAIN] = new_labels
+            self.names[TRAIN] = new_names
+            self.spacings[TRAIN] = new_spacings
 
 
         # self.original_labels = labels
@@ -149,7 +172,8 @@ class BcolzAllDataLoader(StandardDataLoader):
         assert sample_id in set_indices, "Sample ID %d is not known in any of the sets?" % sample_id
 
         sample_index = set_indices.index(sample_id)
-        if self.balance_train: sample_index = sample_id
+        # print sample_index, sample_id
+        # if self.balance_train: sample_index = sample_id
 
         # prepare empty dicts which will contain the result
         sample = dict()
