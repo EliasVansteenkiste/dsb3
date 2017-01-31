@@ -78,7 +78,7 @@ class BcolzAllDataLoader(StandardDataLoader):
 
         with gzip.open(paths.SPACINGS_PATH) as f:
             spacings = cPickle.load(f)
-
+        print len(spacings)
         # load the filenames and put into the right dataset
         for i, patient_folder in enumerate(patients):
             patient_id = str(patient_folder.split(path.sep)[-2])
