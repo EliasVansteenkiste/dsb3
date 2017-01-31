@@ -10,7 +10,10 @@ from lasagne.layers import BatchNormLayer
 from lasagne.layers import NonlinearityLayer
 from lasagne.layers import ElemwiseSumLayer
 from lasagne.layers import GlobalPoolLayer
+from lasagne.layers import DimshuffleLayer
+from lasagne.layers import reshape
 from lasagne.layers import DenseLayer
+from lasagne.nonlinearities import rectify, softmax, identity
 import theano.tensor as T
 import numpy as np
 from functools import partial
@@ -175,59 +178,7 @@ def vox_res(lin):
 
 
 
-"Here we build a model. The model returns a dict with the requested inputs for each layer:" \
-"And with the outputs it generates. You may generate multiple outputs (for analysis or for some other objectives, etc)" \
-"Unused outputs don't cost in performance"
 def build_model():
-    l_in = lasagne.layers.InputLayer(shape=(None,)+nn_input_shape)
-
-    l = lasagne.layers.DimshuffleLayer(l_in, pattern=(0, 'x', 1, 2, 3))
-
-    l = nl(bn(conv3d(l, num_filters=32, filter_size=5, stride=2)))
-    l = nl(bn(conv3d(l, 32)))
-    l = max_pool3d(l)
-
-    l = nl(bn(conv3d(l, 32)))
-    l = nl(bn(conv3d(l, 32)))
-    l = max_pool3d(l)
-
-    l = vox_res(l)
-    l = vox_res(l)
-
-    l = nl(bn(conv3d(l, 32)))
-    l = max_pool3d(l)
-
-    l = vox_res(l)
-    l = vox_res(l)
-
-    l = nl(bn(conv3d(l, 32)))
-    l = max_pool3d(l)
-
-    l = vox_res(l)
-    l = vox_res(l)
-
-    l = GlobalPoolLayer(l)
-
-    l = lasagne.layers.DenseLayer(l,
-                                 num_units=1,
-                                 W=lasagne.init.Constant(0.0),
-                                 b=None,
-                                 nonlinearity=lasagne.nonlinearities.sigmoid)
-
-    l_out = lasagne.layers.reshape(l, shape=(-1,))
-
-    return {
-        "inputs":{
-            "bcolzall:3d": l_in,
-        },
-        "outputs": {
-            "predicted_probability": l_out
-        },
-    }
-
-
-
-def build_net():
     """Method for VoxResNet Building.
 
     Returns
