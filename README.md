@@ -1,7 +1,7 @@
 # TODO
 
 - plotting animation
-- circular masks
+- gaussian masks (copy from Jonas)
 - ordering of slices for kaggle data (Jonas)
 
 

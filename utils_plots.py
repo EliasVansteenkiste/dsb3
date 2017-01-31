@@ -7,6 +7,8 @@ if utils.hostname() != 'user':
 import matplotlib.pyplot as plt
 import warnings
 import numpy as np
+import matplotlib.animation as animation
+from scipy import ndimage
 
 warnings.simplefilter('ignore')
 
@@ -19,7 +21,11 @@ def plot_slice_3d_2(image3d, mask, axis, pid, img_dir=None, idx=None):
     masked_image = image3d * mask_smoothed
     if idx is None:
         roi_idxs = np.where(mask > 0)
-        idx = (np.mean(roi_idxs[0]), np.mean(roi_idxs[1]), np.mean(roi_idxs[2]))
+        if len(roi_idxs[0]) > 0:
+            idx = (np.mean(roi_idxs[0]), np.mean(roi_idxs[1]), np.mean(roi_idxs[2]))
+        else:
+            print 'No nodules'
+            idx = np.array(image3d.shape) / 2
     if axis == 0:  # sax
         ax[0, 0].imshow(image3d[idx[0], :, :], cmap=plt.cm.gray)
         ax[0, 1].imshow(mask[idx[0], :, :], cmap=plt.cm.gray)
@@ -51,7 +57,11 @@ def plot_slice_3d_3(input, mask, prediction, axis, pid, img_dir=None, idx=None):
     fig.canvas.set_window_title(pid)
     if idx is None:
         roi_idxs = np.where(mask > 0)
-        idx = (np.mean(roi_idxs[0]), np.mean(roi_idxs[1]), np.mean(roi_idxs[2]))
+        if len(roi_idxs[0]) > 0:
+            idx = (np.mean(roi_idxs[0]), np.mean(roi_idxs[1]), np.mean(roi_idxs[2]))
+        else:
+            print 'No nodules'
+            idx = np.array(input.shape) / 2
     if axis == 0:  # sax
         ax[0, 0].imshow(prediction[idx[0], :, :], cmap=plt.cm.gray)
         ax[1, 0].imshow(input[idx[0], :, :], cmap=plt.cm.gray)
@@ -96,3 +106,7 @@ def plot_2d_4(img, img_prev, img_next, mask, pid, img_dir):
     fig.savefig(img_dir + '/%s.png' % pid, bbox_inches='tight')
     fig.clf()
     plt.close('all')
+
+
+def animation(input, mask, predictions):
+    pass

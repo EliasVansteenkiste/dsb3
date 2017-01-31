@@ -2,8 +2,12 @@ import numpy as np
 import data_transforms
 import data_iterators
 import pathfinder
-import utils
+import lasagne as nn
+from collections import namedtuple
 from functools import partial
+import theano.tensor as T
+import utils
+import luna_patch1_v3_dice
 
 restart_from_save = None
 rng = np.random.RandomState(42)
@@ -44,3 +48,22 @@ valid_data_iterator = data_iterators.PositiveLunaDataGenerator(data_path=pathfin
                                                                rng=rng,
                                                                patient_ids=train_valid_ids['valid'],
                                                                full_batch=False, random=False, infinite=False)
+
+
+def build_model():
+    patch_model = luna_patch1_v3_dice.build_model()
+    # metadata
+    metadata_dir = utils.get_dir_path('models', pathfinder.METADATA_PATH)
+    metadata_path = utils.find_model_metadata(metadata_dir, 'luna_patch1_v3_dice')
+    metadata = utils.load_pkl(metadata_path)
+    nn.layers.set_all_param_values(patch_model.l_out, metadata['param_values'])
+
+    return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(patch_model.l_in, patch_model.l_out, patch_model.l_target)
+
+
+def build_objective(model, deterministic=False, epsilon=1e-12):
+    predictions = T.flatten(nn.layers.get_output(model.l_out))
+    targets = T.flatten(nn.layers.get_output(model.l_target))
+    targets = T.clip(targets, 1e-6, 1.)
+    dice = (2. * T.sum(targets * predictions) + epsilon) / (T.sum(predictions) + T.sum(targets) + epsilon)
+    return -1. * dice

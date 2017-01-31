@@ -26,7 +26,7 @@ metadata = utils.load_pkl(metadata_path)
 expid = metadata['experiment_id']
 
 # predictions path
-predictions_dir = utils.get_dir_path('predictions', pathfinder.METADATA_PATH)
+predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
 outputs_path = predictions_dir + '/' + expid
 utils.auto_make_dir(outputs_path)
 
@@ -71,23 +71,26 @@ print
 print 'Data'
 print 'n validation: %d' % valid_data_iterator.nsamples
 
+valid_losses = []
 for n, (x_chunk_train, y_chunk_train, id_train) in enumerate(
         buffering.buffered_gen_threaded(valid_data_iterator.generate())):
-
     # load chunk to GPU
     x_shared.set_value(x_chunk_train)
     y_shared.set_value(y_chunk_train)
 
     loss = iter_validate()
     print n, loss
+    valid_losses.append(loss)
     pp = iter_get_predictions()
     tt = iter_get_targets()
     ii = iter_get_inputs()
 
-    for k in xrange(pp.shape[0]):
-        try:
-            plot_slice_3d_3(input=ii[k, 0], mask=tt[k, 0], prediction=pp[k, 0],
-                            axis=0, pid='-'.join([str(n), str(k), str(id_train[k])]),
-                            img_dir=outputs_path)
-        except:
-            print 'no plot'
+    # for k in xrange(pp.shape[0]):
+    #     try:
+    #         plot_slice_3d_3(input=ii[k, 0], mask=tt[k, 0], prediction=pp[k, 0],
+    #                         axis=0, pid='-'.join([str(n), str(k), str(id_train[k])]),
+    #                         img_dir=outputs_path)
+    #     except:
+    #         print 'no plot'
+
+print 'Validation loss', np.mean(valid_losses)

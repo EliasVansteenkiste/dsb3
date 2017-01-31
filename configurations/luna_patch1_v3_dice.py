@@ -44,7 +44,7 @@ def data_prep_function(data, patch_center, luna_annotations, pixel_spacing, luna
 
 
 data_prep_function_train = partial(data_prep_function, p_transform_augment=p_transform_augment, p_transform=p_transform)
-data_prep_function_valid = partial(data_prep_function, p_transform_augment=p_transform_augment, p_transform=p_transform)
+data_prep_function_valid = partial(data_prep_function, p_transform_augment=None, p_transform=p_transform)
 
 # data iterators
 batch_size = 1
@@ -62,7 +62,7 @@ train_data_iterator = data_iterators.PatchPositiveLunaDataGenerator(data_path=pa
                                                                     full_batch=True, random=True, infinite=True)
 
 valid_data_iterator = data_iterators.PatchPositiveLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
-                                                                    batch_size=chunk_size,
+                                                                    batch_size=1,
                                                                     transform_params=p_transform,
                                                                     data_prep_fun=data_prep_function_valid,
                                                                     rng=rng,
@@ -94,9 +94,9 @@ max_pool3d = partial(dnn.MaxPool3DDNNLayer,
                      pool_size=2)
 
 
-def build_model():
-    l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
-    l_target = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
+def build_model(l_in=None, l_target=None):
+    l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size']) if l_in is None else l_in
+    l_target = nn.layers.InputLayer((None, 1,) + p_transform['patch_size']) if l_target is None else l_target
 
     net = {}
     base_n_filters = 64
@@ -137,7 +137,6 @@ def build_objective(model, deterministic=False, epsilon=1e-12):
     targets = T.flatten(nn.layers.get_output(model.l_target))
     targets = T.clip(targets, 1e-6, 1.)
     dice = (2. * T.sum(targets * predictions) + epsilon) / (T.sum(predictions) + T.sum(targets) + epsilon)
-    # l2_reg = nn.regularization.regularize_layer_params(model.l_out, nn.regularization.l2) * 1e-5
     return -1. * dice
 
 
