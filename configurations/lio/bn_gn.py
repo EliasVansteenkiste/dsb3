@@ -57,7 +57,7 @@ preprocessors = [
             "translation": [50, 50, 50],  # mm
             "reflection": [0, 0, 0]}, #Bernoulli p
         interp_order=1),
-    DefaultNormalizer(tags=["bcolzall:3d"])
+    # DefaultNormalizer(tags=["bcolzall:3d"])
 ]
 
 preprocessors_valid = [
@@ -66,7 +66,7 @@ preprocessors_valid = [
         output_shape = nn_input_shape,
         norm_patch_shape=norm_patch_shape,
         interp_order=1),
-    DefaultNormalizer(tags=["bcolzall:3d"])
+    # DefaultNormalizer(tags=["bcolzall:3d"])
 ]
 
 
