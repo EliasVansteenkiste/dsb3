@@ -13,6 +13,11 @@ p_transform = {'patch_size': (320, 320, 320),
                'pixel_spacing': (1., 1., 1.)
                }
 
+# p_transform = {'patch_size': (64, 64, 64),
+#                'mm_patch_size': (64, 64, 64),
+#                'pixel_spacing': (1., 1., 1.)
+#                }
+
 
 # data preparation function
 def data_prep_function(data, luna_annotations, pixel_spacing, luna_origin, p_transform,
