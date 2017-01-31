@@ -78,6 +78,8 @@ preprocessors_valid = [
 "You can set the number of epochs, the datasets and if you want it multiprocessed"
 n_epochs = 100
 training_data = BcolzAllDataLoader(
+    balance_train=True,
+    remove_corrupt=True,
     sets=TRAINING,
     epochs=n_epochs,
     preprocessors=preprocessors,
@@ -85,7 +87,7 @@ training_data = BcolzAllDataLoader(
     crash_on_exception=True)
 
 "Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate." 
-lr = 0.00001
+lr = 0.0001
 lr_min = lr/1000.
 lr_decay = 0.9
 learning_rate_schedule = {}

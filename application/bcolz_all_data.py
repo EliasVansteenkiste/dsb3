@@ -15,6 +15,7 @@ from utils import paths
 
 
 VALIDATION_SET_SIZE = 0.2
+CORRUPT = {"b8bb02d229361a623a4dc57aa0e5c485"}
 
 
 class BcolzAllDataLoader(StandardDataLoader):
@@ -28,9 +29,13 @@ class BcolzAllDataLoader(StandardDataLoader):
 
     def __init__(self,
                  use_luna=False,
+                 remove_corrupt=False,
+                 balance_train=False,
                  location=paths.ALL_DATA_PATH, *args, **kwargs):
         super(BcolzAllDataLoader, self).__init__(location=location, *args, **kwargs)
         self.use_luna = use_luna
+        self.remove_corrupt = remove_corrupt
+        self.balance_train = balance_train
 
     def prepare(self):
         """
@@ -78,10 +83,12 @@ class BcolzAllDataLoader(StandardDataLoader):
 
         with gzip.open(paths.SPACINGS_PATH) as f:
             spacings = cPickle.load(f)
-        print len(spacings)
+        # print len(spacings)
         # load the filenames and put into the right dataset
         for i, patient_folder in enumerate(patients):
             patient_id = str(patient_folder.split(path.sep)[-2])
+            if self.remove_corrupt and patient_id in CORRUPT:
+                continue
             if patient_id in labels:
                 if patient_id in validation_patients:
                     dataset = VALIDATION
@@ -89,7 +96,6 @@ class BcolzAllDataLoader(StandardDataLoader):
                     dataset = TRAIN
             else:
                 dataset = TEST
-
 
             self.data[dataset].append(patient_folder)
             if patient_id in labels:
@@ -110,6 +116,19 @@ class BcolzAllDataLoader(StandardDataLoader):
             if len(self.indices[set]) > 0:
                 last_index = self.indices[set][-1]
             print set, len(self.indices[set]), "samples"
+
+        if self.balance_train:
+            new_inds = []
+            for ind in self.indices[TRAIN]:
+                if self.labels[TRAIN][ind] == 0:
+                    new_inds.append(ind)
+                else:
+                    new_inds.append(ind)
+                    new_inds.append(ind)
+                    new_inds.append(ind)
+            self.indices[TRAIN] = new_inds
+
+
 
         # self.original_labels = labels
 
