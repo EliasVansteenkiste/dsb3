@@ -17,7 +17,7 @@ from application.preprocessors.normalize_scales import DefaultNormalizer
 #####################
 
 "This is the number of samples in each batch"
-batch_size = 16
+batch_size = 8
 "This is the number of batches in each chunk. Computation speeds up if this is as big as possible." \
 "However, when too big, the GPU will run out of memory"
 batches_per_chunk = 1
@@ -48,7 +48,7 @@ preprocessors = [
         augmentation_params={
             "scale": [1, 1, 1],  # factor
             "uniform scale": 1, # factor
-            "rotation": [5, 5, 5],  # degrees
+            "rotation": [0, 0, 0],  # degrees
             "shear": [0, 0, 0],  # degrees
             "translation": [50, 50, 50],  # mm
             "reflection": [0, 0, 0]}, #Bernoulli p
@@ -182,7 +182,7 @@ def build_model():
 
     l = lasagne.layers.DimshuffleLayer(l_in, pattern=(0, 'x', 1, 2, 3))
 
-    n = 8
+    n = 32
     l = conv3d(l, n, filter_size=7, stride=2)
 
     n *= 2
