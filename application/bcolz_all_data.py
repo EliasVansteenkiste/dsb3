@@ -94,10 +94,10 @@ class BcolzAllDataLoader(StandardDataLoader):
             self.data[dataset].append(patient_folder)
             if patient_id in labels:
                 self.labels[dataset].append(labels[patient_id])
+            else:
+                print dataset, patient_idz
             self.names[dataset].append(patient_id)
             self.spacings[dataset].append(spacings[patient_id])
-
-
 
         print "train", len(self.data[TRAIN])
         print "valid", len(self.data[VALIDATION])
@@ -157,7 +157,7 @@ class BcolzAllDataLoader(StandardDataLoader):
                 sample[INPUT][tag] = volume
 
             if "pixelspacing" in tags:
-                sample[INPUT][tag] = self.spacings[set][sample_index]  # in mm per pixel
+                sample[INPUT][tag] = self.spacings[set][sample_index][::-1]  # in mm per pixel
 
             if "shape" in tags:
                 sample[INPUT][tag] = volume.shape
@@ -292,7 +292,7 @@ def test_loader():
     # paths.SPACINGS_PATH =  "/home/lio/data/dsb3/spacings.pkl.gz",
     l = BcolzAllDataLoader(
         multiprocess=False,
-        location="/home/lio/data/dsb3/stage1+luna_bcolz/",
+        location="/mnt/storage/data/dsb3/stage1+luna_bcolz/",
         sets=TRAINING,
         preprocessors=preprocessors)
     l.prepare()
@@ -318,6 +318,6 @@ def test_loader():
 
 
 if __name__ == '__main__':
-    # test_loader()
+    test_loader()
     # test_diameter_to_prob()
-    test_diagnosis()
+    # test_diagnosis()
