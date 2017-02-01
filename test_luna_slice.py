@@ -48,9 +48,9 @@ idx_y = T.lscalar('idx_y')
 idx_x = T.lscalar('idx_x')
 givens_valid = {}
 givens_valid[model.l_in.input_var] = x_shared[:, :,
-                                     idx_z * 64:(idx_z + 1) * 64,
-                                     idx_y * 64:(idx_y + 1) * 64,
-                                     idx_x * 64:(idx_x + 1) * 64]
+                                     idx_z * 32:(idx_z * 32) + 64,
+                                     idx_y * 32:(idx_y * 32) + 64,
+                                     idx_x * 32:(idx_x * 32) + 64]
 
 # theano functions
 iter_get_predictions = theano.function([idx_z, idx_x, idx_y],
@@ -70,12 +70,13 @@ for n, (x_chunk, y_chunk, id_chunk) in enumerate(
     pp_out = np.zeros_like(x_chunk)
     x_shared.set_value(x_chunk)
 
-    for iz in xrange(5):
-        for iy in xrange(5):
-            for ix in xrange(5):
+    for iz in xrange(10):
+        for iy in xrange(10):
+            for ix in xrange(10):
                 print iz, iy, ix
+                #We should do something about the borders !!!!!!!!
                 pp = iter_get_predictions(iz, iy, ix)
-                pp_out[0, 0, iz * 64:(iz + 1) * 64, iy * 64:(iy + 1) * 64, ix * 64:(ix + 1) * 64] = pp
+                pp_out[0, 0, iz * 32:(iz + 1) * 32, iy * 32:(iy + 1) * 32, ix * 32:(ix + 1) * 32] = pp[16:48,16:48,16:48]
 
                 # plot_slice_3d_3(
                 #     input=x_chunk_train[0, 0, iz * 64:(iz + 1) * 64, iy * 64:(iy + 1) * 64, ix * 64:(ix + 1) * 64],
