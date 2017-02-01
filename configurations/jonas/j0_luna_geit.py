@@ -1,6 +1,6 @@
 from functools import partial
 from lasagne.layers import dnn
-from application.luna import LunaDataLoader, OnlyPositiveLunaDataLoader, BcolzLunaDataLoader
+from application.luna import LunaDataLoader, OnlyPositiveLunaDataLoader
 from application.preprocessors.in_the_middle import PutInTheMiddle
 from application.preprocessors.lio_augmentation import LioAugment, LioAugmentOnlyPositive
 from configurations.default import *
@@ -25,7 +25,7 @@ from interfaces.preprocess import NormalizeInput, ZMUV
 batch_size = 1
 "This is the number of batches in each chunk. Computation speeds up if this is as big as possible." \
 "However, when too big, the GPU will run out of memory"
-batches_per_chunk = 32
+batches_per_chunk = 1
 "Reload the parameters from last time and continue, or start anew when you run this config file again"
 restart_from_save = False
 "After how many chunks should you save parameters. Keep this number high for better performance. It will always store at end anyway"
@@ -36,22 +36,21 @@ save_every_chunks = 50
 #   preprocessing   #
 #####################
 
-IMAGE_SIZE = 64
 
 AUGMENTATION_PARAMETERS = {
     "scale": [1, 1, 1],  # factor
     "rotation": [180, 180, 180],  # degrees (from -180 to 180)
     "shear": [0, 0, 0],  # degrees
-    "translation": [64, 64, 64],  # mms (from -128 to 128)
+    "translation": [96, 96, 96],  # mms (from -128 to 128)
     "reflection": [0, 0, 0] #Bernoulli p
 }
 
 "Put in here the preprocessors for your data." \
 "They will be run consequently on the datadict of the dataloader in the order of your list."
 preprocessors = [
-    LioAugmentOnlyPositive(tags=["luna:3d", "luna:segmentation"],
-               output_shape=(IMAGE_SIZE,IMAGE_SIZE,IMAGE_SIZE),  # in pixels
-               norm_patch_size=(IMAGE_SIZE,IMAGE_SIZE,IMAGE_SIZE),  # in mms
+    LioAugmentOnlyPositive(tags=["luna:3d", "luna:gaussian"],
+               output_shape=(128,128,128),  # in pixels
+               norm_patch_size=(128,128,128),  # in mms
                augmentation_params=AUGMENTATION_PARAMETERS
                ),
     ZMUV("luna:3d", bias =  -648.59027, std = 679.21021),
@@ -62,20 +61,18 @@ preprocessors = [
 #####################
 "This is the train dataloader. We will train until this one stops loading data."
 "You can set the number of epochs, the datasets and if you want it multiprocessed"
-training_data = BcolzLunaDataLoader(
-    only_positive=True,
+training_data = OnlyPositiveLunaDataLoader(
     sets=TRAINING,
     epochs=10,
     preprocessors=preprocessors,
-    multiprocess=False,
+    multiprocess=True,
     crash_on_exception=True,
 )
 
 "Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate."
 learning_rate_schedule = {
     0.0: 0.00001,
-    8.0: 0.000001,
-    9.0: 0.0000001,
+    9.0: 0.000001,
 }
 "The function to build updates."
 build_updates = lasagne.updates.adam
@@ -89,25 +86,21 @@ epochs_per_validation = 1
 
 "Which data do we want to validate on. We will run all validation objectives on each validation data set."
 validation_data = {
-    "validation set": BcolzLunaDataLoader(
-        only_positive=True,
-        sets=VALIDATION,
-        epochs=1,
-        preprocessors=preprocessors,
-        process_last_chunk=True,
-        multiprocess=True,
-        crash_on_exception=True,
-    ),
-    "training set": BcolzLunaDataLoader(
-        only_positive=True,
-        sets=TRAINING,
-        epochs=0.01,
-        preprocessors=preprocessors,
-        process_last_chunk=True,
-        multiprocess=True,
-        crash_on_exception=True,
-    ),
-}
+    "validation set": OnlyPositiveLunaDataLoader(sets=VALIDATION,
+                                        epochs=1,
+                                        preprocessors=preprocessors,
+                                        process_last_chunk=True,
+                                 multiprocess=True,
+                                 crash_on_exception=True,
+                                        ),
+    "training set":  OnlyPositiveLunaDataLoader(sets=TRAINING,
+                                        epochs=0.01,
+                                        preprocessors=preprocessors,
+                                        process_last_chunk=True,
+                                 multiprocess=True,
+                                 crash_on_exception=True,
+                                        ),
+    }
 
 
 #####################
@@ -128,31 +121,31 @@ def build_objectives(interface_layers):
     obj_weighted = WeightedSegmentationCrossEntropyObjective(
         classweights=[10000, 1],
         input_layer=interface_layers["outputs"]["predicted_segmentation"],
-        target_name="luna:segmentation",
+        target_name="luna:gaussian",
     )
 
     obj_jaccard = JaccardIndexObjective(
         smooth=1e-5,
         input_layer=interface_layers["outputs"]["predicted_segmentation"],
-        target_name="luna:segmentation",
+        target_name="luna:gaussian",
     )
 
     obj_dice = SoerensonDiceCoefficientObjective(
         smooth=1e-5,
         input_layer=interface_layers["outputs"]["predicted_segmentation"],
-        target_name="luna:segmentation",
+        target_name="luna:gaussian",
     )
 
     obj_precision = PrecisionObjective(
         smooth=1e-5,
         input_layer=interface_layers["outputs"]["predicted_segmentation"],
-        target_name="luna:segmentation",
+        target_name="luna:gaussian",
     )
 
     obj_recall = RecallObjective(
         smooth=1e-5,
         input_layer=interface_layers["outputs"]["predicted_segmentation"],
-        target_name="luna:segmentation",
+        target_name="luna:gaussian",
     )
 
     obj_custom = ClippedFObjective(
@@ -160,12 +153,12 @@ def build_objectives(interface_layers):
         recall_weight = 1./0.95,
         precision_weight = 1./0.3,
         input_layer=interface_layers["outputs"]["predicted_segmentation"],
-        target_name="luna:segmentation",
+        target_name="luna:gaussian",
     )
 
     return {
         "train":{
-            "objective": obj_dice,
+            "objective": obj_custom,
             "jaccard": obj_jaccard,
             "weighted": obj_weighted,
             "Dice": obj_dice,
@@ -173,7 +166,7 @@ def build_objectives(interface_layers):
             "recall": obj_recall,
         },
         "validate":{
-            "objective": obj_dice,
+            "objective": obj_custom,
             "jaccard": obj_jaccard,
             "weighted": obj_weighted,
             "Dice": obj_dice,
@@ -202,12 +195,12 @@ max_pool3d = partial(dnn.MaxPool3DDNNLayer,
 "And with the outputs it generates. You may generate multiple outputs (for analysis or for some other objectives, etc)" \
 "Unused outputs don't cost in performance"
 def build_model():
-    l_in = lasagne.layers.InputLayer(shape=(None,IMAGE_SIZE,IMAGE_SIZE,IMAGE_SIZE))
+    l_in = lasagne.layers.InputLayer(shape=(None,128,128,128))
 
     l0 = lasagne.layers.DimshuffleLayer(l_in, pattern=[0,'x',1,2,3])
 
     net = {}
-    base_n_filters = 256
+    base_n_filters = 48
     net['contr_1_1'] = conv3d(l0, base_n_filters)
     net['contr_1_2'] = conv3d(net['contr_1_1'], base_n_filters)
     net['pool1'] = max_pool3d(net['contr_1_2'])

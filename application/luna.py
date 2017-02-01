@@ -46,6 +46,7 @@ class LunaDataLoader(StandardDataLoader):
         In this case, only filenames are loaded prematurely
         :return:
         """
+
         # step 0: load only when not loaded yet
         if TRAINING in self.data \
             and VALIDATION in self.data:
@@ -235,7 +236,6 @@ class LunaDataLoader(StandardDataLoader):
             distance_in_mm2 = ((spacing[0]*(x-xt))**2 + (spacing[1]*(y-yt))**2 + (spacing[2]*(z-zt))**2)
             gaussian = np.exp(- 1.*distance_in_mm2 / (2*diameter_in_mm**2))
             mask += gaussian
-
         mask = mask/np.max(mask)
         return mask
 
@@ -256,6 +256,7 @@ class BcolzLunaDataLoader(LunaDataLoader):
         In this case, only filenames are loaded prematurely
         :return:
         """
+        print "previous bcolz nthreads:", bcolz.set_nthreads(1);
 
         # step 0: load only when not loaded yet
         if TRAINING in self.data and VALIDATION in self.data: return
@@ -358,7 +359,6 @@ class BcolzLunaDataLoader(LunaDataLoader):
         except:
             print patient_name
             raise
-
         # Iterate over input tags and return a dict with the requested tags filled
         for tag in input_keys_to_do:
             tags = tag.split(':')

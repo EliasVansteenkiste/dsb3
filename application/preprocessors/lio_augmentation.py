@@ -139,10 +139,23 @@ class LioAugmentOnlyPositive(LioAugment):
         original_sample_input = dict(sample[INPUT])
         original_sample_output = dict(sample[OUTPUT])
         good = False
+        tagfound = False
+        cnt = 0
         while not good:
+            cnt+=1
             sample[INPUT].update(original_sample_input)
             sample[OUTPUT].update(original_sample_output)
             super(LioAugmentOnlyPositive, self).process(sample)
             for tag in self.tags:
                 if tag in sample[OUTPUT]:
-                    good = (np.max(sample[OUTPUT][tag])>0.5)
+                    sh = sample[OUTPUT][tag].shape
+                    # select the middle part
+                    indices = [slice(width/4,width-width/4) for width in sh]
+                    good = (np.max(sample[OUTPUT][tag][indices])>0.5)
+                    tagfound = True
+            if not tagfound:
+                print sample[OUTPUT].keys()
+                raise Exception("Tag '%s' was not found in the data I needed to augment"%tag)
+            if cnt%100==0:
+                print "It took over %d augmentations and still no positive one..."%cnt
+                good = True
