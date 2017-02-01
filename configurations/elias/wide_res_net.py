@@ -12,6 +12,7 @@ from lasagne.layers import NonlinearityLayer
 from lasagne.layers import ElemwiseSumLayer
 from lasagne.layers import GlobalPoolLayer
 from lasagne.layers import DimshuffleLayer
+from lasagne.layers import DropoutLayer
 from lasagne.layers import reshape
 from lasagne.layers import DenseLayer
 from lasagne.layers import batch_norm
