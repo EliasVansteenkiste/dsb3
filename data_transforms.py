@@ -242,9 +242,11 @@ def make_3d_mask(img_shape, center, radius, shape='sphere'):
         distance_matrix = np.ones_like(mask) * np.inf
         distance_matrix[sz, sy, sx] = distance2
         mask[(distance_matrix <= radius ** 2)] = 1
-        # z, y, x = np.ogrid[:mask.shape[0], :mask.shape[1], :mask.shape[2]]
-        # distance2 = ((z - center[0]) ** 2 + (y - center[1]) ** 2 + (x - center[2]) ** 2)
-        # mask[(distance2 <= radius ** 2)] = 1
+    elif shape == 'gauss':
+        z, y, x = np.ogrid[:mask.shape[0], :mask.shape[1], :mask.shape[2]]
+        distance = ((z - center[0]) ** 2 + (y - center[1]) ** 2 + (x - center[2]) ** 2)
+        mask = np.exp(- 1. * distance / (2 * radius ** 2))
+        mask[(distance > 3 * radius ** 2)] = 0
     return mask
 
 
@@ -252,7 +254,7 @@ def make_3d_mask_from_annotations(img_shape, annotations, shape):
     mask = np.zeros(img_shape)
     for zyxd in annotations:
         mask += make_3d_mask(img_shape, zyxd[:3], zyxd[-1] / 2, shape)
-    mask[mask > 0] = 1.
+    mask = np.clip(mask, 0., 1.)
     return mask
 
 

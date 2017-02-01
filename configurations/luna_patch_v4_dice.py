@@ -70,34 +70,35 @@ valid_data_iterator = data_iterators.PatchPositiveLunaDataGenerator(data_path=pa
                                                                     full_batch=False, random=False, infinite=False)
 
 nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
-max_nchunks = nchunks_per_epoch * 20
+max_nchunks = nchunks_per_epoch * 30
 
 validate_every = int(1. * nchunks_per_epoch)
 save_every = int(0.5 * nchunks_per_epoch)
 
 learning_rate_schedule = {
     0: 1e-5,
+    int(max_nchunks * 0.4): 5e-6,
     int(max_nchunks * 0.5): 3e-6,
-    int(max_nchunks * 0.8): 2e-6,
-    int(max_nchunks * 0.9): 1e-6
+    int(max_nchunks * 0.6): 2e-6,
+    int(max_nchunks * 0.85): 1e-6,
+    int(max_nchunks * 0.95): 5e-7
 }
 
 # model
 conv3d = partial(dnn.Conv3DDNNLayer,
                  filter_size=3,
                  pad='same',
-                 W=nn.init.Orthogonal('relu'),
+                 W=nn.init.Orthogonal(),
                  b=nn.init.Constant(0.01),
-                 nonlinearity=nn.nonlinearities.rectify)
-# TODO: bug here: rectify nonlinearity and then I use PReLU!!!
+                 nonlinearity=nn.nonlinearities.linear)
 
 max_pool3d = partial(dnn.MaxPool3DDNNLayer,
                      pool_size=2)
 
 
-def build_model(l_in=None, l_target=None):
-    l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size']) if l_in is None else l_in
-    l_target = nn.layers.InputLayer((None, 1,) + p_transform['patch_size']) if l_target is None else l_target
+def build_model():
+    l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
+    l_target = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
 
     net = {}
     base_n_filters = 64

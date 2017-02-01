@@ -1,7 +1,9 @@
 # TODO
 
-- plotting animation
-- gaussian masks (copy from Jonas)
+- zmuv
+- slice segmentations 
+- pixelshuffle layer 
+- learning curves
 - ordering of slices for kaggle data (Jonas)
 
 

@@ -21,7 +21,7 @@ def plot_slice_3d_2(image3d, mask, axis, pid, img_dir=None, idx=None):
     mask_smoothed[mask == 0] = 0.1
     masked_image = image3d * mask_smoothed
     if idx is None:
-        roi_idxs = np.where(mask > 0)
+        roi_idxs = np.where(mask == 1.)
         if len(roi_idxs[0]) > 0:
             idx = (np.mean(roi_idxs[0]), np.mean(roi_idxs[1]), np.mean(roi_idxs[2]))
         else:
