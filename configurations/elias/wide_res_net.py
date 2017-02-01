@@ -14,6 +14,8 @@ from lasagne.layers import GlobalPoolLayer
 from lasagne.layers import DimshuffleLayer
 from lasagne.layers import reshape
 from lasagne.layers import DenseLayer
+from lasagne.layers import batch_norm
+
 from lasagne.nonlinearities import rectify, softmax, identity
 from lasagne.init import Orthogonal, HeNormal, GlorotNormal
 import theano.tensor as T
