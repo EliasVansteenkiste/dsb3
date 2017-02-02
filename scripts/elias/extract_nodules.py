@@ -1,6 +1,6 @@
 import numpy as np
-from sklearn.mixture import BayesianGaussianMixture
 from sklearn.cluster import KMeans
+from sklearn.mixture import BayesianGaussianMixture
 from scipy.spatial import distance
 
 
