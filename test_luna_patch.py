@@ -88,7 +88,7 @@ for n, (x_chunk_train, y_chunk_train, id_train) in enumerate(
     for k in xrange(pp.shape[0]):
         try:
             plot_slice_3d_3(input=ii[k, 0], mask=tt[k, 0], prediction=pp[k, 0],
-                            axis=0, pid='-'.join(['c', str(n), str(k), str(id_train[k])]),
+                            axis=0, pid='-'.join([str(n), str(k), str(id_train[k])]),
                             img_dir=outputs_path)
         except:
             print 'no plot'
