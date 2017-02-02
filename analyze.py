@@ -34,7 +34,7 @@ from utils.timer import Timer
 import os
 
 import warnings
-warnings.simplefilter("error")
+#warnings.simplefilter("error")
 import sys
 sys.setrecursionlimit(10000)
 

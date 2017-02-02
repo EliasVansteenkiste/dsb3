@@ -17,7 +17,7 @@ def analyze(id,analysis_path,**kwargs):
     The id is the respective id of this patient
     """
     data = kwargs['luna:3d']
-    segm = kwargs['luna:segmentation']
+    segm = kwargs['luna:gaussian']
     pred = kwargs['predicted_segmentation']
 
     def sigmoid(x):
@@ -43,12 +43,13 @@ def analyze(id,analysis_path,**kwargs):
     print "max prediction", np.max(pred)
     print "nonzeros", np.count_nonzero(pred>0.5)
     print np.sum(pred*segm), np.sum(pred*(1-segm))
-    circle = (segm>0.5) - ndimage.binary_erosion((segm>0.5)).astype('float32')
+    #circle = (segm>0.5) - ndimage.binary_erosion((segm>0.5)).astype('float32')
 
     if true_neg==1.0:
         return
 
     def get_data_step(step):
+        return np.concatenate([data[:,:,step,None], 0*pred[:,:,step,None]/(np.max(pred[:,:,step,None])+1e-14), segm[:,:,step,None]], axis=-1)
         return np.concatenate([data[:,:,step,None], pred[:,:,step,None]/(np.max(pred[:,:,step,None])+1e-14), circle[:,:,step,None]], axis=-1)
 
     fig = plt.figure()
