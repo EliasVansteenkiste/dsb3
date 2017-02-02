@@ -1,7 +1,6 @@
 {
+  "BCOLZ_DATA_PATH":"/data/dsb3/bcolz/",
   "DIAGNOSIS_PATH":"/mnt/storage/data/dsb3/luna/patient_diagnosis.csv",
-  "ALL_DATA_PATH":"/data/dsb3/stage1+luna_bcolz/",
-  "SPACINGS_PATH":"/mnt/storage/data/dsb3/spacings.pkl.gz",
   "DATA_PATH":"/mnt/storage/data/dsb3/stage1/",
   "LUNA_DATA_PATH":"/mnt/storage/data/dsb3/luna/dataset/",
   "LABELS_PATH":"/mnt/storage/data/dsb3/stage1_labels.csv",

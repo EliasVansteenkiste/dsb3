@@ -23,5 +23,5 @@ class DefaultNormalizer(BasePreprocessor):
             elif tag in sample[OUTPUT]:
                 volume = sample[OUTPUT][tag]
                 sample[OUTPUT][tag] = volume*self.scale+self.offset
-#            else:
- #               raise Exception("Did not find tag which I had to augment: %s"%tag)
+            else:
+                raise Exception("Did not find tag which I had to augment: %s"%tag)

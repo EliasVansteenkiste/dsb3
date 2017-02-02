@@ -190,3 +190,4 @@ Temporary Items
 .apdisk
 
 # End of https://www.gitignore.io/api/pycharm,python,linux,macos
+/scripts/lio/compress_data_local.py
