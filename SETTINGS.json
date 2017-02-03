@@ -1,15 +1,15 @@
 {
-  "ALL_DATA_PATH":"/mnt/storage/data/dsb3/stage1+luna_bcolz/",
-  "SPACINGS_PATH":"/mnt/storage/data/dsb3/spacings.pkl.gz",
-  "DATA_PATH":"/mnt/storage/data/dsb3/stage1/",
-  "LUNA_DATA_PATH":"/mnt/storage/data/dsb3/luna/dataset/",
-  "LABELS_PATH":"/mnt/storage/data/dsb3/stage1_labels.csv",
-  "LUNA_LABELS_PATH":"/mnt/storage/data/dsb3/luna/annotations.csv",
-  "MODEL_PATH":"/mnt/storage/metadata/dsb3/models/",
-  "MODEL_PREDICTIONS_PATH":"/mnt/storage/metadata/dsb3/model-predictions/",
-  "ANALYSIS_PATH":"/mnt/storage/metadata/dsb3/analysis/",
-  "SUBMISSION_PATH":"/mnt/storage/metadata/dsb3/submissions/",
-  "LOGS_PATH":"/mnt/storage/metadata/dsb3/logs/",
-  "PREDICTIONS_PATH":"/mnt/storage/metadata/dsb3/predictions/",
-  "ENSEMBLE_WEIGHTS_PATH":"/mnt/storage/metadata/dsb3/ensemble-weights/"
+  "ALL_DATA_PATH":"/data/dsb3/stage1+luna_bcolz/",
+  "SPACINGS_PATH":"/home/eavsteen/dsb3/storage/data/dsb3/spacings.pkl.gz",
+  "DATA_PATH":"/home/eavsteen/dsb3/storage/data/dsb3/stage1/",
+  "LUNA_DATA_PATH":"/home/eavsteen/dsb3/storage/data/dsb3/luna/dataset/",
+  "LABELS_PATH":"/home/eavsteen/dsb3/storage/data/dsb3/stage1_labels.csv",
+  "LUNA_LABELS_PATH":"/home/eavsteen/dsb3/storage/data/dsb3/luna/annotations.csv",
+  "MODEL_PATH":"/home/eavsteen/dsb3/storage/metadata/dsb3/models/",
+  "MODEL_PREDICTIONS_PATH":"/home/eavsteen/dsb3/storage/metadata/dsb3/model-predictions/",
+  "ANALYSIS_PATH":"/home/eavsteen/dsb3/storage/metadata/dsb3/analysis/",
+  "SUBMISSION_PATH":"/home/eavsteen/dsb3/storage/metadata/dsb3/submissions/",
+  "LOGS_PATH":"/home/eavsteen/dsb3/storage/metadata/dsb3/logs/",
+  "PREDICTIONS_PATH":"/home/eavsteen/dsb3/storage/metadata/dsb3/predictions/",
+  "ENSEMBLE_WEIGHTS_PATH":"/home/eavsteen/dsb3/storage/metadata/dsb3/ensemble-weights/"
 }

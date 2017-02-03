@@ -191,6 +191,6 @@ Temporary Items
 
 # End of https://www.gitignore.io/api/pycharm,python,linux,macos
 
-.jpg
-.jpeg
-.pdf
+*.jpg
+*.jpeg
+*.pdf
