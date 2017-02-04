@@ -6,7 +6,9 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
+
 from scipy.ndimage.filters import convolve
+from tf_convolution import conv3d
 
 
 def sample_fits_inside_volume(s):
@@ -95,6 +97,8 @@ def extract_nodules_best_gmix(segmentation_volume, max_n_components=40, plot=Fal
 
 	return best_gmix
 
+
+
 def extract_nodules_conv_filter(segmentation_volume, ct_scan, no_rois=5, dim=8, plot=False, dbg_target=None):
 	assert(segmentation_volume.shape==ct_scan.shape)
 
@@ -111,7 +115,8 @@ def extract_nodules_conv_filter(segmentation_volume, ct_scan, no_rois=5, dim=8, 
 		fig.savefig('filter.pdf')
 
 	#Convolution
-	result = convolve(segmentation_volume, cfilt)
+	#result = convolve(segmentation_volume, cfilt)
+	result = conv3d(segmentation_volume, cfilt)
 	if plot:
 		fig = plt.figure()
 		plt.imshow(result[result.shape[0]/2])
@@ -134,8 +139,8 @@ def extract_nodules_conv_filter(segmentation_volume, ct_scan, no_rois=5, dim=8, 
 		rois.append(roi)
 
 		#set roi to zero in result mask
-		print selection
-		result[selection] = np.zeros((dim,dim,dim))
+		zshape = result[selection].shape
+		result[selection] = np.zeros(zshape)
 
 
 		if plot:
