@@ -1,9 +1,8 @@
 # TODO
 
+- luna evalution metrics
 - zmuv
-- slice segmentations 
 - pixelshuffle layer 
-- learning curves
 - ordering of slices for kaggle data (Jonas)
 
 

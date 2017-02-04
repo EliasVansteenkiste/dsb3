@@ -207,6 +207,21 @@ def write_submission(patient_predictions, submission_path):
     f.close()
 
 
+def dice_index(predictions, targets, epsilon=1e-12):
+    predictions = np.asarray(predictions).flatten()
+    targets = np.asarray(targets).flatten()
+    dice = (2. * np.sum(targets * predictions) + epsilon) / (np.sum(predictions) + np.sum(targets) + epsilon)
+    return dice
+
+
+def cross_entropy(predictions, targets, epsilon=1e-12):
+    predictions = np.asarray(predictions).flatten()
+    predictions = np.clip(predictions, epsilon, 1. - epsilon)
+    targets = np.asarray(targets).flatten()
+    ce = np.mean(np.log(predictions) * targets + np.log(1 - predictions) * (1. - targets))
+    return ce
+
+
 if __name__ == "__main__":
     pid2label = read_labels(pathfinder.SAMPLE_SUBMISSION_PATH)
     for k, v in pid2label.iteritems():

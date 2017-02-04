@@ -8,14 +8,20 @@ from functools import partial
 restart_from_save = None
 rng = np.random.RandomState(42)
 # transformations# transformations
+# p_transform = {'patch_size': (128, 128, 128),
+#                'mm_patch_size': (128, 128, 128),
+#                'pixel_spacing': (1., 0.6, 0.6)
+#                }
+
 p_transform = {'patch_size': (64, 64, 64),
                'mm_patch_size': (64, 64, 64),
-               'pixel_spacing': (1., 1., 1.)
+               'pixel_spacing': (1., 0.7, 0.7)
                }
+
 p_transform_augment = {
-    'translation_range_z': [-27, 27],
-    'translation_range_y': [-27, 27],
-    'translation_range_x': [-27, 27],
+    'translation_range_z': [-20, 20],
+    'translation_range_y': [-20, 20],
+    'translation_range_x': [-20, 20],
     'rotation_range_z': [-180, 180],
     'rotation_range_y': [-180, 180],
     'rotation_range_x': [-180, 180]
@@ -33,7 +39,7 @@ def data_prep_function(data, patch_center, luna_annotations, pixel_spacing, luna
                                                                                p_transform_augment=p_transform_augment,
                                                                                pixel_spacing=pixel_spacing,
                                                                                luna_origin=luna_origin)
-    y = data_transforms.make_3d_mask_from_annotations(img_shape=x.shape, annotations=annotations_tf, shape='gauss')
+    y = data_transforms.make_3d_mask_from_annotations(img_shape=x.shape, annotations=annotations_tf, shape='sphere')
     return x, y
 
 

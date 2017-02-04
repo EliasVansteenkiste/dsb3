@@ -3,12 +3,12 @@ import sys
 import lasagne as nn
 import numpy as np
 import theano
-import buffering
 import pathfinder
 import utils
 from configuration import config, set_configuration
 from utils_plots import plot_slice_3d_3, plot_slice_3d_3_patch
 import theano.tensor as T
+import utils_lung
 
 theano.config.warn_float64 = 'raise'
 
@@ -73,6 +73,7 @@ print
 print 'Data'
 print 'n validation: %d' % valid_data_iterator.nsamples
 
+valid_losses_dice = []
 for n, (x_chunk, y_chunk, id_chunk) in enumerate(valid_data_iterator.generate()):
 
     predictions_scan = np.zeros_like(x_chunk)
@@ -81,30 +82,27 @@ for n, (x_chunk, y_chunk, id_chunk) in enumerate(valid_data_iterator.generate())
     for iz in xrange(n_windows):
         for iy in xrange(n_windows):
             for ix in xrange(n_windows):
-                print iz, iy, ix
+                # print iz, iy, ix
                 predictions_patch = get_predictions_patch(iz, iy, ix)
                 predictions_scan[0, 0,
                 iz * stride:iz * stride + fs,
                 iy * stride:iy * stride + fs,
                 ix * stride:ix * stride + fs] += predictions_patch[0, 0]
 
-                mask = y_chunk[0, 0, iz * stride:(iz * stride) + fs,
-                       iy * stride:(iy * stride) + fs,
-                       ix * stride:(ix * stride) + fs]
-                # if np.sum(mask) > 0:
-                #     plot_slice_3d_3(
-                #         input=ii[0, 0],
-                #         mask=mask,
-                #         prediction=pp[0, 0],
-                #         axis=0, pid='-'.join([str(n), str(iz), str(iy), str(ix), str(id_chunk[0])]),
-                #         img_dir=outputs_path)
     predictions_scan = np.clip(predictions_scan, 0, 1)
+
+    d = utils_lung.dice_index(predictions_scan, y_chunk)
+    print n, d
+    valid_losses_dice.append(d)
 
     plot_slice_3d_3(input=x_chunk[0, 0], mask=y_chunk[0, 0], prediction=predictions_scan[0, 0],
                     axis=0, pid='-'.join(['scan', str(n), str(id_chunk[0])]),
                     img_dir=outputs_path)
-    print 'Saved plot'
+    print n, 'Saved plot'
+
     utils.save_pkl(predictions_scan, outputs_path + '/pred_' + id_chunk[0] + '.pkl')
     utils.save_pkl(x_chunk, outputs_path + '/in_' + id_chunk[0] + '.pkl')
     utils.save_pkl(y_chunk, outputs_path + '/tgt_' + id_chunk[0] + '.pkl')
-    print 'Saved pkl', id_chunk[0]
+    print n, 'Saved pkl', id_chunk[0]
+
+print 'Dice index validation loss', np.mean(valid_losses_dice)

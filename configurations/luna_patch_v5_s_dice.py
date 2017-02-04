@@ -56,6 +56,7 @@ nbatches_chunk = 4
 chunk_size = batch_size * nbatches_chunk
 
 train_valid_ids = utils.load_pkl(pathfinder.LUNA_VALIDATION_SPLIT_PATH)
+train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['valid']
 
 train_data_iterator = data_iterators.PatchPositiveLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                     batch_size=chunk_size,
@@ -140,3 +141,35 @@ def build_objective(model, deterministic=False, epsilon=1e-12):
 def build_updates(train_loss, model, learning_rate):
     updates = nn.updates.adam(train_loss, nn.layers.get_all_params(model.l_out), learning_rate)
     return updates
+
+
+'''
+SCAN_RELATED THINGS HERE
+'''
+p_transform_scan = {'patch_size': (320, 320, 320),
+                    'mm_patch_size': (320, 320, 320),
+                    'pixel_spacing': (1., 1., 1.)
+                    }
+
+
+def data_prep_function_scan(data, luna_annotations, pixel_spacing, luna_origin,
+                            p_transform=p_transform_scan,
+                            p_transform_augment=None):
+    x = data_transforms.hu2normHU(data)
+    x, annotations_tf = data_transforms.transform_scan3d(data=x,
+                                                         pixel_spacing=pixel_spacing,
+                                                         p_transform=p_transform,
+                                                         luna_annotations=luna_annotations,
+                                                         p_transform_augment=p_transform_augment,
+                                                         luna_origin=luna_origin)
+    y = data_transforms.make_3d_mask_from_annotations(img_shape=x.shape, annotations=annotations_tf, shape='sphere')
+    return x, y
+
+
+valid_data_iterator_scan = data_iterators.PositiveLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
+                                                                    batch_size=1,
+                                                                    transform_params=p_transform_scan,
+                                                                    data_prep_fun=data_prep_function_scan,
+                                                                    rng=rng,
+                                                                    patient_ids=valid_pids,
+                                                                    full_batch=False, random=False, infinite=False)

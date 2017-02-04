@@ -92,7 +92,7 @@ def transform_scan3d(data, pixel_spacing, p_transform,
             voxel_coords = np.append(voxel_coords, [1])
             voxel_coords_out = np.linalg.inv(tf_total).dot(voxel_coords)[:3]
             diameter_mm = zyxd[-1]
-            diameter_out = diameter_mm * output_shape[1] / mm_patch_size[1]
+            diameter_out = diameter_mm * output_shape[1] / mm_patch_size[1] / out_pixel_spacing[1]
             zyxd_out = np.rint(np.append(voxel_coords_out, diameter_out))
             annotatations_out.append(zyxd_out)
         return data_out, annotatations_out
@@ -138,7 +138,7 @@ def transform_patch3d(data, pixel_spacing, p_transform,
 
     # transform patch annotations
     diameter_mm = patch_center[-1]
-    diameter_out = diameter_mm * output_shape[1] / mm_patch_size[1]
+    diameter_out = diameter_mm * output_shape[1] / mm_patch_size[1] / out_pixel_spacing[1]
     voxel_coords = np.append(voxel_coords, [1])
     voxel_coords_out = np.linalg.inv(tf_total).dot(voxel_coords)[:3]
     patch_annotation_out = np.rint(np.append(voxel_coords_out, diameter_out))
@@ -151,7 +151,7 @@ def transform_patch3d(data, pixel_spacing, p_transform,
             voxel_coords = np.append(voxel_coords, [1])
             voxel_coords_out = np.linalg.inv(tf_total).dot(voxel_coords)[:3]
             diameter_mm = zyxd[-1]
-            diameter_out = diameter_mm * output_shape[1] / mm_patch_size[1]
+            diameter_out = diameter_mm * output_shape[1] / mm_patch_size[1] / out_pixel_spacing[1]
             zyxd_out = np.rint(np.append(voxel_coords_out, diameter_out))
             annotatations_out.append(zyxd_out)
         return data_out, patch_annotation_out, annotatations_out

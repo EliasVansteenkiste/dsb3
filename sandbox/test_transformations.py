@@ -180,6 +180,7 @@ def test_kaggle3d():
 
 
 def test_luna_patches_3d():
+
     image_dir = utils.get_dir_path('analysis', pathfinder.METADATA_PATH)
     image_dir = image_dir + '/test_luna/'
     utils.auto_make_dir(image_dir)
@@ -189,8 +190,8 @@ def test_luna_patches_3d():
     luna_data_paths = utils_lung.get_patient_data_paths(pathfinder.LUNA_DATA_PATH)
     luna_data_paths = [p for p in luna_data_paths if '.mhd' in p]
 
-    luna_data_paths = [
-        pathfinder.LUNA_DATA_PATH + '/1.3.6.1.4.1.14519.5.2.1.6279.6001.287966244644280690737019247886.mhd']
+    # pid = '1.3.6.1.4.1.14519.5.2.1.6279.6001.138080888843357047811238713686'
+    # luna_data_paths = [pathfinder.LUNA_DATA_PATH + '/%s.mhd' % pid]
     for k, p in enumerate(luna_data_paths):
         img, origin, pixel_spacing = utils_lung.read_mhd(p)
         # img = data_transforms.hu2normHU(img)

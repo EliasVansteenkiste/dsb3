@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 import warnings
 import numpy as np
 import matplotlib.animation as animation
-from scipy import ndimage
 
 warnings.simplefilter('ignore')
 anim_running = True
@@ -27,6 +26,7 @@ def plot_slice_3d_2(image3d, mask, axis, pid, img_dir=None, idx=None):
         else:
             print 'No nodules'
             idx = np.array(image3d.shape) / 2
+    print np.sum(mask)
     if axis == 0:  # sax
         ax[0, 0].imshow(image3d[idx[0], :, :], cmap=plt.cm.gray)
         ax[0, 1].imshow(mask[idx[0], :, :], cmap=plt.cm.gray)
@@ -59,7 +59,9 @@ def plot_slice_3d_3(input, mask, prediction, axis, pid, img_dir=None, idx=None):
     if idx is None:
         roi_idxs = np.where(mask > 0)
         if len(roi_idxs[0]) > 0:
-            idx = (np.mean(roi_idxs[0]), np.mean(roi_idxs[1]), np.mean(roi_idxs[2]))
+            idx = (int(np.mean(roi_idxs[0])),
+                   int(np.mean(roi_idxs[1])),
+                   int(np.mean(roi_idxs[2])))
         else:
             print 'No nodules'
             idx = np.array(input.shape) / 2
@@ -192,3 +194,19 @@ def plot_2d_animation(input, mask, predictions):
         plt.show()
     except AttributeError:
         pass
+
+
+def plot_learning_curves(train_losses, valid_losses, expid, img_dir):
+    fig = plt.figure()
+    x_range = np.arange(len(train_losses)) + 1
+
+    plt.plot(x_range, train_losses)
+    plt.plot(x_range, valid_losses)
+
+    if img_dir is not None:
+        fig.savefig(img_dir + '/%s.png' % expid, bbox_inches='tight')
+        print 'Saved plot'
+    else:
+        plt.show()
+    fig.clf()
+    plt.close('all')
