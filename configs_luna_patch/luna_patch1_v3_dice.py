@@ -13,7 +13,6 @@ import nn_lung
 restart_from_save = None
 rng = np.random.RandomState(42)
 
-# transformations
 p_transform = {'patch_size': (64, 64, 64),
                'mm_patch_size': (64, 64, 64),
                'pixel_spacing': (1., 1., 1.)
@@ -28,7 +27,6 @@ p_transform_augment = {
 }
 
 
-# data preparation function
 def data_prep_function(data, patch_center, luna_annotations, pixel_spacing, luna_origin, p_transform,
                        p_transform_augment, **kwargs):
     x = data_transforms.hu2normHU(data)
@@ -52,13 +50,15 @@ nbatches_chunk = 4
 chunk_size = batch_size * nbatches_chunk
 
 train_valid_ids = utils.load_pkl(pathfinder.LUNA_VALIDATION_SPLIT_PATH)
+train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['valid']
+# valid_pids = ['1.3.6.1.4.1.14519.5.2.1.6279.6001.121391737347333465796214915391']
 
 train_data_iterator = data_iterators.PatchPositiveLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                     batch_size=chunk_size,
                                                                     transform_params=p_transform,
                                                                     data_prep_fun=data_prep_function_train,
                                                                     rng=rng,
-                                                                    patient_ids=train_valid_ids['train'],
+                                                                    patient_ids=train_pids,
                                                                     full_batch=True, random=True, infinite=True)
 
 valid_data_iterator = data_iterators.PatchPositiveLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
@@ -66,39 +66,38 @@ valid_data_iterator = data_iterators.PatchPositiveLunaDataGenerator(data_path=pa
                                                                     transform_params=p_transform,
                                                                     data_prep_fun=data_prep_function_valid,
                                                                     rng=rng,
-                                                                    patient_ids=train_valid_ids['valid'],
+                                                                    patient_ids=valid_pids,
                                                                     full_batch=False, random=False, infinite=False)
 
 nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
-max_nchunks = nchunks_per_epoch * 30
+max_nchunks = nchunks_per_epoch * 20
 
 validate_every = int(1. * nchunks_per_epoch)
 save_every = int(0.5 * nchunks_per_epoch)
 
 learning_rate_schedule = {
     0: 1e-5,
-    int(max_nchunks * 0.4): 5e-6,
     int(max_nchunks * 0.5): 3e-6,
-    int(max_nchunks * 0.6): 2e-6,
-    int(max_nchunks * 0.85): 1e-6,
-    int(max_nchunks * 0.95): 5e-7
+    int(max_nchunks * 0.8): 2e-6,
+    int(max_nchunks * 0.9): 1e-6
 }
 
 # model
 conv3d = partial(dnn.Conv3DDNNLayer,
                  filter_size=3,
                  pad='same',
-                 W=nn.init.Orthogonal(),
+                 W=nn.init.Orthogonal('relu'),
                  b=nn.init.Constant(0.01),
-                 nonlinearity=nn.nonlinearities.linear)
+                 nonlinearity=nn.nonlinearities.rectify)
+# TODO: bug here: rectify nonlinearity and then I use PReLU!!!
 
 max_pool3d = partial(dnn.MaxPool3DDNNLayer,
                      pool_size=2)
 
 
-def build_model():
-    l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
-    l_target = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
+def build_model(l_in=None, l_target=None):
+    l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size']) if l_in is None else l_in
+    l_target = nn.layers.InputLayer((None, 1,) + p_transform['patch_size']) if l_target is None else l_target
 
     net = {}
     base_n_filters = 64
@@ -145,3 +144,5 @@ def build_objective(model, deterministic=False, epsilon=1e-12):
 def build_updates(train_loss, model, learning_rate):
     updates = nn.updates.adam(train_loss, nn.layers.get_all_params(model.l_out), learning_rate)
     return updates
+
+

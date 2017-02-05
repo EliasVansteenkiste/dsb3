@@ -55,8 +55,8 @@ def extract_pid(patient_data_path):
     return patient_data_path.split('/')[-1]
 
 
-def luna_extract_pid(patient_data_path):
-    return os.path.basename(patient_data_path).replace('.mhd', '')
+def luna_extract_pid(patient_data_path, replace_str='.mhd'):
+    return os.path.basename(patient_data_path).replace(replace_str, '')
 
 
 def get_patient_data(patient_data_path):

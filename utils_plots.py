@@ -26,6 +26,8 @@ def plot_slice_3d_2(image3d, mask, axis, pid, img_dir=None, idx=None):
         else:
             print 'No nodules'
             idx = np.array(image3d.shape) / 2
+    else:
+        idx = idx.astype(int)
     print np.sum(mask)
     if axis == 0:  # sax
         ax[0, 0].imshow(image3d[idx[0], :, :], cmap=plt.cm.gray)
@@ -65,6 +67,8 @@ def plot_slice_3d_3(input, mask, prediction, axis, pid, img_dir=None, idx=None):
         else:
             print 'No nodules'
             idx = np.array(input.shape) / 2
+    else:
+        idx = idx.astype(int)
     if axis == 0:  # sax
         ax[0, 0].imshow(prediction[idx[0], :, :], cmap=plt.cm.gray)
         ax[1, 0].imshow(input[idx[0], :, :], cmap=plt.cm.gray)
@@ -78,7 +82,7 @@ def plot_slice_3d_3(input, mask, prediction, axis, pid, img_dir=None, idx=None):
         ax[1, 0].imshow(input[:, :, idx[2]], cmap=plt.cm.gray)
         ax[0, 1].imshow(mask[:, :, idx[2]], cmap=plt.cm.gray)
     if img_dir is not None:
-        fig.savefig(img_dir + '/%s.png' % pid, bbox_inches='tight')
+        fig.savefig(img_dir + '/%s%s.png' % (pid, axis), bbox_inches='tight')
     else:
         plt.show()
     fig.clf()

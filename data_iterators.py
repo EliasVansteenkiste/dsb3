@@ -44,6 +44,7 @@ class LunaDataGenerator(object):
                 x_batch = np.zeros((nb, 1) + self.transform_params['patch_size'], dtype='float32')
                 y_batch = np.zeros((nb, 1) + self.transform_params['patch_size'], dtype='float32')
                 patients_ids = []
+                annotations = []
 
                 for i, idx in enumerate(idxs_batch):
                     patient_path = self.patient_paths[idx]
@@ -51,17 +52,18 @@ class LunaDataGenerator(object):
                     patients_ids.append(id)
 
                     img, origin, pixel_spacing = utils_lung.read_mhd(patient_path)
-                    x_batch[i, 0, :, :, :], y_batch[i, 0, :, :, :] = self.data_prep_fun(data=img,
-                                                                                        pixel_spacing=pixel_spacing,
-                                                                                        luna_annotations=
-                                                                                        self.id2annotations[id],
-                                                                                        luna_origin=origin)
-
+                    x_batch[i, 0, :, :, :], y_batch[i, 0, :, :, :], annotations_i = self.data_prep_fun(data=img,
+                                                                                                       pixel_spacing=pixel_spacing,
+                                                                                                       luna_annotations=
+                                                                                                       self.id2annotations[
+                                                                                                           id],
+                                                                                                       luna_origin=origin)
+                    annotations.append(annotations_i)
                 if self.full_batch:
                     if nb == self.batch_size:
-                        yield x_batch, y_batch, patients_ids
+                        yield x_batch, y_batch, patients_ids, annotations
                 else:
-                    yield x_batch, y_batch, patients_ids
+                    yield x_batch, y_batch, patients_ids, annotations
 
             if not self.infinite:
                 break

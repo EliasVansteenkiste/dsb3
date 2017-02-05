@@ -6,6 +6,7 @@ import time
 import numpy as np
 import glob
 import os
+import pickle
 
 maxfloat = np.finfo(np.float32).max
 
@@ -75,14 +76,22 @@ def get_git_revision_hash():
 
 
 def save_pkl(obj, path, protocol=cPickle.HIGHEST_PROTOCOL):
-    with open(path, 'w') as f:
-        cPickle.dump(obj, f, protocol=protocol)
+    with open(path, 'wb') as f:
+        pickle.dump(obj, f, protocol=protocol)
 
 
 def load_pkl(path):
-    with open(path) as f:
-        obj = cPickle.load(f)
+    with open(path, 'rb') as f:
+        obj = pickle.load(f)
     return obj
+
+
+def save_np(obj, path):
+    np.save(file=path, arr=obj, fix_imports=True)
+
+
+def load_np(path):
+    return np.load(path)
 
 
 def copy(from_folder, to_folder):

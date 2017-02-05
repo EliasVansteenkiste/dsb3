@@ -5,10 +5,11 @@ from configuration import config, set_configuration
 from utils_plots import plot_learning_curves
 
 if len(sys.argv) < 2:
-    sys.exit("Usage: plot.py <configuration_name>")
+    sys.exit("Usage: plot.py <config_dir>, <configuration_name>")
 
-config_name = sys.argv[1]
-set_configuration(config_name)
+config_dir = sys.argv[1]
+config_name = sys.argv[2]
+set_configuration(config_dir, config_name)
 
 # metadata
 metadata_dir = utils.get_dir_path('models', pathfinder.METADATA_PATH)

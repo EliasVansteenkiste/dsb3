@@ -16,7 +16,7 @@ if len(sys.argv) < 2:
     sys.exit("Usage: train.py <configuration_name>")
 
 config_name = sys.argv[1]
-set_configuration(config_name)
+set_configuration('configs_luna_patch', config_name)
 
 # metadata
 metadata_dir = utils.get_dir_path('models', pathfinder.METADATA_PATH)
@@ -55,8 +55,7 @@ givens_valid = {}
 givens_valid[model.l_in.input_var] = x_shared
 
 # theano functions
-iter_get_predictions = theano.function([], nn.layers.get_output(model.l_out), givens=givens_valid,
-                                       on_unused_input='ignore')
+iter_get_predictions = theano.function([], nn.layers.get_output(model.l_out), givens=givens_valid)
 valid_data_iterator = config().valid_data_iterator
 
 print
@@ -65,14 +64,14 @@ print 'n validation: %d' % valid_data_iterator.nsamples
 
 valid_losses_dice = []
 valid_losses_ce = []
-for n, (x_chunk, y_chunk, id_chunk) in enumerate(
-        buffering.buffered_gen_threaded(valid_data_iterator.generate())):
+for n, (x_chunk, y_chunk, id_chunk) in enumerate(buffering.buffered_gen_threaded(valid_data_iterator.generate())):
     # load chunk to GPU
     x_shared.set_value(x_chunk)
-
+    print 'loaded chunk'
     predictions = iter_get_predictions()
     targets = y_chunk
     inputs = x_chunk
+    print 'dice'
 
     dice = utils_lung.dice_index(predictions, targets)
     ce = utils_lung.cross_entropy(predictions, targets)
