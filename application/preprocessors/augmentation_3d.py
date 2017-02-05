@@ -113,8 +113,8 @@ class Augment3D(BasePreprocessor):
                     volume=volume,
                     pixel_spacing=spacing,
                     augment_p=augment_p)
-            else:
-                raise Exception("Did not find tag which I had to augment: %s"%tag)
+#            else:
+ #               raise Exception("Did not find tag which I had to augment: %s"%tag)
 
 
 def test_augmentation():
