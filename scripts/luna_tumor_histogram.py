@@ -48,12 +48,13 @@ sample_nr = 0
 def get_data():
     global data,segm
     global sample_nr
-    if True:
+    while True:
         #####################
         #      single       #
         #####################
         if sample_nr>=483:
             return True
+        print sample_nr
         sample = training_data.load_sample(sample_nr,input_keys_to_do=["luna:3d"], output_keys_to_do=["luna:segmentation"])
         data = sample[INPUT]["luna:3d"][:,:,:]
         segm = sample[OUTPUT]["luna:segmentation"][:,:,:]
@@ -75,19 +76,32 @@ def get_data():
 def sigmoid(x):
     return 1. / (1. + np.exp(-x))
 
-lowest_maximum = 100000
-highest_minimum = -100000
+bin_edges = None
+total_all = None
+total_tumor = None
 
+MAX = 1500
+MIN = -1500
+RANGE = range(MIN,MAX,10)
 while True:
     if get_data():
         break
+    valid_data = data[np.logical_and(MIN<=data, data<=MAX)]
+    if total_all is None:
 
-    d = data[segm>0.5]
-    mini, maxi = np.min(d), np.max(d)
+        hist, bin_edges = np.histogram(valid_data, range=(MIN,MAX), bins = len(RANGE), density=False)
+        total_all = np.array(hist)
+        hist, bin_edges = np.histogram(data[segm>0.5], range=(MIN,MAX), bins = len(RANGE), density=False)
+        total_tumor = np.array(hist)
+    else:
+        hist, bin_edges = np.histogram(valid_data, range=(MIN,MAX), bins = len(RANGE), density=False)
+        total_all += np.array(hist)
+        hist, bin_edges = np.histogram(data[segm>0.5], range=(MIN,MAX), bins = len(RANGE), density=False)
+        total_tumor += np.array(hist)
 
-    if mini>highest_minimum:
-        highest_minimum = mini
-    if maxi<lowest_maximum:
-        lowest_maximum = maxi
+fig = plt.figure()
+ax = plt.subplot(111)
+ax.bar(RANGE, -1.0*total_all/np.sum(total_all), align='edge', width=10, color=[1,0,0], linewidth=0)
+ax.bar(RANGE, 1.0*total_tumor/np.sum(total_tumor), align='edge', width=10, color=[0,0,1], linewidth=0)
+plt.show()
 
-    print "lowest maximum: %f, highest minimum: %f" % (lowest_maximum, highest_minimum)

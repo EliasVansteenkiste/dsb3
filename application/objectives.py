@@ -141,14 +141,14 @@ class SoerensonDiceCoefficientObjective(VolumeSegmentationObjective):
     """
     optimize = MAXIMIZE
 
-    def __init__(self, smooth=1., *args, **kwargs):
+    def __init__(self, smooth=1e-12, *args, **kwargs):
         super(SoerensonDiceCoefficientObjective, self).__init__(*args, **kwargs)
         self.smooth = np.float32(smooth)
 
     def get_loss(self, *args, **kwargs):
         network_predictions = lasagne.layers.helper.get_output(self.prediction, *args, **kwargs)
         target_values = self.target_vars[self.target_key]
-
+        target_values = T.clip(target_values, 1e-6, 1.)
         y_true_f = target_values
         y_pred_f = network_predictions
 
