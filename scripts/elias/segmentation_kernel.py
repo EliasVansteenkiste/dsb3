@@ -52,10 +52,11 @@ def plot_ct_scan(scan):
     plt.axis('scaled')
 
 
-def get_segmented_lungs(im, z, plot=False):
+def get_segmented_lungs(im, z=-1, plot=False, savefig=False):
     '''
-    This funtion segments the lungs from the given 2D slice.
+    This funtion segments the lungs from a given 2D slice.
     '''
+
 
     if plot == True:
         f, plots = plt.subplots(8, 1, figsize=(5, 40))
@@ -135,12 +136,15 @@ def get_segmented_lungs(im, z, plot=False):
 
         plots[7].axis('off')
         plots[7].imshow(im, cmap=plt.cm.bone) 
+
+    if savefig:
+        plt.savefig('test_'+str(z)+'.jpg')
         
     return im
 
-def segment_lung_from_ct_scan(slices):
+def segment_lung_from_ct_scan(slices, plot=False, savefig=False):
     slices
-    return np.asarray([get_segmented_lungs(slice, idx) for idx, slice in enumerate(slices)])
+    return np.asarray([get_segmented_lungs(slice, idx, plot=plot, savefig=savefig) for idx, slice in enumerate(slices)])
 
 def patient_name_from_file_name(patient_file):
     return os.path.splitext(os.path.basename(patient_file))[0]

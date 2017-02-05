@@ -46,7 +46,7 @@ def check_nodules_found(patient_id, folder, plot=False):
 		fig.savefig('original_mask.jpg')
 
 	
-	extract_nodules_conv_filter(pred[0,0], original[0,0], no_rois=5, dim=32, plot=False, dbg_target=target[0,0])
+	extract_nodules_conv_filter(pred[0,0], original[0,0], no_rois=10, dim=32, plot=False, dbg_target=target[0,0])
 
 	labeled_target = label(target[0,0])
 	regions = regionprops(labeled_target)
