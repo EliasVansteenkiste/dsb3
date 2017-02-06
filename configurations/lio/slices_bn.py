@@ -50,9 +50,9 @@ preprocessors = [
         augmentation_params={
             "scale": [1, 1, 1],  # factor
             "uniform scale": 1, # factor
-            "rotation": [5, 5, 5],  # degrees
+            "rotation": [0, 0, 0],  # degrees
             "shear": [0, 0, 0],  # degrees
-            "translation": [50, 50, 50],  # mm
+            "translation": [0, 0, 0],  # mm
             "reflection": [0, 0, 0]}, #Bernoulli p
         interp_order=1),
     # DefaultNormalizer(tags=["bcolzstage1:3d"])
@@ -224,13 +224,14 @@ def build_model():
 
     # l = nin(l, 1)
     l = lasagne.layers.ReshapeLayer(l, (batch_size,  nn_input_shape[2], -1))
-    l = nin(l, 1)
+    # l = nin(l, 1)
+    l = lasagne.layers.FeaturePoolLayer(l, nn_input_shape[2], axis=1)
     l = lasagne.layers.ReshapeLayer(l, (batch_size, -1))
 
     l = bn(l)
 
     #n *= 2
-    l = dense(drop(l), n)
+    l = dense(l, n)
     # l = dense(drop(l), n)
 
     l = bn(l)
