@@ -21,6 +21,8 @@ CORRUPT = {"b8bb02d229361a623a4dc57aa0e5c485"}
 class BcolzStage1DataLoader(StandardDataLoader):
 
     labels = dict()
+    metadata = dict()
+
     datasets = [TRAIN, VALIDATION, TEST]
 
     def __init__(self, remove_corrupt=True, location=paths.BCOLZ_DATA_PATH, *args, **kwargs):
@@ -29,7 +31,8 @@ class BcolzStage1DataLoader(StandardDataLoader):
 
     def prepare(self):
         # load only when not loaded yet
-        # if TRAINING in self.data and VALIDATION in self.data: return
+        if TRAINING in self.data and VALIDATION in self.data\
+                and len(self.labels)>0 and len(self.metadata) > 0: return
 
         # load the file names
         patient_paths = sorted(glob.glob(self.location+'/stage1/*'))
