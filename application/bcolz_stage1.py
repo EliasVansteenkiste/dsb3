@@ -49,7 +49,7 @@ class BcolzStage1DataLoader(StandardDataLoader):
         # load metadata
         # with gzip.open(self.location + "metadata.pkl.gz", "rb") as f:
         with open(self.location + "metadata.pkl", "rb") as f:
-                self.metadata = cPickle.load(f)
+            self.metadata = cPickle.load(f)
 
         # print len(spacings)
         # load the filenames and put into the right dataset
@@ -104,12 +104,6 @@ class BcolzStage1DataLoader(StandardDataLoader):
             print patient_name, "failed to load"
             raise
 
-        meta = self.metadata[patient_name]
-        imagepositions = [i[2] for i in meta["imagepositions"]]
-        sort_ids = np.argsort(imagepositions)
-        intercepts = np.asarray(meta["rescaleintercept"])[sort_ids]
-        slopes = np.asarray(meta["rescaleslope"])[sort_ids]
-
         # Iterate over input tags and return a dict with the requested tags filled
         for tag in input_keys_to_do:
             tags = tag.split(':')
@@ -119,15 +113,28 @@ class BcolzStage1DataLoader(StandardDataLoader):
                 sample[INPUT][tag] = patient_name
 
             if "3d" in tags or "default" in tags:
+                meta = self.metadata[patient_name]
+                imagepositions = [i[2] for i in meta["imagepositions"]]
+                sort_ids = np.argsort(imagepositions)
                 sample[INPUT][tag] = data_3d[:].T[...,sort_ids] # ZYX to XYZ and sort
 
             if "intercept" in tags:
+                meta = self.metadata[patient_name]
+                imagepositions = [i[2] for i in meta["imagepositions"]]
+                sort_ids = np.argsort(imagepositions)
+                intercepts = np.asarray(meta["rescaleintercept"])[sort_ids]
                 sample[INPUT][tag] = intercepts[0]
 
             if "slope" in tags:
+                meta = self.metadata[patient_name]
+                imagepositions = [i[2] for i in meta["imagepositions"]]
+                sort_ids = np.argsort(imagepositions)
+                slopes = np.asarray(meta["rescaleslope"])[sort_ids]
                 sample[INPUT][tag] = slopes[0]
 
             if "pixelspacing" in tags:
+                meta = self.metadata[patient_name]
+                imagepositions = [i[2] for i in meta["imagepositions"]]
                 imagepositions.sort()
                 sample[INPUT][tag] = meta["pixelspacing"][::-1] + [imagepositions[1] - imagepositions[0]]
 

@@ -320,7 +320,7 @@ def train_model(expid):
         # We also always validate at the end of every training!
         validate_every = max(int((config.epochs_per_validation * config.training_data.number_of_samples) / (config.batch_size * config.batches_per_chunk)),1)
 
-        if ((e + 1) % validate_every) == 0 or (num_chunks_train and e+1>=num_chunks_train):
+        if (e % validate_every) == 0 or (num_chunks_train and e+1>=num_chunks_train):
             print
             print "  Validating "
 
