@@ -29,7 +29,7 @@ class BcolzStage1DataLoader(StandardDataLoader):
 
     def prepare(self):
         # load only when not loaded yet
-        if TRAINING in self.data and VALIDATION in self.data: return
+        # if TRAINING in self.data and VALIDATION in self.data: return
 
         # load the file names
         patient_paths = sorted(glob.glob(self.location+'/stage1/*'))
