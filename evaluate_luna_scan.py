@@ -1,14 +1,13 @@
 import glob
 import os
 import sys
-
 import numpy as np
-
 import blobs_detection
 import pathfinder
 import utils
 import utils_lung
 from configuration import set_configuration
+import data_transforms
 
 if len(sys.argv) < 2:
     sys.exit("Usage: evaluate_luna_scan.py <configuration_name>")
@@ -38,7 +37,7 @@ for xf, yf, pf in zip(x_files, y_files, pred_files):
     print pid
 
     print 'computing blobs'
-    blobs = blobs_detection.blob_dog(pred_scan, min_sigma=1.2, max_sigma=35, threshold=0.1)
+    blobs = blobs_detection.blob_dog(pred_scan, min_sigma=1, max_sigma=15, threshold=0.1)
 
     for zyxd in annotations_scan:
         n_pos += 1

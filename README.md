@@ -10,6 +10,11 @@
 ssh -X -p 10001 ikorshun@localhost
 scp -P 10001 /mnt/sda3/data/kaggle-lung/stage1_sample_submission.csv  ikorshun@localhost://mnt/storage/data/dsb3/
 
+## biggest nodule
+1.3.6.1.4.1.14519.5.2.1.6279.6001.287966244644280690737019247886 (32 mm)
+
+## smallest nodule
+1.3.6.1.4.1.14519.5.2.1.6279.6001.151764021165118974848436095034 (3 mm)
 
 ## LUNA mm_shapes (z,y,x):
 
