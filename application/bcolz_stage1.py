@@ -47,8 +47,9 @@ class BcolzStage1DataLoader(StandardDataLoader):
         for s in self.datasets: self.data[s] = []
 
         # load metadata
-        with gzip.open(self.location + "metadata.pkl.gz") as f:
-            self.metadata = cPickle.load(f)
+        # with gzip.open(self.location + "metadata.pkl.gz", "rb") as f:
+        with open(self.location + "metadata.pkl", "rb") as f:
+                self.metadata = cPickle.load(f)
 
         # print len(spacings)
         # load the filenames and put into the right dataset
@@ -103,6 +104,12 @@ class BcolzStage1DataLoader(StandardDataLoader):
             print patient_name, "failed to load"
             raise
 
+        meta = self.metadata[patient_name]
+        imagepositions = [i[2] for i in meta["imagepositions"]]
+        sort_ids = np.argsort(imagepositions)
+        intercepts = np.asarray(meta["rescaleintercept"])[sort_ids]
+        slopes = np.asarray(meta["rescaleslope"])[sort_ids]
+
         # Iterate over input tags and return a dict with the requested tags filled
         for tag in input_keys_to_do:
             tags = tag.split(':')
@@ -112,16 +119,17 @@ class BcolzStage1DataLoader(StandardDataLoader):
                 sample[INPUT][tag] = patient_name
 
             if "3d" in tags or "default" in tags:
-                sample[INPUT][tag] = data_3d
+                sample[INPUT][tag] = data_3d[:].T[...,sort_ids] # ZYX to XYZ and sort
 
-            if "metadata" in tags:
-                sample[INPUT][tag] = self.metadata[patient_name]  # in mm per pixel
+            if "intercept" in tags:
+                sample[INPUT][tag] = intercepts[0]
+
+            if "slope" in tags:
+                sample[INPUT][tag] = slopes[0]
 
             if "pixelspacing" in tags:
-                meta = self.metadata[patient_name]
-                imagepositions = [i[2] for i in meta["imagepositions"]]
                 imagepositions.sort()
-                sample[INPUT][tag] = [imagepositions[1] - imagepositions[0]] + meta["pixelspacing"][::-1]
+                sample[INPUT][tag] = meta["pixelspacing"][::-1] + [imagepositions[1] - imagepositions[0]]
 
             if "shape" in tags:
                 sample[INPUT][tag] = data_3d.shape
@@ -153,7 +161,7 @@ def test_loader():
     from application.preprocessors.augmentation_3d import Augment3D
     from application.preprocessors.normalize_scales import DefaultNormalizer
     from application.preprocessors.stage1_to_HU import Stage1ToHU
-    nn_input_shape = (256, 256, 128)
+    nn_input_shape = (256, 256, 80)
     norm_patch_shape = (340, 340, 320)  # median
     preprocessors = [
         Stage1ToHU(tags=["bcolzstage1:3d"]),
@@ -164,9 +172,9 @@ def test_loader():
             augmentation_params={
                 "scale": [1, 1, 1],  # factor
                 "uniform scale": 1,  # factor
-                "rotation": [0, 0, 0],  # degrees
+                "rotation": [5, 5, 5],  # degrees
                 "shear": [0, 0, 0],  # deg
-                "translation": [0, 0, 0],  # mm
+                "translation": [50, 50, 50],  # mm
                 "reflection": [0, 0, 0]},  # Bernoulli p
             interp_order=1),
         DefaultNormalizer(tags=["bcolzstage1:3d"])
@@ -186,7 +194,7 @@ def test_loader():
         chunk_size=chunk_size,
         required_input={
             # "bcolzstage1:filename": None,
-            "bcolzstage1:metadata": None, "bcolzstage1:pixelspacing": (chunk_size, 3), "bcolzstage1:3d":(chunk_size,)+nn_input_shape},
+            "bcolzstage1:intercept": (chunk_size,), "bcolzstage1:slope": (chunk_size,), "bcolzstage1:pixelspacing": (chunk_size, 3), "bcolzstage1:3d":(chunk_size,)+nn_input_shape},
         required_output= dict()#{"bcolzstage1:target":None, "bcolzstage1:sample_id":None} # {"luna:segmentation":None, "luna:sample_id":None},
     )
 
@@ -201,7 +209,7 @@ def test_loader():
         print sample[INPUT]["bcolzstage1:3d"].shape, sample[INPUT]["bcolzstage1:pixelspacing"]
         # print l.data[TRAINING][sample[OUTPUT]["bcolzstage1:sample_id"]]
         # print sample[INPUT]["bcolzstage1:filename"], sample[OUTPUT]["bcolzstage1:target"]
-        utils.plt.show_animate(sample[INPUT]["bcolzstage1:3d"][0], 50)
+        utils.plt.show_animate(np.clip(sample[INPUT]["bcolzstage1:3d"][0]+0.25,0,1), 50, normalize=False)
 
 
 if __name__ == '__main__':

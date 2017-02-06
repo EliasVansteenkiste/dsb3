@@ -280,7 +280,11 @@ class StandardDataLoader(BaseDataLoader):
 
     def store_sample(self, chunk_memory, index, sample_data):
         for tag in chunk_memory[INPUT]:
-            chunk_memory[INPUT][tag][index] = sample_data[INPUT][tag]
+            try:
+                chunk_memory[INPUT][tag][index] = sample_data[INPUT][tag]
+            except:
+                print tag
+                raise
 
         for tag in chunk_memory[OUTPUT]:
             chunk_memory[OUTPUT][tag][index] = sample_data[OUTPUT][tag]
