@@ -1,6 +1,8 @@
 import numpy as np
 import random
 import math
+from application import luna
+from application.luna import LunaDataLoader
 
 from interfaces.preprocess import BasePreprocessor
 from utils.transformation_3d import affine_transform, apply_affine_transform
@@ -131,31 +133,71 @@ class LioAugment(BasePreprocessor):
                 #raise Exception("Did not find tag which I had to augment: %s"%tag)
 
 
-class LioAugmentOnlyPositive(LioAugment):
-    """
-    Augment, but such that the output is always a little positive!
-    """
+class AugmentOnlyPositive(LioAugment):
+    @property
+    def extra_input_tags_required(self):
+        """
+        We need some extra parameters to be loaded!
+        :return:
+        """
+        datasetnames = set()
+        for tag in self.tags:
+            datasetnames.add(tag.split(':')[0])
+
+        input_tags_extra = [dsn+":pixelspacing" for dsn in datasetnames]
+        input_tags_extra += [dsn+":labels" for dsn in datasetnames]
+        input_tags_extra += [dsn+":origin" for dsn in datasetnames]
+        return input_tags_extra
+
+
     def process(self, sample):
-        original_sample_input = dict(sample[INPUT])
-        original_sample_output = dict(sample[OUTPUT])
-        good = False
-        tagfound = False
-        cnt = 0
-        while not good:
-            cnt+=1
-            sample[INPUT].update(original_sample_input)
-            sample[OUTPUT].update(original_sample_output)
-            super(LioAugmentOnlyPositive, self).process(sample)
-            for tag in self.tags:
-                if tag in sample[OUTPUT]:
-                    sh = sample[OUTPUT][tag].shape
-                    # select the middle part
-                    indices = [slice(width/4,width-width/4) for width in sh]
-                    good = (np.max(sample[OUTPUT][tag][indices])>0.5)
-                    tagfound = True
-            if not tagfound:
-                print sample[OUTPUT].keys()
-                raise Exception("Tag '%s' was not found in the data I needed to augment"%tag)
-            if cnt%100==0:
-                print "It took over %d augmentations and still no positive one..."%cnt
-                good = True
+        orig_augment = sample_augmentation_parameters(self.augmentation_params)
+
+        for tag in self.tags:
+
+            pixelspacingtag = tag.split(':')[0]+":pixelspacing"
+            labelstag = tag.split(':')[0]+":labels"
+            origintag = tag.split(':')[0]+":origin"
+
+            assert pixelspacingtag in sample[INPUT], "tag %s not found"%pixelspacingtag
+            assert labelstag in sample[INPUT], "tag %s not found"%labelstag
+            assert origintag in sample[INPUT], "tag %s not found"%origintag
+
+            spacing = sample[INPUT][pixelspacingtag]
+            labels = sample[INPUT][labelstag]
+            origin = sample[INPUT][origintag]
+
+            label = random.choice(labels)
+
+            labelloc = LunaDataLoader.world_to_voxel_coordinates(label[:3],origin=origin, spacing=spacing)
+
+            if tag in sample[INPUT]:
+                volume = sample[INPUT][tag]
+
+                augment_p = dict(orig_augment)
+                augment_p["translation"] = augment_p["translation"] + (0.5*np.array(volume.shape)-labelloc)*spacing
+
+                sample[INPUT][tag] = lio_augment(
+                    volume=volume,
+                    pixel_spacing=spacing,
+                    output_shape=self.output_shape,
+                    norm_patch_shape=self.norm_patch_size,
+                    augment_p=augment_p
+                )
+            elif tag in sample[OUTPUT]:
+                volume = sample[OUTPUT][tag]
+
+                augment_p = dict(orig_augment)
+                augment_p["translation"] = augment_p["translation"] + (0.5*np.array(volume.shape)-labelloc)*spacing
+
+                sample[OUTPUT][tag] = lio_augment(
+                    volume=volume,
+                    pixel_spacing=spacing,
+                    output_shape=self.output_shape,
+                    norm_patch_shape=self.norm_patch_size,
+                    augment_p=augment_p,
+                    cval=0.0
+                )
+            else:
+                pass
+                #raise Exception("Did not find tag which I had to augment: %s"%tag)

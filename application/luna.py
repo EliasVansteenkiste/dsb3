@@ -148,6 +148,12 @@ class LunaDataLoader(StandardDataLoader):
             if "shape" in tags:
                 sample[INPUT][tag] = patientdata["pixeldata"].shape
 
+            if "origin" in tags:
+                sample[INPUT][tag] = patientdata["origin"]
+
+            if "labels" in tags:
+                sample[INPUT][tag] = self.labels[set][sample_index]
+
         for tag in output_keys_to_do:
             tags = tag.split(':')
             if "luna" not in tags:
