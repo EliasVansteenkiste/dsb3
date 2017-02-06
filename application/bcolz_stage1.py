@@ -21,8 +21,6 @@ CORRUPT = {"b8bb02d229361a623a4dc57aa0e5c485"}
 class BcolzStage1DataLoader(StandardDataLoader):
 
     labels = dict()
-    metadata = dict()
-
     datasets = [TRAIN, VALIDATION, TEST]
 
     def __init__(self, remove_corrupt=True, location=paths.BCOLZ_DATA_PATH, *args, **kwargs):
@@ -49,10 +47,7 @@ class BcolzStage1DataLoader(StandardDataLoader):
         # make the static data empty
         for s in self.datasets: self.data[s] = []
 
-        # load metadata
-        # with gzip.open(self.location + "metadata.pkl.gz", "rb") as f:
-        with open(self.location + "metadata.pkl", "rb") as f:
-            self.metadata = cPickle.load(f)
+        self.load_metadata()
 
         # print len(spacings)
         # load the filenames and put into the right dataset
@@ -107,6 +102,7 @@ class BcolzStage1DataLoader(StandardDataLoader):
             print patient_name, "failed to load"
             raise
 
+        if not hasattr(self, "metadata"): self.load_metadata()
         meta = self.metadata[patient_name]
         imagepositions = [i[2] for i in meta["imagepositions"]]
         sort_ids = np.argsort(imagepositions)
@@ -158,6 +154,12 @@ class BcolzStage1DataLoader(StandardDataLoader):
             for row in reader:
                 labels[str(row[0])] = int(row[1])
         return labels
+
+    def load_metadata(self):
+        print "loading metadata"
+        # with gzip.open(self.location + "metadata.pkl.gz", "rb") as f:
+        with open(self.location + "metadata.pkl", "rb") as f:
+            self.metadata = cPickle.load(f)
 
 
 def test_loader():
