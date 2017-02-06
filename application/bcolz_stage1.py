@@ -79,9 +79,9 @@ class BcolzStage1DataLoader(StandardDataLoader):
         ###################
         #   for testing   #
         ###################
-        sample_id = 1  # test optimizing of parameters
-        #import random
-        #sample_id = random.choice([1,20000])  # test overfitting
+        # sample_id = 1  # test optimizing of parameters
+        import random
+        sample_id = random.choice([1,1000])  # test overfitting
 
         # find which set this sample is in
         set, set_indices = None, None
