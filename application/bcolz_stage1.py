@@ -22,7 +22,7 @@ class BcolzStage1DataLoader(StandardDataLoader):
 
     datasets = [TRAIN, VALIDATION, TEST]
 
-    def __init__(self, remove_corrupt=False, location=paths.BCOLZ_DATA_PATH, *args, **kwargs):
+    def __init__(self, remove_corrupt=True, location=paths.BCOLZ_DATA_PATH, *args, **kwargs):
         super(BcolzStage1DataLoader, self).__init__(location=location, *args, **kwargs)
         self.remove_corrupt = remove_corrupt
 

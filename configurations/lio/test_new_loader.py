@@ -93,7 +93,7 @@ for i in range(n_epochs):
     if lr_ < lr_min: break
     learning_rate_schedule[i] = lr_
 
-print learning_rate_schedule
+# print learning_rate_schedule
 
 "The function to build updates."
 build_updates = lasagne.updates.adam
