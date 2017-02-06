@@ -7,6 +7,8 @@ import theano
 import theano.tensor as T
 import lasagne
 import numpy as np
+from utils import put_in_the_middle
+
 
 class CrossEntropyObjective(TargetVarDictObjective):
     optimize = MINIMIZE
@@ -73,11 +75,15 @@ class SegmentationCrossEntropyObjective(VolumeSegmentationObjective):
         network_predictions = lasagne.layers.helper.get_output(self.prediction, *args, **kwargs)
         network_predictions = np.float32(1-2*self.eps) * network_predictions + self.eps
         target_values = self.target_vars[self.target_key]
+
+        network_predictions, target_values = lasagne.layers.merge.autocrop([network_predictions, target_values], [None, 'center', 'center', 'center'])
         ce = -T.log(network_predictions) * target_values - T.log(1 - network_predictions) * (1 - target_values)
         log_loss = T.mean(ce, axis=(1,2,3))
         return log_loss
 
     def get_loss_from_lists(self, predicted, expected, *args, **kwargs):
+        expected = put_in_the_middle(np.zeros_like(predicted),expected)
+
         predicted = np.float32(1-2*self.eps) * predicted + self.eps
         return -np.mean(expected*np.log(predicted) + (1-expected)*np.log(1-predicted))
 
@@ -96,12 +102,14 @@ class WeightedSegmentationCrossEntropyObjective(SegmentationCrossEntropyObjectiv
         network_predictions = lasagne.layers.helper.get_output(self.prediction, *args, **kwargs)
         target_values = self.target_vars[self.target_key]
         network_predictions = np.float32(1-2*self.eps) * network_predictions + self.eps
+        network_predictions, target_values = lasagne.layers.merge.autocrop([network_predictions, target_values], [None, 'center', 'center', 'center'])
         ce = -T.log(network_predictions) * target_values * np.float32(self.classweights[1]) \
              -T.log(1. - network_predictions) * (1. - target_values) * np.float32(self.classweights[0])
         log_loss = T.mean(ce, axis=(1,2,3))
         return log_loss
 
     def get_loss_from_lists(self, predicted, expected, *args, **kwargs):
+        expected = put_in_the_middle(np.zeros_like(predicted),expected)
         predicted = np.float32(1-2*self.eps) * predicted + self.eps
         return -np.mean(expected*np.log(predicted) * self.classweights[1] + (1-expected)*np.log(1-predicted) * self.classweights[0])
 
@@ -121,6 +129,7 @@ class JaccardIndexObjective(VolumeSegmentationObjective):
     def get_loss(self, *args, **kwargs):
         network_predictions = lasagne.layers.helper.get_output(self.prediction, *args, **kwargs)
         target_values = self.target_vars[self.target_key]
+        network_predictions, target_values = lasagne.layers.merge.autocrop([network_predictions, target_values], [None, 'center', 'center', 'center'])
 
         y_true_f = target_values
         y_pred_f = network_predictions
@@ -128,6 +137,7 @@ class JaccardIndexObjective(VolumeSegmentationObjective):
         return (intersection + self.smooth) / (T.sum(y_true_f, axis=(1,2,3)) + T.sum(y_pred_f, axis=(1,2,3)) - intersection + self.smooth)
 
     def get_loss_from_lists(self, predicted, expected, *args, **kwargs):
+        expected = put_in_the_middle(np.zeros_like(predicted),expected)
         y_true_f = expected.flatten()
         y_pred_f = predicted.flatten()
         intersection = np.sum(y_true_f * y_pred_f)
@@ -149,6 +159,7 @@ class SoerensonDiceCoefficientObjective(VolumeSegmentationObjective):
         network_predictions = lasagne.layers.helper.get_output(self.prediction, *args, **kwargs)
         target_values = self.target_vars[self.target_key]
         target_values = T.clip(target_values, 1e-6, 1.)
+        network_predictions, target_values = lasagne.layers.merge.autocrop([network_predictions, target_values], [None, 'center', 'center', 'center'])
         y_true_f = target_values
         y_pred_f = network_predictions
 
@@ -156,6 +167,7 @@ class SoerensonDiceCoefficientObjective(VolumeSegmentationObjective):
         return ( 2 * intersection + self.smooth) / (T.sum(y_true_f, axis=(1,2,3)) + T.sum(y_pred_f, axis=(1,2,3)) + self.smooth)
 
     def get_loss_from_lists(self, predicted, expected, *args, **kwargs):
+        expected = put_in_the_middle(np.zeros_like(predicted),expected)
         y_true_f = expected.flatten()
         y_pred_f = predicted.flatten()
         intersection = np.sum(y_true_f * y_pred_f)
@@ -176,7 +188,7 @@ class PrecisionObjective(VolumeSegmentationObjective):
     def get_loss(self, *args, **kwargs):
         network_predictions = lasagne.layers.helper.get_output(self.prediction, *args, **kwargs)
         target_values = self.target_vars[self.target_key]
-
+        network_predictions, target_values = lasagne.layers.merge.autocrop([network_predictions, target_values], [None, 'center', 'center', 'center'])
         y_true_f = target_values
         y_pred_f = network_predictions
 
@@ -186,6 +198,7 @@ class PrecisionObjective(VolumeSegmentationObjective):
         return (true_positive + self.smooth) / (true_positive + false_positive + self.smooth)
 
     def get_loss_from_lists(self, predicted, expected, *args, **kwargs):
+        expected = put_in_the_middle(np.zeros_like(predicted),expected)
         y_true_f = expected.flatten()
         y_pred_f = predicted.flatten()
 
@@ -208,7 +221,7 @@ class RecallObjective(VolumeSegmentationObjective):
     def get_loss(self, *args, **kwargs):
         network_predictions = lasagne.layers.helper.get_output(self.prediction, *args, **kwargs)
         target_values = self.target_vars[self.target_key]
-
+        network_predictions, target_values = lasagne.layers.merge.autocrop([network_predictions, target_values], [None, 'center', 'center', 'center'])
         y_true_f = target_values
         y_pred_f = network_predictions
 
@@ -218,6 +231,7 @@ class RecallObjective(VolumeSegmentationObjective):
         return (true_positive + self.smooth) / (true_positive + false_negative + self.smooth)
 
     def get_loss_from_lists(self, predicted, expected, *args, **kwargs):
+        expected = put_in_the_middle(np.zeros_like(predicted),expected)
         y_true_f = expected.flatten()
         y_pred_f = predicted.flatten()
 
@@ -242,7 +256,7 @@ class ClippedFObjective(VolumeSegmentationObjective):
     def get_loss(self, *args, **kwargs):
         network_predictions = lasagne.layers.helper.get_output(self.prediction, *args, **kwargs)
         target_values = self.target_vars[self.target_key]
-
+        network_predictions, target_values = lasagne.layers.merge.autocrop([network_predictions, target_values], [None, 'center', 'center', 'center'])
         y_true_f = target_values
         y_pred_f = network_predictions
 
@@ -256,6 +270,7 @@ class ClippedFObjective(VolumeSegmentationObjective):
         return T.minimum(recall*self.recall_weight, 1.0) * 0.5 + T.minimum(precision*self.precision_weight, 1.0) * 0.5
 
     def get_loss_from_lists(self, predicted, expected, *args, **kwargs):
+        expected = put_in_the_middle(np.zeros_like(predicted),expected)
         y_true_f = expected.flatten()
         y_pred_f = predicted.flatten()
 
