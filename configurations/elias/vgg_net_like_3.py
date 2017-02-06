@@ -41,7 +41,7 @@ save_every_chunks = 10
 "They will be run consequently on the datadict of the dataloader in the order of your list."
 nn_input_shape = (128, 128, 64)
 preprocessors = [
-    SegmentLungs(),
+    SegmentLungs(tags=["bcolzall:3d"]),
     Augment3D(
         tags=["bcolzall:3d"],
         output_shape = nn_input_shape,

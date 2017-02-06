@@ -8,7 +8,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import skimage, os
 from skimage.morphology import ball, disk, dilation, binary_erosion, remove_small_objects, erosion, closing, reconstruction, binary_closing
-from skimage.measure import label,regionprops, perimeter
+from skimage.measure import regionprops, perimeter, label
 from skimage.morphology import binary_dilation, binary_opening
 from skimage.filters import roberts, sobel
 from skimage import measure, feature
@@ -184,46 +184,47 @@ def transform_nodules_vox_coos(nodules, origin, spacing):
         diameters_original.append(nodule[3])
     return coos_nodules, diameters_original
 
-d_labels = read_luna_labels('/local/eavsteen/dsb3/storage/data/dsb3/luna/dataset')
+
+if __name__=="__main__":
+    d_labels = read_luna_labels('/local/eavsteen/dsb3/storage/data/dsb3/luna/dataset')
+
+    test_patient = load_patient_data('/local/eavsteen/dsb3/storage/data/dsb3/luna/dataset/1.3.6.1.4.1.14519.5.2.1.6279.6001.121391737347333465796214915391.mhd')
+    print test_patient.keys()
+    #print d_labels.keys()
+    cancer_nodules =  d_labels['1.3.6.1.4.1.14519.5.2.1.6279.6001.121391737347333465796214915391']
+    print 'cancer nodules'
+    print 'original coos'
+    print cancer_nodules 
+    nodules_coos, diameters_original = transform_nodules_vox_coos(cancer_nodules,test_patient['origin'],test_patient['spacing'])
+    print 'vox coos'
+    print nodules_coos
+    print diameters_original
 
 
-test_patient = load_patient_data('/local/eavsteen/dsb3/storage/data/dsb3/luna/dataset/1.3.6.1.4.1.14519.5.2.1.6279.6001.121391737347333465796214915391.mhd')
-print test_patient.keys()
-#print d_labels.keys()
-cancer_nodules =  d_labels['1.3.6.1.4.1.14519.5.2.1.6279.6001.121391737347333465796214915391']
-print 'cancer nodules'
-print 'original coos'
-print cancer_nodules 
-nodules_coos, diameters_original = transform_nodules_vox_coos(cancer_nodules,test_patient['origin'],test_patient['spacing'])
-print 'vox coos'
-print nodules_coos
-print diameters_original
+    slices = test_patient['pixeldata']
+    slices = slices.swapaxes(0,2)
+    print 'histogram', np.histogram(slices)
 
 
-slices = test_patient['pixeldata']
-slices = slices.swapaxes(0,2)
-print 'histogram', np.histogram(slices)
+    slices[slices < -2000] = - 2000
+    plt.imshow(slices[60], cmap=plt.cm.gray)
+    plt.savefig('test1.jpg')
 
+    plot_ct_scan(slices)
+    plt.savefig('test2.pdf')
 
-slices[slices < -2000] = - 2000
-plt.imshow(slices[60], cmap=plt.cm.gray)
-plt.savefig('test1.jpg')
+    get_segmented_lungs(slices[60], 60, True)
+    plt.savefig('test3.pdf')
 
-plot_ct_scan(slices)
-plt.savefig('test2.pdf')
+    segmented_ct_scan = segment_lung_from_ct_scan(slices)
+    plot_ct_scan(segmented_ct_scan)
+    plt.savefig('test4.pdf')
 
-get_segmented_lungs(slices[60], 60, True)
-plt.savefig('test3.pdf')
-
-segmented_ct_scan = segment_lung_from_ct_scan(slices)
-plot_ct_scan(segmented_ct_scan)
-plt.savefig('test4.pdf')
-
-segmented_ct_scan[segmented_ct_scan < -400] = -2000
-plot_ct_scan(segmented_ct_scan)
-plt.savefig('test5.pdf')
+    segmented_ct_scan[segmented_ct_scan < -400] = -2000
+    plot_ct_scan(segmented_ct_scan)
+    plt.savefig('test5.pdf')
 
 
 
-#circle2 = plt.Circle((5, 5), 0.5, color='b', fill=False)
+    #circle2 = plt.Circle((5, 5), 0.5, color='b', fill=False)
 

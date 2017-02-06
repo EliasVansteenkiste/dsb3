@@ -1,6 +1,9 @@
 import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.mixture import BayesianGaussianMixture
+from skimage.feature import blob_dog, blob_doh, blob_log
+
+
 from scipy.spatial import distance
 import matplotlib
 matplotlib.use('Agg')
@@ -99,7 +102,7 @@ def extract_nodules_best_gmix(segmentation_volume, max_n_components=40, plot=Fal
 
 
 
-def extract_nodules_conv_filter(segmentation_volume, ct_scan, no_rois=5, dim=8, plot=False, dbg_target=None):
+def extract_nodules_conv_filter(segmentation_volume, ct_scan, no_rois=5, dim=8, plot=False, dbg_target=None, nodules=None):
 	assert(segmentation_volume.shape==ct_scan.shape)
 
 	#Construct convolutional filter
@@ -125,6 +128,9 @@ def extract_nodules_conv_filter(segmentation_volume, ct_scan, no_rois=5, dim=8, 
 
 	#Extract a given number of regions
 	rois = []
+	if nodules is not None:
+		print nodules
+		nodule_found = np.zeros((len(nodules)))
 	for i in range(no_rois):
 		indices = np.where(result == result.max())
 		center = [indices[0][0],indices[1][0],indices[2][0]]
@@ -134,8 +140,76 @@ def extract_nodules_conv_filter(segmentation_volume, ct_scan, no_rois=5, dim=8, 
 		selection = (slice(center[0]-dim/2,center[0]+dim/2), slice(center[1]-dim/2,center[1]+dim/2), slice(center[2]-dim/2,center[2]+dim/2))
 		if dbg_target is not None:
 			print 'center in target?', dbg_target[center[0],center[1],center[2]]
+		if nodules is not None:
+			center_in_target = 0
+			#is center in the neigborhoud of nodule?
+			for idx, nodule in enumerate(nodules):
+				if not nodule_found[idx]:
+					if (abs(center[0]-nodule[0])<dim) and (abs(center[1]-nodule[1])<dim) and (abs(center[2]-nodule[2])<dim):
+						center_in_target += 1
+						nodule_found[idx]=1
+			print 'center in target?', center_in_target
 
-		roi = ct_scan[selection]
+		roi = ct_scan[selection]	
+		rois.append(roi)
+
+		#set roi to zero in result mask
+		zshape = result[selection].shape
+		result[selection] = np.zeros(zshape)
+
+
+		if plot:
+			for i in range(len(indices[0])):
+				center = [indices[0][i],indices[1][i],indices[2][i]]
+				fig = plt.figure()
+
+				ax1 = fig.add_subplot(3,1,1)
+				ax1.imshow(segmentation_volume[center[0],:,:].transpose())
+				circ1 = plt.Circle((center[1],center[2]), 24, color='y', fill=False)
+				ax1.add_patch(circ1)
+
+				ax2 = fig.add_subplot(3,1,2)
+				ax2.imshow(segmentation_volume[:,center[1],:])
+				circ2 = plt.Circle((center[0],center[2]), 24, color='y', fill=False)
+				ax2.add_patch(circ2)
+
+				ax3 = fig.add_subplot(3,1,3)
+				ax3.imshow(segmentation_volume[:,:,center[2]].transpose())
+				circ3 = plt.Circle((center[0],center[1]), 24, color='y', fill=False)
+				ax3.add_patch(circ3)
+				fig.savefig('coos_'+str(i)+'.jpg')
+
+	return rois
+
+def extract_nodules_blob_detection(segmentation_volume, ct_scan, plot=False, dbg_target=None, nodules=None):
+	assert(segmentation_volume.shape==ct_scan.shape)
+
+	results = blob_dog(segmentation_volume, min_sigma=1.2, max_sigma=35, threshold=0.1)
+
+	#Extract a given number of regions
+	rois = []
+	if nodules is not None:
+		print nodules
+		nodule_found = np.zeros((len(nodules)))
+	for i in range(len(results)):
+		center = results[i]
+		print 'region', i, center
+
+		#cut out patch		
+		selection = (slice(center[0]-dim/2,center[0]+dim/2), slice(center[1]-dim/2,center[1]+dim/2), slice(center[2]-dim/2,center[2]+dim/2))
+		if dbg_target is not None:
+			print 'center in target?', dbg_target[center[0],center[1],center[2]]
+		if nodules is not None:
+			center_in_target = 0
+			#is center in the neigborhoud of nodule?
+			for idx, nodule in enumerate(nodules):
+				if not nodule_found[idx]:
+					if (abs(center[0]-nodule[0])<dim) and (abs(center[1]-nodule[1])<dim) and (abs(center[2]-nodule[2])<dim):
+						center_in_target += 1
+						nodule_found[idx]=1
+			print 'center in target?', center_in_target
+
+		roi = ct_scan[selection]	
 		rois.append(roi)
 
 		#set roi to zero in result mask
