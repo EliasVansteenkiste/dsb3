@@ -1,7 +1,8 @@
 # TODO
 
-- plotting animation
-- gaussian masks (copy from Jonas)
+- luna evalution metrics
+- zmuv
+- pixelshuffle layer 
 - ordering of slices for kaggle data (Jonas)
 
 

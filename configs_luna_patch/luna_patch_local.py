@@ -8,17 +8,23 @@ from functools import partial
 restart_from_save = None
 rng = np.random.RandomState(42)
 # transformations# transformations
+# p_transform = {'patch_size': (128, 128, 128),
+#                'mm_patch_size': (128, 128, 128),
+#                'pixel_spacing': (1., 0.6, 0.6)
+#                }
+
 p_transform = {'patch_size': (64, 64, 64),
                'mm_patch_size': (64, 64, 64),
-               'pixel_spacing': (1., 1., 1.)
+               'pixel_spacing': (1., 0.7, 0.7)
                }
+
 p_transform_augment = {
-    'translation_range_z': [-27, 27],
-    'translation_range_y': [-27, 27],
-    'translation_range_x': [-27, 27],
-    'rotation_range_z': [-27, 27],
-    'rotation_range_y': [-27, 27],
-    'rotation_range_x': [-27, 27]
+    'translation_range_z': [-20, 20],
+    'translation_range_y': [-20, 20],
+    'translation_range_x': [-20, 20],
+    'rotation_range_z': [-180, 180],
+    'rotation_range_y': [-180, 180],
+    'rotation_range_x': [-180, 180]
 }
 
 
@@ -46,6 +52,7 @@ nbatches_chunk = 1
 chunk_size = batch_size * nbatches_chunk
 
 train_valid_ids = utils.load_pkl(pathfinder.LUNA_VALIDATION_SPLIT_PATH)
+valid_pids = train_valid_ids['valid']
 
 train_data_iterator = data_iterators.PatchPositiveLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                     batch_size=chunk_size,

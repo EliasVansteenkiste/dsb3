@@ -55,8 +55,8 @@ def extract_pid(patient_data_path):
     return patient_data_path.split('/')[-1]
 
 
-def luna_extract_pid(patient_data_path):
-    return os.path.basename(patient_data_path).replace('.mhd', '')
+def luna_extract_pid(patient_data_path, replace_str='.mhd'):
+    return os.path.basename(patient_data_path).replace(replace_str, '')
 
 
 def get_patient_data(patient_data_path):
@@ -205,6 +205,21 @@ def write_submission(patient_predictions, submission_path):
         else:
             print 'missed patient:', pid
     f.close()
+
+
+def dice_index(predictions, targets, epsilon=1e-12):
+    predictions = np.asarray(predictions).flatten()
+    targets = np.asarray(targets).flatten()
+    dice = (2. * np.sum(targets * predictions) + epsilon) / (np.sum(predictions) + np.sum(targets) + epsilon)
+    return dice
+
+
+def cross_entropy(predictions, targets, epsilon=1e-12):
+    predictions = np.asarray(predictions).flatten()
+    predictions = np.clip(predictions, epsilon, 1. - epsilon)
+    targets = np.asarray(targets).flatten()
+    ce = np.mean(np.log(predictions) * targets + np.log(1 - predictions) * (1. - targets))
+    return ce
 
 
 if __name__ == "__main__":

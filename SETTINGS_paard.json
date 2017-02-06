@@ -8,4 +8,3 @@
   "LUNA_LABELS_PATH": "/mnt/storage/data/dsb3/luna/annotations.csv",
   "LUNA_VALIDATION_SPLIT_PATH": "/mnt/storage/data/dsb3/luna/validation_split.pkl"
 }
-

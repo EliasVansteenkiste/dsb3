@@ -8,7 +8,7 @@ import pathfinder
 import utils
 from configuration import config, set_configuration
 from utils_plots import plot_slice_3d_3
-import theano.tensor as T
+import utils_lung
 
 theano.config.warn_float64 = 'raise'
 
@@ -16,7 +16,7 @@ if len(sys.argv) < 2:
     sys.exit("Usage: train.py <configuration_name>")
 
 config_name = sys.argv[1]
-set_configuration(config_name)
+set_configuration('configs_luna_patch', config_name)
 
 # metadata
 metadata_dir = utils.get_dir_path('models', pathfinder.METADATA_PATH)
@@ -50,47 +50,39 @@ nn.layers.set_all_param_values(model.l_out, metadata['param_values'])
 valid_loss = config().build_objective(model, deterministic=True)
 
 x_shared = nn.utils.shared_empty(dim=len(model.l_in.shape))
-y_shared = nn.utils.shared_empty(dim=len(model.l_target.shape))
 
 givens_valid = {}
 givens_valid[model.l_in.input_var] = x_shared
-givens_valid[model.l_target.input_var] = y_shared
 
 # theano functions
-iter_get_predictions = theano.function([], nn.layers.get_output(model.l_out), givens=givens_valid,
-                                       on_unused_input='ignore')
-iter_get_targets = theano.function([], nn.layers.get_output(model.l_target), givens=givens_valid,
-                                   on_unused_input='ignore')
-iter_get_inputs = theano.function([], nn.layers.get_output(model.l_in), givens=givens_valid,
-                                  on_unused_input='ignore')
-iter_validate = theano.function([], valid_loss, givens=givens_valid)
-
+iter_get_predictions = theano.function([], nn.layers.get_output(model.l_out), givens=givens_valid)
 valid_data_iterator = config().valid_data_iterator
 
 print
 print 'Data'
 print 'n validation: %d' % valid_data_iterator.nsamples
 
-valid_losses = []
-for n, (x_chunk_train, y_chunk_train, id_train) in enumerate(
-        buffering.buffered_gen_threaded(valid_data_iterator.generate())):
+valid_losses_dice = []
+valid_losses_ce = []
+for n, (x_chunk, y_chunk, id_chunk) in enumerate(buffering.buffered_gen_threaded(valid_data_iterator.generate())):
     # load chunk to GPU
-    x_shared.set_value(x_chunk_train)
-    y_shared.set_value(y_chunk_train)
+    x_shared.set_value(x_chunk)
+    print 'loaded chunk'
+    predictions = iter_get_predictions()
+    targets = y_chunk
+    inputs = x_chunk
+    print 'dice'
 
-    loss = iter_validate()
-    print n, loss
-    valid_losses.append(loss)
-    pp = iter_get_predictions()
-    tt = iter_get_targets()
-    ii = iter_get_inputs()
+    dice = utils_lung.dice_index(predictions, targets)
+    ce = utils_lung.cross_entropy(predictions, targets)
+    print n, dice, ce
+    valid_losses_dice.append(dice)
+    valid_losses_ce.append(ce)
 
-    # for k in xrange(pp.shape[0]):
-    #     try:
-    #         plot_slice_3d_3(input=ii[k, 0], mask=tt[k, 0], prediction=pp[k, 0],
-    #                         axis=0, pid='-'.join([str(n), str(k), str(id_train[k])]),
-    #                         img_dir=outputs_path)
-    #     except:
-    #         print 'no plot'
+    for k in xrange(predictions.shape[0]):
+        plot_slice_3d_3(input=inputs[k, 0], mask=targets[k, 0], prediction=predictions[k, 0],
+                        axis=0, pid='-'.join([str(n), str(k), str(id_chunk[k])]),
+                        img_dir=outputs_path)
 
-print 'Validation loss', np.mean(valid_losses)
+print 'Dice index validation loss', np.mean(valid_losses_dice)
+print 'CE validation loss', np.mean(valid_losses_ce)
