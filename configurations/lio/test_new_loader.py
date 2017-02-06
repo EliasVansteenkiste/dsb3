@@ -44,7 +44,7 @@ norm_patch_shape = (340, 340, 320) #median
 preprocessors = [
     Stage1ToHU(tags=["bcolzstage1:3d"]),
     Augment3D(
-        tags=["bcolzall:3d"],
+        tags=["bcolzstage1:3d"],
         output_shape = nn_input_shape,
         norm_patch_shape=norm_patch_shape,
         augmentation_params={
@@ -55,17 +55,17 @@ preprocessors = [
             "translation": [50, 50, 50],  # mm
             "reflection": [0, 0, 0]}, #Bernoulli p
         interp_order=1),
-    DefaultNormalizer(tags=["bcolzall:3d"])
+    DefaultNormalizer(tags=["bcolzstage1:3d"])
 ]
 
 preprocessors_valid = [
     Stage1ToHU(tags=["bcolzstage1:3d"]),
     Augment3D(
-        tags=["bcolzall:3d"],
+        tags=["bcolzstage1:3d"],
         output_shape = nn_input_shape,
         norm_patch_shape=norm_patch_shape,
         interp_order=1),
-    DefaultNormalizer(tags=["bcolzall:3d"])
+    DefaultNormalizer(tags=["bcolzstage1:3d"])
 ]
 
 
@@ -137,7 +137,7 @@ test_data = None
 "On both sets, you may request multiple objectives! Only the one called 'objective' is used to optimize on."
 
 def build_objectives(interface_layers):
-    obj = CrossEntropyObjective(interface_layers["outputs"], target_name="bcolzall")
+    obj = CrossEntropyObjective(interface_layers["outputs"], target_name="bcolzstage1")
     return {
         "train":{
             "objective": obj,
@@ -244,7 +244,7 @@ def build_model():
 
     return {
         "inputs":{
-            "bcolzall:3d": l_in,
+            "bcolzstage1:3d": l_in,
         },
         "outputs": {
             "predicted_probability": l_out
