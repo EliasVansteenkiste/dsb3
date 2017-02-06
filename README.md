@@ -1,5 +1,6 @@
 # TODO
 
+- scan segmentation, blob detection in one go
 - luna evalution metrics
 - zmuv
 - pixelshuffle layer 

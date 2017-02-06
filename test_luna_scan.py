@@ -31,9 +31,10 @@ idx_z = T.lscalar('idx_z')
 idx_y = T.lscalar('idx_y')
 idx_x = T.lscalar('idx_x')
 
-fs = config().p_transform_patch['patch_size'][0]
-stride = fs / 2
-n_windows = (config().p_transform['patch_size'][0] - stride) / stride  # TODO wrong
+fs = config().filter_size
+stride = config().stride
+pad = config().pad
+n_windows = (config().p_transform['patch_size'][0] - fs + 2 * pad) / stride + 1
 
 givens_valid = {}
 givens_valid[model.l_in.input_var] = x_shared[:, :,
@@ -58,6 +59,11 @@ for n, (x, y, id, annotations) in enumerate(valid_data_iterator.generate()):
     pid = id[0]
     annotations = annotations[0]
     predictions_scan = np.zeros_like(x)
+
+    if pad > 0:
+        x = np.pad(x[0, 0], pad_width=pad, mode='constant', constant_values=0)
+        x = x[None, None, :, :, :]
+
     x_shared.set_value(x)
 
     for iz in xrange(n_windows):
@@ -66,9 +72,12 @@ for n, (x, y, id, annotations) in enumerate(valid_data_iterator.generate()):
                 # print iz, iy, ix
                 predictions_patch = get_predictions_patch(iz, iy, ix)
                 predictions_scan[0, 0,
-                iz * stride:iz * stride + fs,
-                iy * stride:iy * stride + fs,
-                ix * stride:ix * stride + fs] += predictions_patch[0, 0]
+                iz * stride:(iz + 1) * stride,
+                iy * stride:(iy + 1) * stride,
+                ix * stride:(ix + 1) * stride] = predictions_patch[0, 0,
+                                                 stride / 2:stride * 3 / 2,
+                                                 stride / 2:stride * 3 / 2,
+                                                 stride / 2:stride * 3 / 2, ]
 
     predictions_scan = np.clip(predictions_scan, 0, 1)
 
