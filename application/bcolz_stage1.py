@@ -34,6 +34,11 @@ class BcolzStage1DataLoader(StandardDataLoader):
         if TRAINING in self.data and VALIDATION in self.data\
                 and len(self.labels)>0 and len(self.metadata) > 0: return
 
+        # make the static data empty
+        for s in self.datasets: self.data[s] = []
+        self.labels = {}
+        self.metadata = {}
+
         # load the file names
         patient_paths = sorted(glob.glob(self.location+'/stage1/*'))
         print len(patient_paths), "patients found"
@@ -46,9 +51,6 @@ class BcolzStage1DataLoader(StandardDataLoader):
         random.seed(317070)
         ids_per_label = [[patient_id for patient_id,label in self.labels.iteritems() if label==l] for l in [0,1]]
         validation_patients = sum([random.sample(sorted(ids), int(VALIDATION_SET_SIZE*len(ids))) for ids in ids_per_label],[])
-
-        # make the static data empty
-        for s in self.datasets: self.data[s] = []
 
         self.load_metadata()
 
