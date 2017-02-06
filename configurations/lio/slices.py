@@ -81,7 +81,7 @@ training_data = BcolzAllDataLoader(
     crash_on_exception=True)
 
 "Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate." 
-lr = 0.00001 * batch_size
+lr = 0.0005 * batch_size
 lr_min = lr/1000.
 lr_decay = 0.9
 learning_rate_schedule = {}
@@ -230,7 +230,7 @@ def build_model():
     l = lasagne.layers.DenseLayer(l,
                                  num_units=1,
                                  W=lasagne.init.Constant(0.0),
-                                 b=None, #lasagne.init.Constant(-np.log(3)),
+                                 b=lasagne.init.Constant(-np.log(3)),
                                  nonlinearity=lasagne.nonlinearities.sigmoid)
     l_out = lasagne.layers.reshape(l, shape=(-1,))
 
