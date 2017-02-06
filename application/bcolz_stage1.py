@@ -20,15 +20,14 @@ CORRUPT = {"b8bb02d229361a623a4dc57aa0e5c485"}
 
 class BcolzStage1DataLoader(StandardDataLoader):
 
+    labels = dict()
+    metadata = dict()
+
     datasets = [TRAIN, VALIDATION, TEST]
 
     def __init__(self, remove_corrupt=True, location=paths.BCOLZ_DATA_PATH, *args, **kwargs):
         super(BcolzStage1DataLoader, self).__init__(location=location, *args, **kwargs)
         self.remove_corrupt = remove_corrupt
-        # load metadata
-        # with gzip.open(self.location + "metadata.pkl.gz", "rb") as f:
-        with open(self.location + "metadata.pkl", "rb") as f:
-            self.metadata = cPickle.load(f)
 
     def prepare(self):
         # load only when not loaded yet
@@ -49,6 +48,11 @@ class BcolzStage1DataLoader(StandardDataLoader):
 
         # make the static data empty
         for s in self.datasets: self.data[s] = []
+
+        # load metadata
+        # with gzip.open(self.location + "metadata.pkl.gz", "rb") as f:
+        with open(self.location + "metadata.pkl", "rb") as f:
+            self.metadata = cPickle.load(f)
 
         # print len(spacings)
         # load the filenames and put into the right dataset
