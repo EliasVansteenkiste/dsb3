@@ -1,7 +1,7 @@
 import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.mixture import BayesianGaussianMixture
-from skimage.feature import blob_dog, blob_doh, blob_log
+from blob import blob_dog, blob_doh, blob_log
 
 
 from scipy.spatial import distance
@@ -181,7 +181,7 @@ def extract_nodules_conv_filter(segmentation_volume, ct_scan, no_rois=5, dim=8, 
 
 	return rois
 
-def extract_nodules_blob_detection(segmentation_volume, ct_scan, plot=False, dbg_target=None, nodules=None):
+def extract_nodules_blob_detection(segmentation_volume, ct_scan, dim=8, plot=False, dbg_target=None, nodules=None):
 	assert(segmentation_volume.shape==ct_scan.shape)
 
 	results = blob_dog(segmentation_volume, min_sigma=1.2, max_sigma=35, threshold=0.1)
@@ -192,7 +192,7 @@ def extract_nodules_blob_detection(segmentation_volume, ct_scan, plot=False, dbg
 		print nodules
 		nodule_found = np.zeros((len(nodules)))
 	for i in range(len(results)):
-		center = results[i]
+		center = np.round(results[i]).astype(int)
 		print 'region', i, center
 
 		#cut out patch		
@@ -211,11 +211,6 @@ def extract_nodules_blob_detection(segmentation_volume, ct_scan, plot=False, dbg
 
 		roi = ct_scan[selection]	
 		rois.append(roi)
-
-		#set roi to zero in result mask
-		zshape = result[selection].shape
-		result[selection] = np.zeros(zshape)
-
 
 		if plot:
 			for i in range(len(indices[0])):
@@ -396,8 +391,7 @@ if __name__=="__main__":
 			print 'warning sample omitted because it does not fit in volume'
 
 	test_probs = 1.0*occurences/np.sum(occurences)
-
-
+	
 	extract_nodules_best_kmeans(test_probs)
 
 
