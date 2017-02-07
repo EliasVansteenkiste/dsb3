@@ -2,7 +2,7 @@ from functools import partial
 from lasagne.layers import dnn
 from application.luna import LunaDataLoader, OnlyPositiveLunaDataLoader
 from application.preprocessors.in_the_middle import PutInTheMiddle
-from application.preprocessors.lio_augmentation import LioAugment
+from application.preprocessors.augmentation_3d import Augment3D
 from configurations.default import *
 
 import lasagne
@@ -48,9 +48,9 @@ AUGMENTATION_PARAMETERS = {
 "Put in here the preprocessors for your data." \
 "They will be run consequently on the datadict of the dataloader in the order of your list."
 preprocessors = [
-    LioAugment(tags=["luna:3d", "luna:segmentation"],
+    Augment3D(tags=["luna:3d", "luna:segmentation"],
                output_shape=(128,128,128),  # in pixels
-               norm_patch_size=(128,128,128),  # in mms
+               norm_patch_shape=(128,128,128),  # in mms
                augmentation_params=AUGMENTATION_PARAMETERS
                ),
     NormalizeInput(num_samples=1),

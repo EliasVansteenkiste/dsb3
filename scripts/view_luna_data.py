@@ -1,6 +1,6 @@
 from application.luna import LunaDataLoader
 from application.preprocessors.in_the_middle import PutInTheMiddle
-from application.preprocessors.lio_augmentation import LioAugment
+from application.preprocessors.augmentation_3d import Augment3D
 from interfaces.data_loader import INPUT, OUTPUT, TRAINING
 #from interfaces.preprocess import AugmentInput, RescaleInput
 import matplotlib.pyplot as plt
@@ -16,9 +16,9 @@ AUGMENTATION_PARAMETERS = {
 }
 
 preprocessors = [
-    LioAugment(tags=["luna:3d", "luna:segmentation"],
+    Augment3D(tags=["luna:3d", "luna:segmentation"],
                output_shape=(128,128,128),
-               norm_patch_size=(128,128,128),
+               norm_patch_shape=(128,128,128),
                augmentation_params=AUGMENTATION_PARAMETERS
                )
                  #RescaleInput(input_scale=(0,255), output_scale=(0.0, 1.0)),
