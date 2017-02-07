@@ -1,15 +1,16 @@
 import numpy as np
 from itertools import product
 
-from configurations import j0_luna_weighted
+from configurations.jonas import ira_config_3
 from scripts.elias.extract_nodules import extract_nodules_blob_detection
 from application.stage1 import Stage1DataLoader
 from interfaces.data_loader import VALIDATION, TRAINING, TEST, TRAIN, INPUT
 from application.preprocessors.dicom_to_HU import DicomToHU
 from utils.transformation_3d import affine_transform, apply_affine_transform
+from interfaces.preprocess import ZMUV
 
 
-model = j0_luna_weighted
+model = ira_config_3
 
 nodule_extractor = extract_nodules_blob_detection
 
@@ -20,7 +21,7 @@ evaluation_stride = norm_patch_shape # in mms
 replace_input_tags = {"luna:3d": "stage1:3d"}
 
 preprocessors = [DicomToHU(tags=["stage1:3d"])]
-postpreprocessors = [] #lol
+postpreprocessors = [ZMUV("stage1:3d", bias =  -648.59027, std = 679.21021)] #lol
 
 data_loader= Stage1DataLoader(
     sets=[TRAINING, VALIDATION],
