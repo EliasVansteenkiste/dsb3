@@ -13,10 +13,18 @@ class DicomToHU(BasePreprocessor):
             if tag in sample[INPUT]:
                 sample[INPUT].update(self.convert(sample[INPUT][tag], tag))
 
+    @property
+    def extra_input_tags_required(self):
+        datasetnames = set()
+        for tag in self.tags:datasetnames.add(tag.split(':')[0])
+        input_tags_extra = [dsn+":3d" for dsn in datasetnames]
+        return input_tags_extra
+
     @staticmethod
     def convert(slices, tag):
-        image_positions = [s["ImagePositionPatient"] for s in slices]
+        image_positions = [s["ImagePositionPatient"][2] for s in slices]
         sort_ids = np.argsort(image_positions)
+        # print sort_ids.shape
 
         data = np.asarray([s["PixelData"] for s in slices], dtype=np.int16)
         data = data[sort_ids].T # ZYX to XYZ and sort
@@ -42,4 +50,5 @@ class DicomToHU(BasePreprocessor):
             spacing[2] = image_positions[2+i] - image_positions[0]
             i+=1
 
-        return {tag: data, "pixelspacing": spacing}
+        return {tag: data,
+                tag.split(":")[0]+":pixelspacing": spacing}

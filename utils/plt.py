@@ -16,10 +16,11 @@ def show_compare(volume1, volume2):
 
 
 
-def show_animate(data, interval=200):
+def show_animate(data, interval=200, normalize=True):
     import matplotlib.animation as animation
-    mini = data.min()
-    data = (data.astype("float32")-mini)/(data.max()-mini)
+    if normalize:
+        mini = data.min()
+        data = (data.astype("float32")-mini)/(data.max()-mini)
 
     def get_data_step(step):
         return np.concatenate([data[:,:,step,None], data[:,:,step,None], data[:,:,step,None]], axis=-1)
