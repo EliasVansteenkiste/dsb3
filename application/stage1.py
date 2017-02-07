@@ -123,9 +123,6 @@ class Stage1DataLoader(StandardDataLoader):
             if "3d" in tags:
                 sample[INPUT][tag] = slices
 
-            # if "pixelspacing" in tags:
-            #     sample[INPUT][tag] = 0 #calculate in preprocessor #todo: check if tag can be created in preprocessor
-
         for tag in output_keys_to_do:
             tags = tag.split(':')
             if "stage1" not in tags:
