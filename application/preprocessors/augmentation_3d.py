@@ -79,6 +79,8 @@ class Augment3D(BasePreprocessor):
                  interp_order=1, mode="constant", cval=MIN_HU):
         self.augmentation_params = augmentation_params
         self.tags = tags
+        self.output_shape = output_shape
+        self.norm_patch_shape = norm_patch_shape
         self.augment = partial(augment_3d,
             output_shape=output_shape,
             norm_patch_shape=norm_patch_shape,
