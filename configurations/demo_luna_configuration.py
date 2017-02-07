@@ -10,7 +10,7 @@ import theano.tensor as T
 import numpy as np
 
 from application.objectives import CrossEntropyObjective, WeightedSegmentationCrossEntropyObjective
-from application.data import PatientDataLoader
+from application.stage1 import PatientDataLoader
 from deep_learning.upscale import Upscale3DLayer
 from interfaces.data_loader import VALIDATION, TRAINING, TEST, TRAIN
 from deep_learning.deep_learning_layers import ConvolutionLayer, PoolLayer
