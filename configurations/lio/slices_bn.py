@@ -50,9 +50,9 @@ preprocessors = [
         augmentation_params={
             "scale": [1, 1, 1],  # factor
             "uniform scale": 1, # factor
-            "rotation": [0, 0, 0],  # degrees
+            "rotation": [5, 5, 5],  # degrees
             "shear": [0, 0, 0],  # degrees
-            "translation": [0, 0, 0],  # mm
+            "translation": [50,50, 50],  # mm
             "reflection": [0, 0, 0]}, #Bernoulli p
         interp_order=1),
     # DefaultNormalizer(tags=["bcolzstage1:3d"])
@@ -231,7 +231,7 @@ def build_model():
     l = bn(l)
 
     #n *= 2
-    l = dense(l, n)
+    l = dense(drop(l), n)
     # l = dense(drop(l), n)
 
     l = bn(l)
