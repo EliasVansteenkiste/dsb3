@@ -126,6 +126,30 @@ def plot_slice_3d_3_patch(input, mask, prediction, axis, pid, patch_size=64, img
     plt.close('all')
 
 
+def plot_3d_patch(input, prediction, axis, pid, img_dir=None, idx=None):
+    # to convert cuda arrays to numpy array
+    input = np.asarray(input)
+
+    fig, ax = plt.subplots(3, 1)
+    fig.canvas.set_window_title(pid)
+
+    if axis == 0:  # sax
+        sz, sy, sx = slice(idx[0], idx[0] + 1), slice(idx[1] - patch_size, idx[1] + patch_size), slice(
+            idx[2] - patch_size, idx[2] + patch_size)
+        ax[1, 0].imshow(input[sz, sy, sx], cmap=plt.cm.gray)
+    if axis == 1:  # 2 lungs
+        ax[1, 0].imshow(input[:, idx[1], :], cmap=plt.cm.gray)
+    if axis == 2:  # side view
+        ax[1, 0].imshow(input[:, :, idx[2]], cmap=plt.cm.gray)
+    if img_dir is not None:
+        fig.savefig(img_dir + '/%s.png' % pid, bbox_inches='tight')
+    else:
+        plt.show()
+    fig.clf()
+    plt.close('all')
+
+
+
 def plot_2d(img, mask, pid, img_dir):
     # fig = plt.figure()
     fig, ax = plt.subplots(2, 2, figsize=[8, 8])

@@ -189,6 +189,20 @@ def read_luna_labels(file_path):
     return id2xyzd
 
 
+def read_luna_candidates(file_path):
+    id2xyzd = defaultdict(list)
+    train_csv = open(file_path)
+    lines = train_csv.readlines()
+    i = 0
+    for item in lines:
+        if i == 0:
+            i = 1
+            continue
+        id, x, y, z, c = item.replace('\n', '').split(',')
+        id2xyzd[id].append([float(z), float(y), float(x), int(c)])
+    return id2xyzd
+
+
 def write_submission(patient_predictions, submission_path):
     """
     :param patient_predictions: dict of {patient_id: label}
