@@ -44,9 +44,7 @@ def check_aligned_image_planes(dicom_img1, dicom_img2):
 working_path = paths.DATA_PATH
 patient_folders=os.listdir(working_path)
 
-
-
-
+unaligned_dict={}
 
 
 for patient_folder in patient_folders:
@@ -89,7 +87,15 @@ for patient_folder in patient_folders:
 
     if len(unaligned_occurences)>0:
         print "Found unaligned slices {} ({} total) for patient {}".format(unaligned_occurences,len(unaligned_occurences),patient_id)
+        unaligned_dict[patient_id] = unaligned_occurences
+
 
     else:
         print "No unaligned slices found for patient {}".format(patient_id)
+
+if len(unaligned_dict.keys()) > 0:
+    print "The following patients with unaligned slices have been found:"
+    for (key,value) in unaligned_dict.iteritems():
+        print "patient {} : {}".format(key,value)
+
 
