@@ -4,7 +4,7 @@ from functools import partial
 
 from configurations.jonas import valid, ira_config_2
 from scripts.elias.blob import blob_dog
-
+from application.luna import LunaDataLoader
 from application.stage1 import Stage1DataLoader
 from interfaces.data_loader import VALIDATION, TRAINING, TEST, TRAIN, INPUT
 from application.preprocessors.dicom_to_HU import DicomToHU
@@ -21,10 +21,10 @@ norm_patch_shape = IMAGE_SIZE, IMAGE_SIZE, IMAGE_SIZE  # in mms
 
 replace_input_tags = {"luna:3d": tag+"3d"}
 
-preprocessors = [DicomToHU(tags=[tag+"3d"])]
+preprocessors = []
 postpreprocessors = [ZMUV(tag+"3d", bias =  -648.59027, std = 679.21021)] #lol
 
-data_loader= Stage1DataLoader(
+data_loader= LunaDataLoader(
     sets=[TRAINING, VALIDATION],
     preprocessors=preprocessors,
     epochs=1,
