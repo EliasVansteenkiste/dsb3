@@ -147,7 +147,7 @@ def extract_rois(expid):
                 th_result = iter_test(0)
 
                 predictions = th_result[:len(network_outputs)]
-                print "predictions.shape", predictions.shape
+                print "len(predictions)", len(predictions)
 
                 pred = predictions[0][0]
                 rois = config.extract_nodules(pred, patch)
