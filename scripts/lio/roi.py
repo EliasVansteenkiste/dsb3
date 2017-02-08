@@ -134,8 +134,8 @@ def extract_rois(expid):
 
             patch_generator = config.patch_generator(data, output_layers["predicted_segmentation"].output_shape[1:])
             # sample_ids = data[IDS]
-            from time import time
-            t0 = time()
+            # from time import time
+            t0 = time.time()
             for patch in patch_generator:
                 # print "xs_shared.keys()", xs_shared.keys()
                 # print "patch.key()", patch.keys()
@@ -145,28 +145,28 @@ def extract_rois(expid):
 
                 print "patch_generator", time() - t0
 
-                t0 = time()
+                t0 = time.time()
                 th_result = iter_test(0)
-                print "iter_test", time()-t0
+                print "iter_test", time.time()-t0
 
                 predictions = th_result[:len(network_outputs)]
                 # print "len(predictions)", len(predictions)
 
                 pred = predictions[0][0]
 
-                t0 = time()
+                t0 = time.time()
                 rois = config.extract_nodules(pred, patch)
-                print "extract_nodules", time() - t0
+                print "extract_nodules", time.time() - t0
 
-                t0 = time()
+                t0 = time.time()
                 if rois is not None:
                     if sample_id not in all_predictions:
                         all_predictions[sample_id] = rois
                     else:
                         all_predictions[sample_id] = np.vstack((all_predictions[sample_id], rois))
-                print "vstack", time() - t0
+                print "vstack", time.time() - t0
 
-                t0 = time()
+                t0 = time.time()
 
             print "patient", sample_id, all_predictions[sample_id].shape[0], "nodules"
             now = time.time()
