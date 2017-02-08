@@ -154,6 +154,7 @@ def extract_rois(expid):
                         all_predictions[sample_id] = rois
                     else: all_predictions[sample_id] = np.vstack((all_predictions[sample_id], rois))
 
+            print "patient", sample_id, all_predictions[sample_id].shape[0], "nodules"
             now = time.time()
             time_since_start = now - start_time
             time_since_prev = now - prev_time

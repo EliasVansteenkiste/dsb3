@@ -54,7 +54,7 @@ def patch_generator(sample, segmentation_shape):
     for x,y,z in product(range(patch_count[0]), range(patch_count[1]), range(patch_count[2])):
 
         offset = np.array([stride[0]*x, stride[1]*y, stride[2]*z], np.float)
-        print offset
+        # print offset
 
         shift_center = affine_transform(translation=-input_shape / 2. - 0.5)
         normscale = affine_transform(scale=norm_shape / input_shape)
@@ -77,7 +77,7 @@ def extract_nodules(pred, patch):
     if rois.shape[0] > 0:
         rois = rois[:, :3] #ignore diameter
     else: return None
-    print rois
+    # print rois
     #local to global roi
     # rois += patch["offset"]
     return rois
