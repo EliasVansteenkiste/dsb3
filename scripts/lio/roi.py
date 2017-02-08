@@ -136,9 +136,9 @@ def extract_rois(expid):
 
                 t0 = time.time()
                 rois = config.extract_nodules(pred, patch)
-                print " extract_nodules", time.time() - t0
 
                 if rois is not None:
+                    print " extract_nodules", len(rois), time.time() - t0
                     if sample_id not in all_predictions:
                         all_predictions[sample_id] = rois
                     else:
