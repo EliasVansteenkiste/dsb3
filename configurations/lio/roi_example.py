@@ -31,9 +31,7 @@ data_loader= Stage1DataLoader(
 
 batch_size = 1
 
-segmentation_shape = None #will be filled in when building a lasagne network
-
-def patch_generator(sample):
+def patch_generator(sample, segmentation_shape):
     for prep in preprocessors: prep.process(sample)
 
     patch = {}

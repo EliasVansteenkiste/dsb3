@@ -50,8 +50,6 @@ def extract_rois(expid):
     top_layer = lasagne.layers.MergeLayer(
         incomings=output_layers.values()
     )
-    config.segmentation_shape = output_layers["predicted_segmentation"].output_shape[1:]
-    print "segmentation shape:", config.segmentation_shape
 
     # get all the trainable parameters from the model
     all_layers = lasagne.layers.get_all_layers(top_layer)
@@ -134,7 +132,7 @@ def extract_rois(expid):
 
             data = config.data_loader.load_sample(sample_id, input_layers.keys(),{})
 
-            patch_generator = config.patch_generator(data)
+            patch_generator = config.patch_generator(data, output_layers["predicted_segmentation"].output_shape[1:])
             # sample_ids = data[IDS]
 
             for patch in patch_generator:
