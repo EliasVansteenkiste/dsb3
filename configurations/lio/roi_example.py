@@ -78,7 +78,7 @@ def extract_nodules(pred, patch):
         rois = blob_dog(pred, min_sigma=1.2, max_sigma=35, threshold=0.1)
         # print "blob_dog", time()-t0, pred.shape, pred.min(), pred.max(), pred.mean()
     except:
-        # print pred.shape, pred.min(), pred.max(), pred.mean()
+        print "blob_dog failed"
         return None
     if rois.shape[0] > 0:
         rois = rois[:, :3] #ignore diameter
