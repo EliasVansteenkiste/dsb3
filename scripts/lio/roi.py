@@ -3,6 +3,7 @@ import theano
 import numpy as np
 import theano.tensor as T
 import os
+import sys
 from itertools import izip
 import cPickle as pickle
 import string
@@ -24,7 +25,7 @@ from interfaces.objectives import MAXIMIZE
 
 
 def extract_rois(expid):
-    metadata_path = MODEL_PATH + "%s.pkl" % expid
+    metadata_path = MODEL_PATH + "%s.pkl" % config.model.__name__.split(".")[-1]
     prediction_path = MODEL_PREDICTIONS_PATH + "%s.pkl" % expid
 
     if theano.config.optimizer != "fast_run":
@@ -34,6 +35,8 @@ def extract_rois(expid):
     print "  %s" % metadata_path
     print "To generate"
     print "  %s" % prediction_path
+
+    sys.exit()
 
     print "Build model"
 
