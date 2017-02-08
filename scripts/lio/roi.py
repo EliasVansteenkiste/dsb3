@@ -44,7 +44,7 @@ def extract_rois(expid):
     output_layers = interface_layers["outputs"]
     input_layers = interface_layers["inputs"]
     for old_key, new_key in config.replace_input_tags.items():
-        input_layers[old_key] = input_layers.pop(new_key)
+        input_layers[new_key] = input_layers.pop(old_key)
 
     # merge all output layers into a fictional dummy layer which is not actually used
     top_layer = lasagne.layers.MergeLayer(
