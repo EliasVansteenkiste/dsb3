@@ -262,6 +262,7 @@ def blob_dog(image, min_sigma=1, max_sigma=50, sigma_ratio=1.6, threshold=2.0,
     local_maxima = peak_local_max(image_cube, threshold_abs=threshold,
                                   footprint=np.ones((3,) * (image.ndim + 1)),
                                   threshold_rel=0.0,
+                                  num_peaks=np.inf,
                                   exclude_border=False)
     # Convert local_maxima to float64
     lm = local_maxima.astype(np.float64)

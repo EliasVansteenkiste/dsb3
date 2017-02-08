@@ -14,7 +14,7 @@ from interfaces.preprocess import ZMUV
 
 model = valid
 
-IMAGE_SIZE = 128
+IMAGE_SIZE = 64
 patch_shape = IMAGE_SIZE, IMAGE_SIZE, IMAGE_SIZE  # in pixels
 norm_patch_shape = IMAGE_SIZE, IMAGE_SIZE, IMAGE_SIZE  # in mms
 
