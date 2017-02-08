@@ -50,6 +50,8 @@ def extract_rois(expid):
     top_layer = lasagne.layers.MergeLayer(
         incomings=output_layers.values()
     )
+    print top_layer.output_shape
+
     # get all the trainable parameters from the model
     all_layers = lasagne.layers.get_all_layers(top_layer)
     all_params = lasagne.layers.get_all_params(top_layer, trainable=True)
@@ -100,7 +102,7 @@ def extract_rois(expid):
     }
 
     print "Preparing dataloaders"
-    config.test_data.prepare()
+    config.data_loader.prepare()
     chunk_size = config.batch_size
 
     data_generator = buffering.buffered_gen_threaded(
