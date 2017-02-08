@@ -14,8 +14,6 @@ from interfaces.preprocess import ZMUV
 
 model = ira_config_3
 
-nodule_extractor = partial(blob_dog, min_sigma=1.2, max_sigma=35, threshold=0.1)
-
 patch_shape = 64, 64, 64  # in pixels
 norm_patch_shape = 64, 64, 64  # in mms
 evaluation_stride = norm_patch_shape # in mms
@@ -72,8 +70,9 @@ def patch_generator(sample):
 
 
 def extract_nodules(pred, patch):
-    rois = nodule_extractor(pred)
-    print type(rois), rois
+    rois = blob_dog(pred, min_sigma=1.2, max_sigma=35, threshold=0.1)
+    rois = rois[:, :3] #ignore diameter
+    print rois
     #local to global roi
     # rois += patch["offset"]
     return rois

@@ -138,22 +138,22 @@ def extract_rois(expid):
             # sample_ids = data[IDS]
 
             for patch in patch_generator:
-                print "xs_shared.keys()", xs_shared.keys()
-                print "patch.key()", patch.keys()
-                print 'patch["stage1:3d"].shape', patch["stage1:3d"].shape
+                # print "xs_shared.keys()", xs_shared.keys()
+                # print "patch.key()", patch.keys()
+                # print 'patch["stage1:3d"].shape', patch["stage1:3d"].shape
                 for key in xs_shared:
                     xs_shared[key].set_value(patch[key][None,:])
 
                 th_result = iter_test(0)
 
                 predictions = th_result[:len(network_outputs)]
-                print "len(predictions)", len(predictions)
+                # print "len(predictions)", len(predictions)
 
                 pred = predictions[0][0]
                 rois = config.extract_nodules(pred, patch)
                 if sample_id not in all_predictions:
                     all_predictions[sample_id] = rois
-                else: all_predictions[sample_id] += rois
+                else: all_predictions[sample_id] = np.vstack((all_predictions[sample_id], rois))
 
             now = time.time()
             time_since_start = now - start_time
