@@ -195,8 +195,8 @@ max_pool3d = partial(dnn.MaxPool3DDNNLayer,
 "Here we build a model. The model returns a dict with the requested inputs for each layer:" \
 "And with the outputs it generates. You may generate multiple outputs (for analysis or for some other objectives, etc)" \
 "Unused outputs don't cost in performance"
-def build_model():
-    l_in = lasagne.layers.InputLayer(shape=(None,IMAGE_SIZE,IMAGE_SIZE,IMAGE_SIZE))
+def build_model(image_size=(IMAGE_SIZE,IMAGE_SIZE,IMAGE_SIZE)):
+    l_in = lasagne.layers.InputLayer(shape=(None,)+image_size)
 
     l0 = lasagne.layers.DimshuffleLayer(l_in, pattern=[0,'x',1,2,3])
 

@@ -40,7 +40,7 @@ def extract_rois(expid):
 
     print "Build model"
 
-    interface_layers = config.model.build_model()
+    interface_layers = config.model.build_model(image_size=config.patch_shape)
     output_layers = interface_layers["outputs"]
     input_layers = interface_layers["inputs"]
     for old_key, new_key in config.replace_input_tags.items():

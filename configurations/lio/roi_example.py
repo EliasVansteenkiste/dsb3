@@ -14,8 +14,8 @@ from interfaces.preprocess import ZMUV
 
 model = valid
 
-patch_shape = 64, 64, 64  # in pixels
-norm_patch_shape = 64, 64, 64  # in mms
+patch_shape = 256, 256, 256  # in pixels
+norm_patch_shape = 256, 256, 256  # in mms
 
 replace_input_tags = {"luna:3d": "stage1:3d"}
 
@@ -76,6 +76,7 @@ def extract_nodules(pred, patch):
         return None
     if rois.shape[0] > 0:
         rois = rois[:, :3] #ignore diameter
+        rois += patch["offset"][None,:]
     else: return None
     # print rois
     #local to global roi
