@@ -50,7 +50,8 @@ def extract_rois(expid):
     top_layer = lasagne.layers.MergeLayer(
         incomings=output_layers.values()
     )
-    print output_layers["predicted_segmentation"].output_shape
+    config.segmentation_shape = output_layers["predicted_segmentation"].output_shape[:-3]
+    print "segmentation shape:", config.segmentation_shape
 
     # get all the trainable parameters from the model
     all_layers = lasagne.layers.get_all_layers(top_layer)
@@ -96,22 +97,22 @@ def extract_rois(expid):
                                 # mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=True)
                                 )
 
-    required_input = {
-        key: l_in.output_shape
-        for (key, l_in) in input_layers.iteritems()
-    }
+    # required_input = {
+    #     key: l_in.output_shape
+    #     for (key, l_in) in input_layers.iteritems()
+    # }
 
     print "Preparing dataloaders"
     config.data_loader.prepare()
-    chunk_size = config.batch_size
+    # chunk_size = config.batch_size
 
-    data_generator = buffering.buffered_gen_threaded(
-        config.data_loader.generate_batch(
-            chunk_size=chunk_size,
-            required_input=required_input,
-            required_output={},
-        )
-    )
+    # data_generator = buffering.buffered_gen_threaded(
+    #     config.data_loader.generate_batch(
+    #         chunk_size=chunk_size,
+    #         required_input=required_input,
+    #         required_output={},
+    #     )
+    # )
 
     print "Load model parameters"
     metadata = np.load(metadata_path)
@@ -123,59 +124,56 @@ def extract_rois(expid):
     start_time, prev_time = None, None
     all_predictions = dict()
 
-    print "Loading first chunks"
-    for e, data in izip(chunks_test_idcs, data_generator):
-        if start_time is None:
-            start_time = time.time()
-            prev_time = start_time
-        print
+    for set, set_indices in config.data_loader.indices.iteritems():
+        for sample_id in set_indices:
 
-        print "Chunk %d/%d" % (e + 1, num_chunks_test)
-        print "=============="
+            if start_time is None:
+                start_time = time.time()
+                prev_time = start_time
+            print "sample_id", sample_id
 
-        if config.dump_network_loaded_data:
-            pickle.dump(data, open("data_loader_dump_test_%d.pkl" % e, "wb"))
+            data = config.data_loader.load_sample(sample_id, input_layers.keys(),{})
 
-        patch_generator = config.patch_generator(data, xs_shared.keys())
-        sample_ids = data[IDS]
+            patch_generator = config.patch_generator(data, xs_shared.keys())
+            sample_ids = data[IDS]
 
-        for patch in patch_generator:
-            for key in xs_shared:
-                xs_shared[key].set_value(patch[key])
+            for patch in patch_generator:
+                for key in xs_shared:
+                    xs_shared[key].set_value(patch[key])
 
-            th_result = iter_test(0)
+                th_result = iter_test(0)
 
-            predictions = th_result[:len(network_outputs)]
+                predictions = th_result[:len(network_outputs)]
 
-            for output_idx, key in enumerate(output_layers.keys()):
-                for sample_idx in xrange(0, config.batch_size):
-                    prediction_pos = sample_idx % config.batch_size
-                    sample_id = sample_ids[sample_idx]
-                    if sample_id is not None:
-                        pred = predictions[output_idx][prediction_pos]
-                        rois = config.extract_nodules(pred, patch)
-                        if sample_id not in all_predictions:
-                            all_predictions[sample_id] = rois
-                        else:
-                            all_predictions[sample_id] += rois
+                for output_idx, key in enumerate(output_layers.keys()):
+                    for sample_idx in xrange(0, config.batch_size):
+                        prediction_pos = sample_idx % config.batch_size
+                        sample_id = sample_ids[sample_idx]
+                        if sample_id is not None:
+                            pred = predictions[output_idx][prediction_pos]
+                            rois = config.extract_nodules(pred, patch)
+                            if sample_id not in all_predictions:
+                                all_predictions[sample_id] = rois
+                            else:
+                                all_predictions[sample_id] += rois
 
-        now = time.time()
-        time_since_start = now - start_time
-        time_since_prev = now - prev_time
-        prev_time = now
-        print "  %s since start (+%.2f s)" % (utils.hms(time_since_start), time_since_prev)
-        try:
-            if num_chunks_test:
-                est_time_left = time_since_start * (float(num_chunks_test - (e + 1)) / float(e + 1))
-                eta = datetime.datetime.now() + datetime.timedelta(seconds=est_time_left)
-                eta_str = eta.strftime("%c")
-                print "  estimated %s to go" % utils.hms(est_time_left)
-                print "  (ETA: %s)" % eta_str
-        except OverflowError:
-            print "  This will take really long, like REALLY long."
+            now = time.time()
+            time_since_start = now - start_time
+            time_since_prev = now - prev_time
+            prev_time = now
+            print "  %s since start (+%.2f s)" % (utils.hms(time_since_start), time_since_prev)
+            try:
+                if num_chunks_test:
+                    est_time_left = time_since_start * (float(num_chunks_test - (e + 1)) / float(e + 1))
+                    eta = datetime.datetime.now() + datetime.timedelta(seconds=est_time_left)
+                    eta_str = eta.strftime("%c")
+                    print "  estimated %s to go" % utils.hms(est_time_left)
+                    print "  (ETA: %s)" % eta_str
+            except OverflowError:
+                print "  This will take really long, like REALLY long."
 
-        print "  %dms per sample" % (
-        1000. * time_since_start / ((e + 1) * config.batch_size))
+            print "  %dms per sample" % (
+            1000. * time_since_start / ((e + 1) * config.batch_size))
 
     with open(prediction_path, 'w') as f:
         pickle.dump({
