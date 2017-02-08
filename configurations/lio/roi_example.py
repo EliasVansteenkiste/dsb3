@@ -16,7 +16,6 @@ model = ira_config_3
 
 patch_shape = 64, 64, 64  # in pixels
 norm_patch_shape = 64, 64, 64  # in mms
-evaluation_stride = norm_patch_shape # in mms
 
 replace_input_tags = {"luna:3d": "stage1:3d"}
 
@@ -45,13 +44,14 @@ def patch_generator(sample):
     pixel_spacing = np.asarray(spacing, np.float)
     output_shape = np.asarray(patch_shape, np.float)
     mm_patch_shape = np.asarray(norm_patch_shape, np.float)
-    stride = np.asarray(evaluation_stride, np.float)
+    stride = np.asarray(segmentation_shape, np.float) * mm_patch_shape / output_shape
 
     norm_shape = input_shape * pixel_spacing
     _patch_shape = norm_shape * output_shape / mm_patch_shape
 
     patch_count = np.ceil(norm_shape / stride).astype("int")
-    print patch_count
+    print "patch_count", patch_count
+    print "stride", stride
 
     for x,y,z in product(range(patch_count[0]), range(patch_count[1]), range(patch_count[2])):
 
