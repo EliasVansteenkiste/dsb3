@@ -95,22 +95,8 @@ def extract_rois(expid):
                                 # mode=NanGuardMode(nan_is_error=True, inf_is_error=True, big_is_error=True)
                                 )
 
-    # required_input = {
-    #     key: l_in.output_shape
-    #     for (key, l_in) in input_layers.iteritems()
-    # }
-
     print "Preparing dataloaders"
     config.data_loader.prepare()
-    # chunk_size = config.batch_size
-
-    # data_generator = buffering.buffered_gen_threaded(
-    #     config.data_loader.generate_batch(
-    #         chunk_size=chunk_size,
-    #         required_input=required_input,
-    #         required_output={},
-    #     )
-    # )
 
     print "Load model parameters"
     metadata = np.load(metadata_path)
@@ -133,13 +119,8 @@ def extract_rois(expid):
             data = config.data_loader.load_sample(sample_id, input_layers.keys(),{})
 
             patch_generator = config.patch_generator(data, output_layers["predicted_segmentation"].output_shape[1:])
-            # sample_ids = data[IDS]
-            # from time import time
             t0 = time.time()
             for patch in patch_generator:
-                # print "xs_shared.keys()", xs_shared.keys()
-                # print "patch.key()", patch.keys()
-                # print 'patch["stage1:3d"].shape', patch["stage1:3d"].shape
                 for key in xs_shared:
                     xs_shared[key].set_value(patch[key][None,:])
 
@@ -150,7 +131,6 @@ def extract_rois(expid):
                 print " iter_test", time.time()-t0
 
                 predictions = th_result[:len(network_outputs)]
-                # print "len(predictions)", len(predictions)
 
                 pred = predictions[0][0]
 
@@ -158,13 +138,11 @@ def extract_rois(expid):
                 rois = config.extract_nodules(pred, patch)
                 print " extract_nodules", time.time() - t0
 
-                # t0 = time.time()
                 if rois is not None:
                     if sample_id not in all_predictions:
                         all_predictions[sample_id] = rois
                     else:
                         all_predictions[sample_id] = np.vstack((all_predictions[sample_id], rois))
-                # print "vstack", time.time() - t0
 
                 t0 = time.time()
 
@@ -174,18 +152,6 @@ def extract_rois(expid):
             time_since_prev = now - prev_time
             prev_time = now
             print "  %s since start (+%.2f s)" % (utils.hms(time_since_start), time_since_prev)
-            # try:
-            #     if num_chunks_test:
-            #         est_time_left = time_since_start * (float(num_chunks_test - (e + 1)) / float(e + 1))
-            #         eta = datetime.datetime.now() + datetime.timedelta(seconds=est_time_left)
-            #         eta_str = eta.strftime("%c")
-            #         print "  estimated %s to go" % utils.hms(est_time_left)
-            #         print "  (ETA: %s)" % eta_str
-            # except OverflowError:
-            #     print "  This will take really long, like REALLY long."
-
-            # print "  %dms per sample" % (
-            # 1000. * time_since_start / ((e + 1) * config.batch_size))
 
     with open(prediction_path, 'w') as f:
         pickle.dump({
