@@ -2,7 +2,7 @@ import numpy as np
 from itertools import product
 from functools import partial
 
-from configurations.jonas import valid, ira_config_2
+from configurations.jonas import valid
 from scripts.elias.blob import blob_dog
 from application.luna import LunaDataLoader
 from application.stage1 import Stage1DataLoader
