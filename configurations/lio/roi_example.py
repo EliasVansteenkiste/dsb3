@@ -3,7 +3,7 @@ from itertools import product
 from functools import partial
 
 from configurations.jonas import ira_config_3
-from blob import blob_dog
+from scripts.elias.blob import blob_dog
 
 from application.stage1 import Stage1DataLoader
 from interfaces.data_loader import VALIDATION, TRAINING, TEST, TRAIN, INPUT
