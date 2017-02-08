@@ -22,15 +22,15 @@ p_transform_augment = {
     'translation_range_z': [-27, 27],
     'translation_range_y': [-27, 27],
     'translation_range_x': [-27, 27],
-    'rotation_range_z': [-180, 180],
-    'rotation_range_y': [-180, 180],
-    'rotation_range_x': [-180, 180]
+    'rotation_range_z': [-27, 27],
+    'rotation_range_y': [-27, 27],
+    'rotation_range_x': [-27, 27]
 }
 
 
 # data preparation function
 def data_prep_function(data, patch_center, luna_annotations, pixel_spacing, luna_origin, p_transform,
-                       p_transform_augment, mask_shape, **kwargs):
+                       p_transform_augment, **kwargs):
     x = data_transforms.hu2normHU(data)
     x, patch_annotation_tf, annotations_tf = data_transforms.transform_patch3d(data=x,
                                                                                luna_annotations=luna_annotations,
@@ -39,16 +39,12 @@ def data_prep_function(data, patch_center, luna_annotations, pixel_spacing, luna
                                                                                p_transform_augment=p_transform_augment,
                                                                                pixel_spacing=pixel_spacing,
                                                                                luna_origin=luna_origin)
-    y = data_transforms.make_3d_mask_from_annotations(img_shape=x.shape, annotations=annotations_tf, shape=mask_shape)
+    y = data_transforms.make_3d_mask_from_annotations(img_shape=x.shape, annotations=annotations_tf, shape='sphere')
     return x, y
 
 
-data_prep_function_train = partial(data_prep_function, p_transform_augment=p_transform_augment,
-                                   p_transform=p_transform,
-                                   mask_shape='sphere')
-data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
-                                   p_transform=p_transform,
-                                   mask_shape='sphere')
+data_prep_function_train = partial(data_prep_function, p_transform_augment=p_transform_augment, p_transform=p_transform)
+data_prep_function_valid = partial(data_prep_function, p_transform_augment=None, p_transform=p_transform)
 
 # data iterators
 batch_size = 1
@@ -63,7 +59,7 @@ train_data_iterator = data_iterators.PatchPositiveLunaDataGenerator(data_path=pa
                                                                     transform_params=p_transform,
                                                                     data_prep_fun=data_prep_function_train,
                                                                     rng=rng,
-                                                                    patient_ids=train_valid_ids['train'],
+                                                                    patient_ids=train_pids,
                                                                     full_batch=True, random=True, infinite=True)
 
 valid_data_iterator = data_iterators.PatchPositiveLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
@@ -71,7 +67,7 @@ valid_data_iterator = data_iterators.PatchPositiveLunaDataGenerator(data_path=pa
                                                                     transform_params=p_transform,
                                                                     data_prep_fun=data_prep_function_valid,
                                                                     rng=rng,
-                                                                    patient_ids=train_valid_ids['valid'],
+                                                                    patient_ids=valid_pids,
                                                                     full_batch=False, random=False, infinite=False)
 
 nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
@@ -90,45 +86,52 @@ learning_rate_schedule = {
 }
 
 # model
+n_resolutions = 3
 conv3d = partial(dnn.Conv3DDNNLayer,
                  filter_size=3,
                  pad='same',
-                 W=nn.init.Orthogonal('relu'),
+                 W=nn.init.Orthogonal(),
                  b=nn.init.Constant(0.01),
-                 nonlinearity=nn.nonlinearities.very_leaky_rectify)
+                 nonlinearity=nn.nonlinearities.linear)
 
-max_pool3d = partial(dnn.MaxPool3DDNNLayer,
-                     pool_size=2)
+
+def conv_block(l_in, num_filters, filter_size, stride):
+    l_conv = conv3d(l_in, num_filters=num_filters, filter_size=filter_size, stride=stride)
+    l_out = nn.layers.ParametricRectifierLayer(l_conv)
+    return l_out
+
+
+def join_block(l_in1, l_in2):
+    l_in1_up = nn.layers.Upscale3DLayer(l_in1, 2)
+    l_out = nn.layers.ConcatLayer([l_in1_up, l_in2], axis=1)
+    return l_out
 
 
 def build_model():
-    l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
+    model = {}
+    model['input_0'] = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
     l_target = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
 
-    net = {}
-    base_n_filters = 64
-    net['contr_1_1'] = conv3d(l_in, base_n_filters)
-    net['contr_1_2'] = conv3d(net['contr_1_1'], base_n_filters)
-    net['contr_1_3'] = conv3d(net['contr_1_2'], base_n_filters)
-    net['pool1'] = max_pool3d(net['contr_1_3'])
+    resolutions = [str(k) for k in range(n_resolutions)[::-1]]
+    for k in resolutions:
+        model['input_r' + k] = dnn.Pool3DDNNLayer(model['input_0'], pool_size=2 ** int(k), mode='average_exc_pad')
+        model['conv1_r' + k] = conv_block(model['input_r' + k], 32, 3, 1)
+        model['conv2_r' + k] = conv_block(model['conv1_r' + k], 32, 3, 1)
+        model['conv3_r' + k] = conv_block(model['conv2_r' + k], 32, 3, 1)
 
-    net['encode_1'] = conv3d(net['pool1'], base_n_filters)
-    net['encode_2'] = conv3d(net['encode_1'], base_n_filters)
-    net['encode_3'] = conv3d(net['encode_2'], base_n_filters)
-    net['upscale1'] = nn_lung.Upscale3DLayer(net['encode_3'], 2)
+    model['conv33_r' + resolutions[0]] = model['conv3_r' + resolutions[0]]
+    n_filters = [32 * i for i in range(2, n_resolutions + 1)]
+    for k, f in zip(resolutions[1:], n_filters):
+        model['join_r' + k] = join_block(model['conv33_r' + str(int(k) + 1)], model['conv3_r' + k])
+        model['conv11_r' + k] = conv_block(model['join_r' + k], f, 3, 1)
+        model['conv22_r' + k] = conv_block(model['conv11_r' + k], f, 3, 1)
+        model['conv33_r' + k] = conv_block(model['conv22_r' + k], f, 3, 1)
 
-    net['concat1'] = nn.layers.ConcatLayer([net['upscale1'], net['contr_1_3']],
-                                           cropping=(None, None, "center", "center", "center"))
-    net['expand_1_1'] = conv3d(net['concat1'], 2 * base_n_filters)
-    net['expand_1_2'] = conv3d(net['expand_1_1'], 2 * base_n_filters)
-    net['expand_1_3'] = conv3d(net['expand_1_2'], base_n_filters)
-
-    l_out = dnn.Conv3DDNNLayer(net['expand_1_3'], num_filters=1,
+    l_out = dnn.Conv3DDNNLayer(model['conv33_r0'], num_filters=1,
                                filter_size=1,
                                W=nn.init.Constant(0.),
                                nonlinearity=nn.nonlinearities.sigmoid)
-
-    return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
+    return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(model['input_0'], l_out, l_target)
 
 
 def build_objective(model, deterministic=False, epsilon=1e-12):

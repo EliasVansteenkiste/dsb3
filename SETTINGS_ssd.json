@@ -1,10 +1,10 @@
 {
-  "DATA_PATH": "/data/dsb3/stage1/",
+  "DATA_PATH": "/mnt/ssd/dsb3/stage1/",
   "LABELS_PATH": "/mnt/storage/data/dsb3/stage1_labels.csv",
   "METADATA_PATH": "/mnt/storage/metadata/dsb3/",
   "SAMPLE_SUBMISSION_PATH": "/mnt/storage/data/dsb3/stage1_sample_submission.csv",
   "VALIDATION_SPLIT_PATH": "/mnt/storage/data/dsb3/validation_split.pkl",
-  "LUNA_DATA_PATH": "/data/dsb3/luna/dataset/",
+  "LUNA_DATA_PATH": "/mnt/ssd/dsb3/luna/dataset/",
   "LUNA_LABELS_PATH": "/mnt/storage/data/dsb3/luna/annotations.csv",
   "LUNA_VALIDATION_SPLIT_PATH": "/mnt/storage/data/dsb3/luna/validation_split.pkl"
 }

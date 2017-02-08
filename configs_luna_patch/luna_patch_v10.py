@@ -108,22 +108,27 @@ def build_model():
     net = {}
     base_n_filters = 64
     net['contr_1_1'] = conv3d(l_in, base_n_filters)
-    net['contr_1_2'] = conv3d(net['contr_1_1'], base_n_filters)
-    net['contr_1_3'] = conv3d(net['contr_1_2'], base_n_filters)
-    net['pool1'] = max_pool3d(net['contr_1_3'])
+    net['contr_1_2'] = conv3d(net['contr_1_1'], base_n_filters)  # 3
+    net['contr_1_3'] = conv3d(net['contr_1_2'], base_n_filters)  # 5
+    net['contr_1_4'] = conv3d(net['contr_1_3'], base_n_filters)  # 7
+    net['contr_1_5'] = conv3d(net['contr_1_4'], base_n_filters)  # 9
+    net['contr_1_6'] = conv3d(net['contr_1_5'], base_n_filters)  # 11
+    net['contr_1_7'] = conv3d(net['contr_1_6'], base_n_filters)  # 13
+    net['contr_1_8'] = conv3d(net['contr_1_7'], base_n_filters)  # 15
+    net['contr_1_9'] = conv3d(net['contr_1_8'], base_n_filters)  # 17
+    net['contr_1_10'] = conv3d(net['contr_1_9'], base_n_filters)  # 19
+    net['contr_1_11'] = conv3d(net['contr_1_10'], base_n_filters)  # 21
+    net['contr_1_12'] = conv3d(net['contr_1_11'], base_n_filters)  # 23
+    net['contr_1_13'] = conv3d(net['contr_1_12'], base_n_filters)  # 25
+    net['contr_1_14'] = conv3d(net['contr_1_13'], base_n_filters)  # 27
+    net['contr_1_15'] = conv3d(net['contr_1_14'], base_n_filters)  # 29
+    net['contr_1_16'] = conv3d(net['contr_1_15'], base_n_filters)  # 31
+    net['contr_1_17'] = conv3d(net['contr_1_16'], base_n_filters)  # 33
+    net['contr_1_18'] = conv3d(net['contr_1_17'], base_n_filters)  # 35
+    net['contr_1_19'] = conv3d(net['contr_1_18'], base_n_filters)  # 37
+    net['contr_1_20'] = conv3d(net['contr_1_19'], base_n_filters)  # 39
 
-    net['encode_1'] = conv3d(net['pool1'], base_n_filters)
-    net['encode_2'] = conv3d(net['encode_1'], base_n_filters)
-    net['encode_3'] = conv3d(net['encode_2'], base_n_filters)
-    net['upscale1'] = nn_lung.Upscale3DLayer(net['encode_3'], 2)
-
-    net['concat1'] = nn.layers.ConcatLayer([net['upscale1'], net['contr_1_3']],
-                                           cropping=(None, None, "center", "center", "center"))
-    net['expand_1_1'] = conv3d(net['concat1'], 2 * base_n_filters)
-    net['expand_1_2'] = conv3d(net['expand_1_1'], 2 * base_n_filters)
-    net['expand_1_3'] = conv3d(net['expand_1_2'], base_n_filters)
-
-    l_out = dnn.Conv3DDNNLayer(net['expand_1_3'], num_filters=1,
+    l_out = dnn.Conv3DDNNLayer(net['contr_1_20'], num_filters=1,
                                filter_size=1,
                                W=nn.init.Constant(0.),
                                nonlinearity=nn.nonlinearities.sigmoid)

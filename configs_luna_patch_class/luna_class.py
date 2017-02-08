@@ -103,39 +103,24 @@ max_pool3d = partial(dnn.MaxPool3DDNNLayer,
 
 def build_model():
     l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
-    l_target = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
+    l_target = nn.layers.InputLayer((None, 1))
 
     net = {}
     base_n_filters = 64
     net['contr_1_1'] = conv3d(l_in, base_n_filters)
-    net['contr_1_2'] = conv3d(net['contr_1_1'], base_n_filters)
-    net['contr_1_3'] = conv3d(net['contr_1_2'], base_n_filters)
-    net['pool1'] = max_pool3d(net['contr_1_3'])
-
-    net['encode_1'] = conv3d(net['pool1'], base_n_filters)
-    net['encode_2'] = conv3d(net['encode_1'], base_n_filters)
-    net['encode_3'] = conv3d(net['encode_2'], base_n_filters)
-    net['upscale1'] = nn_lung.Upscale3DLayer(net['encode_3'], 2)
-
-    net['concat1'] = nn.layers.ConcatLayer([net['upscale1'], net['contr_1_3']],
-                                           cropping=(None, None, "center", "center", "center"))
-    net['expand_1_1'] = conv3d(net['concat1'], 2 * base_n_filters)
-    net['expand_1_2'] = conv3d(net['expand_1_1'], 2 * base_n_filters)
-    net['expand_1_3'] = conv3d(net['expand_1_2'], base_n_filters)
-
-    l_out = dnn.Conv3DDNNLayer(net['expand_1_3'], num_filters=1,
-                               filter_size=1,
-                               W=nn.init.Constant(0.),
-                               nonlinearity=nn.nonlinearities.sigmoid)
+    l_out = nn.layers.DenseLayer(net['contr_1_1'], num_units=2,
+                                 W=nn.init.Constant(0.),
+                                 nonlinearity=nn.nonlinearities.softmax)
 
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 
 
 def build_objective(model, deterministic=False, epsilon=1e-12):
-    predictions = T.flatten(nn.layers.get_output(model.l_out))
-    targets = T.flatten(nn.layers.get_output(model.l_target))
-    dice = (2. * T.sum(targets * predictions) + epsilon) / (T.sum(predictions) + T.sum(targets) + epsilon)
-    return -1. * dice
+    predictions = nn.layers.get_output(model.l_out)
+    targets = T.cast(T.flatten(nn.layers.get_output(model.l_target)), 'int32')
+    p = predictions[T.arange(predictions.shape[0]), targets]
+    loss = T.mean(T.log(p))
+    return loss
 
 
 def build_updates(train_loss, model, learning_rate):
