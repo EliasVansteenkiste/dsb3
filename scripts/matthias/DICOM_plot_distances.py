@@ -101,10 +101,6 @@ if __name__ == '__main__':
         patient_dict={}
 
 
-
-
-
-
         #Try to load all the patient images, this will probably
         dicom_images=[]
 
@@ -182,3 +178,4 @@ if __name__ == '__main__':
     plt.savefig('./slice_distances.png')
 
     plt.show()
+    np.save('slice_distances.npy',distances)
