@@ -72,9 +72,13 @@ def patch_generator(sample):
 
 
 def extract_nodules(pred, patch):
-    rois = blob_dog(pred, min_sigma=1.2, max_sigma=35, threshold=0.1)
+    try:
+        rois = blob_dog(pred, min_sigma=1.2, max_sigma=35, threshold=0.1)
+    except:
+        return None
     if rois.shape[0] > 0:
         rois = rois[:, :3] #ignore diameter
+    else: return None
     print rois
     #local to global roi
     # rois += patch["offset"]

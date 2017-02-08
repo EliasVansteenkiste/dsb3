@@ -151,7 +151,7 @@ def extract_rois(expid):
 
                 pred = predictions[0][0]
                 rois = config.extract_nodules(pred, patch)
-                if rois.shape[0] > 0:
+                if rois is not None:
                     if sample_id not in all_predictions:
                         all_predictions[sample_id] = rois
                     else: all_predictions[sample_id] = np.vstack((all_predictions[sample_id], rois))
