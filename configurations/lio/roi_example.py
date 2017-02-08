@@ -73,6 +73,7 @@ def patch_generator(sample, segmentation_shape):
 
 def extract_nodules(pred, patch):
     try:
+        print "blob_dog"
         rois = blob_dog(pred, min_sigma=1.2, max_sigma=35, threshold=0.1)
     except:
         return None
