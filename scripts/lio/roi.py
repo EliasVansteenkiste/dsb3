@@ -143,7 +143,7 @@ def extract_rois(expid):
                 for key in xs_shared:
                     xs_shared[key].set_value(patch[key][None,:])
 
-                print "patch_generator", time() - t0
+                print "patch_generator", time.time() - t0
 
                 t0 = time.time()
                 th_result = iter_test(0)
