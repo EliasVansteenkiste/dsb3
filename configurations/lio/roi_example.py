@@ -73,8 +73,10 @@ def patch_generator(sample, segmentation_shape):
 
 def extract_nodules(pred, patch):
     try:
-        print "blob_dog"
+        from time import time
+        t0 = time()
         rois = blob_dog(pred, min_sigma=1.2, max_sigma=35, threshold=0.1)
+        print "blob_dog", time()-t0
     except:
         return None
     if rois.shape[0] > 0:
