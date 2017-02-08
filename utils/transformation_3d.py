@@ -70,7 +70,7 @@ def affine_transform(scale=None, rotation=None, translation=None, shear=None, re
     mz[0, 1] = -sin[2]
     mz[1, 1] = cos[2]
 
-    return matrix.dot(mx).dot(my).dot(mz)
+    return mx.dot(my).dot(mz).dot(matrix)
 
 
 def test_transformation_3d():
