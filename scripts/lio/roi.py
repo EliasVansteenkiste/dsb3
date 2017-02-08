@@ -26,7 +26,8 @@ from interfaces.objectives import MAXIMIZE
 
 
 def extract_rois(expid):
-    metadata_path = MODEL_PATH + "%s.pkl" % config.model.__name__.split(".")[-1]
+    metadata_path = MODEL_PATH + "%s.pkl" % config.model.__name__
+    assert os.path.exists(metadata_path)
     prediction_path = MODEL_PREDICTIONS_PATH + "%s.pkl" % expid
 
     if theano.config.optimizer != "fast_run":
