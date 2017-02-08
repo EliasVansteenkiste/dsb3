@@ -134,7 +134,7 @@ def extract_rois(expid):
 
             data = config.data_loader.load_sample(sample_id, input_layers.keys(),{})
 
-            patch_generator = config.patch_generator(data, xs_shared.keys())
+            patch_generator = config.patch_generator(data)
             sample_ids = data[IDS]
 
             for patch in patch_generator:

@@ -1,8 +1,10 @@
 import numpy as np
 from itertools import product
+from functools import partial
 
 from configurations.jonas import ira_config_3
-from scripts.elias.extract_nodules import extract_nodules_blob_detection
+from blob import blob_dog
+
 from application.stage1 import Stage1DataLoader
 from interfaces.data_loader import VALIDATION, TRAINING, TEST, TRAIN, INPUT
 from application.preprocessors.dicom_to_HU import DicomToHU
@@ -12,7 +14,7 @@ from interfaces.preprocess import ZMUV
 
 model = ira_config_3
 
-nodule_extractor = extract_nodules_blob_detection
+nodule_extractor = partial(blob_dog, min_sigma=1.2, max_sigma=35, threshold=0.1)
 
 patch_shape = 64, 64, 64  # in pixels
 norm_patch_shape = 64, 64, 64  # in mms
