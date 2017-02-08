@@ -139,7 +139,7 @@ def extract_rois(expid):
 
             for patch in patch_generator:
                 print "xs_shared.keys()", xs_shared.keys()
-                print "patch.key()", patch.key()
+                print "patch.key()", patch.keys()
                 print 'patch["stage1:3d"].shape', patch["stage1:3d"].shape
                 for key in xs_shared:
                     xs_shared[key].set_value(patch[key])
