@@ -52,7 +52,7 @@ def patch_generator(sample):
     norm_shape = input_shape * pixel_spacing
     _patch_shape = norm_shape * output_shape / mm_patch_shape
 
-    patch_count = norm_shape / stride
+    patch_count = np.ceil(norm_shape / stride).astype("int")
 
     for x,y,z in product(range(patch_count[0]), range(patch_count[1]), range(patch_count[2])):
 
