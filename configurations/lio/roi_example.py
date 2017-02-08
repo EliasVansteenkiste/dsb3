@@ -51,6 +51,7 @@ def patch_generator(sample):
     _patch_shape = norm_shape * output_shape / mm_patch_shape
 
     patch_count = np.ceil(norm_shape / stride).astype("int")
+    print patch_count
 
     for x,y,z in product(range(patch_count[0]), range(patch_count[1]), range(patch_count[2])):
 
