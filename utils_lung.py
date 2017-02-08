@@ -190,7 +190,8 @@ def read_luna_labels(file_path):
 
 
 def read_luna_candidates(file_path):
-    id2xyzd = defaultdict(list)
+    id2xyzd_no_nodules = defaultdict(list)
+    id2xyzd_nodules = defaultdict(list)
     train_csv = open(file_path)
     lines = train_csv.readlines()
     i = 0
@@ -199,8 +200,11 @@ def read_luna_candidates(file_path):
             i = 1
             continue
         id, x, y, z, c = item.replace('\n', '').split(',')
-        id2xyzd[id].append([float(z), float(y), float(x), int(c)])
-    return id2xyzd
+        if int(c) == 1:
+            id2xyzd_nodules[id].append([float(z), float(y), float(x)])
+        else:
+            id2xyzd_no_nodules[id].append([float(z), float(y), float(x)])
+    return id2xyzd_no_nodules, id2xyzd_nodules
 
 
 def write_submission(patient_predictions, submission_path):

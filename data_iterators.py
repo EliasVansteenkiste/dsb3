@@ -138,7 +138,7 @@ class Luna_DG_Elias(LunaDataGenerator):
         patient_ids_pos = [pid for pid in patient_ids_all if pid in self.id2annotations.keys()]
         self.patient_paths = [data_path + '/' + p + '.mhd' for p in patient_ids_pos]
         self.nsamples = len(self.patient_paths)
-        self.id2candidates = utils_lung.read_luna_candidates('candidates_V2.csv')
+        self.id2_no_nodules, self.id2_nodules  = utils_lung.read_luna_candidates('candidates_V2.csv')
 
     def generate(self):
         while True:
@@ -149,8 +149,8 @@ class Luna_DG_Elias(LunaDataGenerator):
                 idxs_batch = rand_idxs[pos:pos + self.batch_size]
                 nb = len(idxs_batch)
                 # allocate batches
-                x_batch = np.zeros((nb, 1) + self.transform_params['patch_size'], dtype='float32')
-                y_batch = np.zeros((nb, 1), dtype='float32')
+                x_batch = np.zeros((nb,1,) + self.transform_params['patch_size'], dtype='float32')
+                y_batch = np.zeros((nb,1), dtype='float32')
                 patients_ids = []
 
                 for i, idx in enumerate(idxs_batch):
@@ -160,16 +160,18 @@ class Luna_DG_Elias(LunaDataGenerator):
 
                     img, origin, pixel_spacing = utils_lung.read_mhd(patient_path)
 
+                    patient_nodules = self.id2_nodules[id]
+                    patient_no_nodules = self.id2_no_nodules[id]
+                    candidate = None
+                    if len(patient_nodules)>0 and np.random.choice([0, 1], p=[0.75, 0.25]):
+                        candidate = patient_nodules[self.rng.randint(len(patient_nodules))]
+                        y_batch[i] = 1.
 
-                    patient_candidates = self.id2candidates[id]
-                    print 'len(patient_candidates)', len(patient_candidates)
+                    else:
+                        candidate = patient_no_nodules[self.rng.randint(len(patient_no_nodules))]
+                        y_batch[i] = 0.
 
-                    candidate = patient_candidates[self.rng.randint(len(patient_candidates))]
-                    print candidate
-                    patch_center = candidate[0:3]
-                    y_batch[i] = int(candidate[3])
-                    print 'check if this is integer 1 or 0', y_batch[i]
-                    x_batch[i, 0, :, :, :] = self.data_prep_fun(data=img, patch_center=patch_center,
+                    x_batch[i, :, :, :] = self.data_prep_fun(data=img, patch_center=candidate,
                                                                           pixel_spacing=pixel_spacing,
                                                                           luna_origin=origin)
 

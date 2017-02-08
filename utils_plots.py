@@ -126,25 +126,25 @@ def plot_slice_3d_3_patch(input, mask, prediction, axis, pid, patch_size=64, img
     plt.close('all')
 
 
-def plot_3d_patch(input, prediction, axis, pid, img_dir=None, idx=None):
+def plot_3d_patch_at_center(patch, y, pid, img_dir=None):
     # to convert cuda arrays to numpy array
-    input = np.asarray(input)
+    patch = np.asarray(patch)
 
-    fig, ax = plt.subplots(3, 1)
+    fig, ax = plt.subplots(2, 2, figsize=[8, 8])
     fig.canvas.set_window_title(pid)
 
-    if axis == 0:  # sax
-        sz, sy, sx = slice(idx[0], idx[0] + 1), slice(idx[1] - patch_size, idx[1] + patch_size), slice(
-            idx[2] - patch_size, idx[2] + patch_size)
-        ax[1, 0].imshow(input[sz, sy, sx], cmap=plt.cm.gray)
-    if axis == 1:  # 2 lungs
-        ax[1, 0].imshow(input[:, idx[1], :], cmap=plt.cm.gray)
-    if axis == 2:  # side view
-        ax[1, 0].imshow(input[:, :, idx[2]], cmap=plt.cm.gray)
+
+    ax[0, 0].imshow(patch[patch.shape[0]/2, :, :], cmap=plt.cm.gray)
+    ax[1, 0].imshow(patch[:, patch.shape[1]/2, :], cmap=plt.cm.gray)
+    ax[0, 1].imshow(patch[:, :, patch.shape[2]/2], cmap=plt.cm.gray)
+
+    fig.suptitle('y='+str(y)+' pid='+pid, fontsize=10)
+
     if img_dir is not None:
-        fig.savefig(img_dir + '/%s.png' % pid, bbox_inches='tight')
+        fig.savefig(img_dir + '/%s.jpg' % pid, bbox_inches='tight')
     else:
         plt.show()
+
     fig.clf()
     plt.close('all')
 

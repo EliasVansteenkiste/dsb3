@@ -12,7 +12,7 @@ import utils
 import nn_lung
 
 restart_from_save = None
-rng = np.random.RandomState(42)
+rng = np.random.RandomState(33)
 
 # transformations
 p_transform = {'patch_size': (64, 64, 64),
@@ -37,8 +37,6 @@ def data_prep_function(data, patch_center, pixel_spacing, luna_origin, p_transfo
                                                                p_transform_augment=p_transform_augment,
                                                                pixel_spacing=pixel_spacing,
                                                                luna_origin=luna_origin)
-    print 'x.shape', x.shape
-    print 'patch_annotation_tf', patch_annotation_tf
 
     return x
 
@@ -51,8 +49,8 @@ data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
                                    mask_shape='sphere')
 
 # data iterators
-batch_size = 1
-nbatches_chunk = 4
+batch_size = 5
+nbatches_chunk = 5
 chunk_size = batch_size * nbatches_chunk
 
 train_valid_ids = utils.load_pkl(pathfinder.LUNA_VALIDATION_SPLIT_PATH)
@@ -81,12 +79,12 @@ validate_every = int(1. * nchunks_per_epoch)
 save_every = int(0.5 * nchunks_per_epoch)
 
 learning_rate_schedule = {
-    0: 1e-5,
-    int(max_nchunks * 0.5): 5e-6,
-    int(max_nchunks * 0.6): 4e-6,
-    int(max_nchunks * 0.7): 3e-6,
-    int(max_nchunks * 0.8): 2e-6,
-    int(max_nchunks * 0.9): 1e-7
+    0: 1e-4,
+    int(max_nchunks * 0.5): 5e-5,
+    int(max_nchunks * 0.6): 4e-5,
+    int(max_nchunks * 0.7): 3e-5,
+    int(max_nchunks * 0.8): 2e-5,
+    int(max_nchunks * 0.9): 1e-6
 }
 
 # model
@@ -109,70 +107,141 @@ dense = partial(lasagne.layers.DenseLayer,
     b=lasagne.init.Constant(0.0),
     nonlinearity=lasagne.nonlinearities.rectify)
 
+# def build_model():
+#     l_in = nn.layers.InputLayer((None,) + p_transform['patch_size'])
+#     l_target = nn.layers.InputLayer((None, ))
+
+#     print 'l_target.output_shape', l_target.output_shape
+
+#     print 'l_in.output_shape', l_in.output_shape
+
+#     # n = 16
+#     # # l = bn(conv3d(l, n, filter_size=7, stride=2))
+#     # # l = max_pool3d(l)
+#     # l = bn(conv3d(l_in, n))
+#     # l = bn(conv3d(l, n))
+#     # l = max_pool3d(l)
+
+#     # n *= 2
+#     # l = bn(conv3d(l, n))
+#     # l = bn(conv3d(l, n))
+#     # l = max_pool3d(l)
+
+#     # n *= 2
+#     # l = bn(conv3d(l, n))
+#     # l = bn(conv3d(l, n))
+#     # l = max_pool3d(l)
+
+#     # n *= 2
+#     # l = bn(conv3d(l, n))
+#     # l = bn(conv3d(l, n))
+#     # l = max_pool3d(l)
+
+#     # n *= 2
+#     # l = bn(conv3d(l, n))
+#     # l = bn(conv3d(l, n))
+#     # l = max_pool3d(l)
+
+#     # n *= 2
+#     # l = bn(dense(drop(l), n))
+#     # l = bn(dense(drop(l), n))
+
+#     # l_out = lasagne.layers.DenseLayer(l_in,
+#     #                              num_units=2,
+#     #                              W=lasagne.init.Constant(0.0),
+#     #                              b=None,
+#     #                              nonlinearity=lasagne.nonlinearities.softmax)
+
+#     l_out = lasagne.layers.DenseLayer(l_in,
+#                                  num_units=1,
+#                                  W=lasagne.init.Constant(0.5),
+#                                  b=None,
+#                                  nonlinearity=lasagne.nonlinearities.sigmoid)
+
+#     print 'l_out.output_shape', l_out.output_shape
+
+#     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
+
+
 def build_model():
     l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
     l_target = nn.layers.InputLayer((None, 1))
 
-    print 'l_target.output_shape', l_target.output_shape
+    net = {}
+    base_n_filters = 64
 
-    print l_in.output_shape
+    n = 16
+    l = bn(conv3d(l_in, n))
+    l = bn(conv3d(l, n))
+    l = max_pool3d(l)
 
-    # n = 16
-    # # l = bn(conv3d(l, n, filter_size=7, stride=2))
-    # # l = max_pool3d(l)
-    # l = bn(conv3d(l_in, n))
-    # l = bn(conv3d(l, n))
-    # l = max_pool3d(l)
+    n *= 2
+    l = bn(conv3d(l, n))
+    l = bn(conv3d(l, n))
+    l = max_pool3d(l)
 
-    # n *= 2
-    # l = bn(conv3d(l, n))
-    # l = bn(conv3d(l, n))
-    # l = max_pool3d(l)
+    n *= 2
+    l = bn(conv3d(l, n))
+    l = bn(conv3d(l, n))
+    l = max_pool3d(l)
 
-    # n *= 2
-    # l = bn(conv3d(l, n))
-    # l = bn(conv3d(l, n))
-    # l = max_pool3d(l)
+    n *= 2
+    l = bn(conv3d(l, n))
+    l = bn(conv3d(l, n))
+    l = max_pool3d(l)
 
-    # n *= 2
-    # l = bn(conv3d(l, n))
-    # l = bn(conv3d(l, n))
-    # l = max_pool3d(l)
+    n *= 2
+    l = bn(dense(drop(l), n))
+    l = bn(dense(drop(l), n))
 
-    # n *= 2
-    # l = bn(conv3d(l, n))
-    # l = bn(conv3d(l, n))
-    # l = max_pool3d(l)
-
-    # n *= 2
-    # l = bn(dense(drop(l), n))
-    # l = bn(dense(drop(l), n))
-
-    l_out = lasagne.layers.DenseLayer(l_in,
-                                 num_units=2,
-                                 W=lasagne.init.Constant(0.0),
-                                 b=None,
-                                 nonlinearity=lasagne.nonlinearities.softmax)
-
+    # l_out = nn.layers.DenseLayer(l, num_units=2,
+    #                              W=nn.init.Constant(0.),
+    #                              nonlinearity=nn.nonlinearities.softmax)
+    
+    l_out = nn.layers.DenseLayer(l, num_units=1,
+                             W=nn.init.Constant(0.5),
+                             nonlinearity=nn.nonlinearities.sigmoid)
 
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 
 
+def build_objective_working(model, deterministic=False, epsilon=1e-12):
+    predictions = nn.layers.get_output(model.l_out)
+    targets = T.cast(T.flatten(nn.layers.get_output(model.l_target)), 'int32')
+    p = predictions[T.arange(predictions.shape[0]), targets]
+    
+
+    loss = T.mean(T.log(p))
+    return loss
+
 
 def build_objective(model, deterministic=False, epsilon=1e-12):
+        
+    predictions = nn.layers.get_output(model.l_out)
+    targets = nn.layers.get_output(model.l_target)
+
+    log_loss = lasagne.objectives.binary_crossentropy(predictions, targets)
+    log_loss = T.mean(log_loss)
+    return log_loss
+
+
+
+def build_objective_backup(model, deterministic=False, epsilon=1e-12):
+
     predictions = nn.layers.get_output(model.l_out)
     predictions = T.clip(predictions, epsilon, 1.-epsilon)
     predictions = T.log(predictions)
     target = nn.layers.get_output(model.l_target)
     target = target.flatten()
-    target = T.cast(target,'int32')
-    predictions = predictions[T.arange(target.shape[0]), target]
-    return T.mean(predictions)
-
+    #target = T.cast(target,'int32')
+    #predictions = predictions[T.arange(target.shape[0]), target]
+    log_loss = T.mean(target)
+    print 'log_loss', log_loss.type
+    return log_loss
 
 
 def build_updates(train_loss, model, learning_rate):
-    updates = nn.updates.adam(train_loss, nn.layers.get_all_params(model.l_out), learning_rate)
+    updates = nn.updates.adam(train_loss, nn.layers.get_all_params(model.l_out,trainable=True), learning_rate)
     return updates
 
 
