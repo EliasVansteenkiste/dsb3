@@ -143,11 +143,11 @@ def extract_rois(expid):
                 for key in xs_shared:
                     xs_shared[key].set_value(patch[key][None,:])
 
-                print "patch_generator", time.time() - t0
+                print " patch_generator", time.time() - t0
 
                 t0 = time.time()
                 th_result = iter_test(0)
-                print "iter_test", time.time()-t0
+                print " iter_test", time.time()-t0
 
                 predictions = th_result[:len(network_outputs)]
                 # print "len(predictions)", len(predictions)
@@ -156,15 +156,15 @@ def extract_rois(expid):
 
                 t0 = time.time()
                 rois = config.extract_nodules(pred, patch)
-                print "extract_nodules", time.time() - t0
+                print " extract_nodules", time.time() - t0
 
-                t0 = time.time()
+                # t0 = time.time()
                 if rois is not None:
                     if sample_id not in all_predictions:
                         all_predictions[sample_id] = rois
                     else:
                         all_predictions[sample_id] = np.vstack((all_predictions[sample_id], rois))
-                print "vstack", time.time() - t0
+                # print "vstack", time.time() - t0
 
                 t0 = time.time()
 
