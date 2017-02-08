@@ -264,6 +264,9 @@ def blob_dog(image, min_sigma=1, max_sigma=50, sigma_ratio=1.6, threshold=2.0,
                                   threshold_rel=0.0,
                                   num_peaks=np.inf,
                                   exclude_border=False)
+    # Catch no peaks
+    if local_maxima.size == 0:
+        return np.empty((0, 3))
     # Convert local_maxima to float64
     lm = local_maxima.astype(np.float64)
     # Convert the last index to its corresponding scale value
