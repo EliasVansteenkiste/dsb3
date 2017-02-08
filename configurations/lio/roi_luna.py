@@ -14,6 +14,7 @@ from interfaces.preprocess import ZMUV
 
 model = valid
 tag = "luna:"
+extra_tags=[tag+"pixelspacing"]
 
 IMAGE_SIZE = 128
 patch_shape = IMAGE_SIZE, IMAGE_SIZE, IMAGE_SIZE  # in pixels

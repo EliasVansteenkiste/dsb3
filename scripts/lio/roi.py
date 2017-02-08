@@ -116,7 +116,8 @@ def extract_rois(expid):
                 prev_time = start_time
             print "sample_id", sample_id
 
-            data = config.data_loader.load_sample(sample_id, input_layers.keys(),{})
+            data = config.data_loader.load_sample(sample_id,
+                                                  input_layers.keys()+config.extra_tags,{})
 
             patch_generator = config.patch_generator(data, output_layers["predicted_segmentation"].output_shape[1:])
             t0 = time.time()
