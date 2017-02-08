@@ -14,8 +14,9 @@ from interfaces.preprocess import ZMUV
 
 model = valid
 
-patch_shape = 256, 256, 256  # in pixels
-norm_patch_shape = 256, 256, 256  # in mms
+IMAGE_SIZE = 128
+patch_shape = IMAGE_SIZE, IMAGE_SIZE, IMAGE_SIZE  # in pixels
+norm_patch_shape = IMAGE_SIZE, IMAGE_SIZE, IMAGE_SIZE  # in mms
 
 replace_input_tags = {"luna:3d": "stage1:3d"}
 
