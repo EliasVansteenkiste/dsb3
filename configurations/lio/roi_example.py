@@ -37,7 +37,7 @@ def patch_generator(sample, segmentation_shape):
     for prep in preprocessors: prep.process(sample)
 
     data = sample[INPUT][tag+"3d"]
-    spacing = sample[INPUT]["stage1:pixelspacing"]
+    spacing = sample[INPUT][tag+"pixelspacing"]
 
     input_shape = np.asarray(data.shape, np.float)
     pixel_spacing = np.asarray(spacing, np.float)
