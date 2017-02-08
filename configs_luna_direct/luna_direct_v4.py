@@ -116,35 +116,35 @@ dense = partial(lasagne.layers.DenseLayer,
 #     print 'l_in.output_shape', l_in.output_shape
 
 #     # n = 16
-#     # # l = bn(conv3d(l, n, filter_size=7, stride=2))
+#     # # l = conv3d(l, n, filter_size=7, stride=2))
 #     # # l = max_pool3d(l)
-#     # l = bn(conv3d(l_in, n))
-#     # l = bn(conv3d(l, n))
+#     # l = conv3d(l_in, n))
+#     # l = conv3d(l, n))
 #     # l = max_pool3d(l)
 
 #     # n *= 2
-#     # l = bn(conv3d(l, n))
-#     # l = bn(conv3d(l, n))
+#     # l = conv3d(l, n))
+#     # l = conv3d(l, n))
 #     # l = max_pool3d(l)
 
 #     # n *= 2
-#     # l = bn(conv3d(l, n))
-#     # l = bn(conv3d(l, n))
+#     # l = conv3d(l, n))
+#     # l = conv3d(l, n))
 #     # l = max_pool3d(l)
 
 #     # n *= 2
-#     # l = bn(conv3d(l, n))
-#     # l = bn(conv3d(l, n))
+#     # l = conv3d(l, n))
+#     # l = conv3d(l, n))
 #     # l = max_pool3d(l)
 
 #     # n *= 2
-#     # l = bn(conv3d(l, n))
-#     # l = bn(conv3d(l, n))
+#     # l = conv3d(l, n))
+#     # l = conv3d(l, n))
 #     # l = max_pool3d(l)
 
 #     # n *= 2
-#     # l = bn(dense(drop(l), n))
-#     # l = bn(dense(drop(l), n))
+#     # l = dense(drop(l), n))
+#     # l = dense(drop(l), n))
 
 #     # l_out = lasagne.layers.DenseLayer(l_in,
 #     #                              num_units=2,
@@ -171,28 +171,33 @@ def build_model():
     base_n_filters = 64
 
     n = 16
-    l = bn(conv3d(l_in, n))
-    l = bn(conv3d(l, n))
+    l = conv3d(l_in, n)
+    l = conv3d(l, n)
     l = max_pool3d(l)
 
     n *= 2
-    l = bn(conv3d(l, n))
-    l = bn(conv3d(l, n))
+    l = conv3d(l, n)
+    l = conv3d(l, n)
     l = max_pool3d(l)
 
     n *= 2
-    l = bn(conv3d(l, n))
-    l = bn(conv3d(l, n))
+    l = conv3d(l, n)
+    l = conv3d(l, n)
     l = max_pool3d(l)
 
     n *= 2
-    l = bn(conv3d(l, n))
-    l = bn(conv3d(l, n))
+    l = conv3d(l, n)
+    l = conv3d(l, n)
     l = max_pool3d(l)
 
     n *= 2
-    l = bn(dense(drop(l), n))
-    l = bn(dense(drop(l), n))
+    l = conv3d(l, n)
+    l = conv3d(l, n)
+    l = max_pool3d(l)
+    
+    n *= 2
+    l = dense(drop(l), n)
+    l = dense(drop(l), n)
 
     l_out = nn.layers.DenseLayer(l, num_units=2,
                                  W=nn.init.Constant(0.),

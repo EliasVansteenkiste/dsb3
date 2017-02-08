@@ -93,7 +93,10 @@ conv3d = partial(dnn.Conv3DDNNLayer,
                  pad='same',
                  W=nn.init.Orthogonal(),
                  b=nn.init.Constant(0.01),
-                 nonlinearity=nn.nonlinearities.very_leaky_rectify)
+                 nonlinearity=None)
+
+nl = partial(lasagne.layers.NonlinearityLayer,
+    nonlinearity=lasagne.nonlinearities.very_leaky_rectify)
 
 max_pool3d = partial(dnn.MaxPool3DDNNLayer,
                      pool_size=2)
@@ -107,92 +110,29 @@ dense = partial(lasagne.layers.DenseLayer,
     b=lasagne.init.Constant(0.0),
     nonlinearity=lasagne.nonlinearities.rectify)
 
-# def build_model():
-#     l_in = nn.layers.InputLayer((None,) + p_transform['patch_size'])
-#     l_target = nn.layers.InputLayer((None, ))
-
-#     print 'l_target.output_shape', l_target.output_shape
-
-#     print 'l_in.output_shape', l_in.output_shape
-
-#     # n = 16
-#     # # l = bn(conv3d(l, n, filter_size=7, stride=2))
-#     # # l = max_pool3d(l)
-#     # l = bn(conv3d(l_in, n))
-#     # l = bn(conv3d(l, n))
-#     # l = max_pool3d(l)
-
-#     # n *= 2
-#     # l = bn(conv3d(l, n))
-#     # l = bn(conv3d(l, n))
-#     # l = max_pool3d(l)
-
-#     # n *= 2
-#     # l = bn(conv3d(l, n))
-#     # l = bn(conv3d(l, n))
-#     # l = max_pool3d(l)
-
-#     # n *= 2
-#     # l = bn(conv3d(l, n))
-#     # l = bn(conv3d(l, n))
-#     # l = max_pool3d(l)
-
-#     # n *= 2
-#     # l = bn(conv3d(l, n))
-#     # l = bn(conv3d(l, n))
-#     # l = max_pool3d(l)
-
-#     # n *= 2
-#     # l = bn(dense(drop(l), n))
-#     # l = bn(dense(drop(l), n))
-
-#     # l_out = lasagne.layers.DenseLayer(l_in,
-#     #                              num_units=2,
-#     #                              W=lasagne.init.Constant(0.0),
-#     #                              b=None,
-#     #                              nonlinearity=lasagne.nonlinearities.softmax)
-
-#     l_out = lasagne.layers.DenseLayer(l_in,
-#                                  num_units=1,
-#                                  W=lasagne.init.Constant(0.5),
-#                                  b=None,
-#                                  nonlinearity=lasagne.nonlinearities.sigmoid)
-
-#     print 'l_out.output_shape', l_out.output_shape
-
-#     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
-
+gp = lasagne.layers.GlobalPoolLayer
 
 def build_model():
     l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
     l_target = nn.layers.InputLayer((None, 1))
 
-    net = {}
-    base_n_filters = 64
-
-    n = 16
-    l = bn(conv3d(l_in, n))
-    l = bn(conv3d(l, n))
+    l = nl(bn(conv3d(l_in, num_filters=32)))
+    l = nl(bn(conv3d(l, num_filters=32)))
     l = max_pool3d(l)
+    l = drop(l)
 
-    n *= 2
-    l = bn(conv3d(l, n))
-    l = bn(conv3d(l, n))
+    l = nl(bn(conv3d(l, num_filters=64)))
+    l = nl(bn(conv3d(l, num_filters=64)))
     l = max_pool3d(l)
+    l = drop(l)
 
-    n *= 2
-    l = bn(conv3d(l, n))
-    l = bn(conv3d(l, n))
+    l = nl(bn(conv3d(l, num_filters=64)))
+    l = nl(bn(conv3d(l, num_filters=64)))
     l = max_pool3d(l)
+    l = drop(l)
 
-    n *= 2
-    l = bn(conv3d(l, n))
-    l = bn(conv3d(l, n))
-    l = max_pool3d(l)
 
-    n *= 2
-    l = bn(dense(drop(l), n))
-    l = bn(dense(drop(l), n))
+    l = gp(l)
 
     l_out = nn.layers.DenseLayer(l, num_units=2,
                                  W=nn.init.Constant(0.),

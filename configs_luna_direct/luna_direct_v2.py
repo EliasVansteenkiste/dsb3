@@ -194,31 +194,50 @@ def build_model():
     l = bn(dense(drop(l), n))
     l = bn(dense(drop(l), n))
 
-    l_out = nn.layers.DenseLayer(l, num_units=2,
-                                 W=nn.init.Constant(0.),
-                                 nonlinearity=nn.nonlinearities.softmax)
+    # l_out = nn.layers.DenseLayer(l, num_units=2,
+    #                              W=nn.init.Constant(0.),
+    #                              nonlinearity=nn.nonlinearities.softmax)
     
+    l_out = nn.layers.DenseLayer(l, num_units=1,
+                             W=nn.init.Constant(0.5),
+                             nonlinearity=nn.nonlinearities.sigmoid)
 
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 
 
-def build_objective(model, deterministic=False, epsilon=1e-12):
+def build_objective_working(model, deterministic=False, epsilon=1e-12):
     predictions = nn.layers.get_output(model.l_out)
     targets = T.cast(T.flatten(nn.layers.get_output(model.l_target)), 'int32')
     p = predictions[T.arange(predictions.shape[0]), targets]
-    p = T.clip(p,epsilon,1.)
+    
 
     loss = T.mean(T.log(p))
-    return -loss
-
-#todo
-def sparse_categorical_crossentropy(output, target, from_logits=False):
-    target = T.cast(T.flatten(target), 'int32')
-    target = T.extra_ops.to_one_hot(target, nb_class=output.shape[-1])
-    target = reshape(target, shape(output))
-    return categorical_crossentropy(output, target, from_logits)
+    return loss
 
 
+def build_objective(model, deterministic=False, epsilon=1e-12):
+        
+    predictions = nn.layers.get_output(model.l_out)
+    targets = nn.layers.get_output(model.l_target)
+
+    log_loss = lasagne.objectives.binary_crossentropy(predictions, targets)
+    log_loss = T.mean(log_loss)
+    return log_loss
+
+
+
+def build_objective_backup(model, deterministic=False, epsilon=1e-12):
+
+    predictions = nn.layers.get_output(model.l_out)
+    predictions = T.clip(predictions, epsilon, 1.-epsilon)
+    predictions = T.log(predictions)
+    target = nn.layers.get_output(model.l_target)
+    target = target.flatten()
+    #target = T.cast(target,'int32')
+    #predictions = predictions[T.arange(target.shape[0]), target]
+    log_loss = T.mean(target)
+    print 'log_loss', log_loss.type
+    return log_loss
 
 
 def build_updates(train_loss, model, learning_rate):

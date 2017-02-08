@@ -191,6 +191,11 @@ def build_model():
     l = max_pool3d(l)
 
     n *= 2
+    l = bn(conv3d(l, n))
+    l = bn(conv3d(l, n))
+    l = max_pool3d(l)
+    
+    n *= 2
     l = bn(dense(drop(l), n))
     l = bn(dense(drop(l), n))
 
