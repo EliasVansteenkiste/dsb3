@@ -79,7 +79,7 @@ def extract_nodules(pred, patch):
         rois = rois[:, :3] #ignore diameter
         rois += patch["offset"][None,:]
     else: return None
-    # print rois
+    print rois
     #local to global roi
     # rois += patch["offset"]
     return rois
