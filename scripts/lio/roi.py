@@ -14,6 +14,7 @@ import itertools
 import lasagne
 import time
 
+sys.path.append("../..")
 from theano_utils import theano_printer
 import utils
 from utils import LOGS_PATH, MODEL_PATH, MODEL_PREDICTIONS_PATH
