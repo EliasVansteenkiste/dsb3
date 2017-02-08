@@ -135,7 +135,7 @@ def extract_rois(expid):
             data = config.data_loader.load_sample(sample_id, input_layers.keys(),{})
 
             patch_generator = config.patch_generator(data)
-            sample_ids = data[IDS]
+            # sample_ids = data[IDS]
 
             for patch in patch_generator:
                 for key in xs_shared:
@@ -144,18 +144,13 @@ def extract_rois(expid):
                 th_result = iter_test(0)
 
                 predictions = th_result[:len(network_outputs)]
+                print "predictions.shape", predictions.shape
 
-                for output_idx, key in enumerate(output_layers.keys()):
-                    for sample_idx in xrange(0, config.batch_size):
-                        prediction_pos = sample_idx % config.batch_size
-                        sample_id = sample_ids[sample_idx]
-                        if sample_id is not None:
-                            pred = predictions[output_idx][prediction_pos]
-                            rois = config.extract_nodules(pred, patch)
-                            if sample_id not in all_predictions:
-                                all_predictions[sample_id] = rois
-                            else:
-                                all_predictions[sample_id] += rois
+                pred = predictions[0][0]
+                rois = config.extract_nodules(pred, patch)
+                if sample_id not in all_predictions:
+                    all_predictions[sample_id] = rois
+                else: all_predictions[sample_id] += rois
 
             now = time.time()
             time_since_start = now - start_time
