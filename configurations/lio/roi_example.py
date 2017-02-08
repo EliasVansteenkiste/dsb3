@@ -13,7 +13,7 @@ from interfaces.preprocess import ZMUV
 
 
 model = valid
-tag = "stage1"
+tag = "stage1:"
 
 IMAGE_SIZE = 128
 patch_shape = IMAGE_SIZE, IMAGE_SIZE, IMAGE_SIZE  # in pixels
