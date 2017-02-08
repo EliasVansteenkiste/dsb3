@@ -160,18 +160,18 @@ def extract_rois(expid):
             time_since_prev = now - prev_time
             prev_time = now
             print "  %s since start (+%.2f s)" % (utils.hms(time_since_start), time_since_prev)
-            try:
-                if num_chunks_test:
-                    est_time_left = time_since_start * (float(num_chunks_test - (e + 1)) / float(e + 1))
-                    eta = datetime.datetime.now() + datetime.timedelta(seconds=est_time_left)
-                    eta_str = eta.strftime("%c")
-                    print "  estimated %s to go" % utils.hms(est_time_left)
-                    print "  (ETA: %s)" % eta_str
-            except OverflowError:
-                print "  This will take really long, like REALLY long."
+            # try:
+            #     if num_chunks_test:
+            #         est_time_left = time_since_start * (float(num_chunks_test - (e + 1)) / float(e + 1))
+            #         eta = datetime.datetime.now() + datetime.timedelta(seconds=est_time_left)
+            #         eta_str = eta.strftime("%c")
+            #         print "  estimated %s to go" % utils.hms(est_time_left)
+            #         print "  (ETA: %s)" % eta_str
+            # except OverflowError:
+            #     print "  This will take really long, like REALLY long."
 
-            print "  %dms per sample" % (
-            1000. * time_since_start / ((e + 1) * config.batch_size))
+            # print "  %dms per sample" % (
+            # 1000. * time_since_start / ((e + 1) * config.batch_size))
 
     with open(prediction_path, 'w') as f:
         pickle.dump({
