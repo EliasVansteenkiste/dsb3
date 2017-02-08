@@ -76,7 +76,7 @@ def extract_nodules(pred, patch):
         from time import time
         t0 = time()
         rois = blob_dog(pred, min_sigma=1.2, max_sigma=35, threshold=0.1)
-        print "blob_dog", time()-t0
+        print "blob_dog", time()-t0, pred.shape, pred.min(), pred.max(), pred.mean()
     except:
         print pred.shape, pred.min(), pred.max(), pred.mean()
         return None
