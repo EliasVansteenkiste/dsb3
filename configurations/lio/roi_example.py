@@ -2,7 +2,7 @@ import numpy as np
 from itertools import product
 from functools import partial
 
-from configurations.jonas import ira_config_3
+from configurations.jonas import valid
 from scripts.elias.blob import blob_dog
 
 from application.stage1 import Stage1DataLoader
@@ -12,7 +12,7 @@ from utils.transformation_3d import affine_transform, apply_affine_transform
 from interfaces.preprocess import ZMUV
 
 
-model = ira_config_3
+model = valid
 
 patch_shape = 64, 64, 64  # in pixels
 norm_patch_shape = 64, 64, 64  # in mms
