@@ -38,8 +38,6 @@ def extract_rois(expid):
     print "To generate"
     print "  %s" % prediction_path
 
-    sys.exit()
-
     print "Build model"
 
     interface_layers = config.model.build_model()
