@@ -159,11 +159,11 @@ def extract_rois(expid):
                 print "extract_nodules", time.time() - t0
 
                 t0 = time.time()
-                if rois is not None:
-                    if sample_id not in all_predictions:
-                        all_predictions[sample_id] = rois
-                    else:
-                        all_predictions[sample_id] = np.vstack((all_predictions[sample_id], rois))
+                # if rois is not None:
+                #     if sample_id not in all_predictions:
+                #         all_predictions[sample_id] = rois
+                #     else:
+                #         all_predictions[sample_id] = np.vstack((all_predictions[sample_id], rois))
                 print "vstack", time.time() - t0
 
                 t0 = time.time()

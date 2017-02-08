@@ -35,7 +35,6 @@ batch_size = 1
 def patch_generator(sample, segmentation_shape):
     for prep in preprocessors: prep.process(sample)
 
-    patch = {}
     data = sample[INPUT]["stage1:3d"]
     spacing = sample[INPUT]["stage1:pixelspacing"]
 
@@ -65,9 +64,11 @@ def patch_generator(sample, segmentation_shape):
         matrix = shift_center.dot(normscale).dot(offset_patch).dot(patchscale).dot(unshift_center)
         output = apply_affine_transform(data, matrix, output_shape=output_shape.astype(np.int))
 
+        patch = {}
         patch["stage1:3d"] = output
         patch["offset"] = offset
         yield patch
+
 
 
 def extract_nodules(pred, patch):
