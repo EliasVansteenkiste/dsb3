@@ -14,7 +14,7 @@ from interfaces.preprocess import ZMUV
 
 model = valid
 
-IMAGE_SIZE = 64
+IMAGE_SIZE = 80
 patch_shape = IMAGE_SIZE, IMAGE_SIZE, IMAGE_SIZE  # in pixels
 norm_patch_shape = IMAGE_SIZE, IMAGE_SIZE, IMAGE_SIZE  # in mms
 
@@ -73,12 +73,12 @@ def patch_generator(sample, segmentation_shape):
 
 def extract_nodules(pred, patch):
     try:
-        from time import time
-        t0 = time()
+        # from time import time
+        # t0 = time()
         rois = blob_dog(pred, min_sigma=1.2, max_sigma=35, threshold=0.1)
-        print "blob_dog", time()-t0, pred.shape, pred.min(), pred.max(), pred.mean()
+        # print "blob_dog", time()-t0, pred.shape, pred.min(), pred.max(), pred.mean()
     except:
-        print pred.shape, pred.min(), pred.max(), pred.mean()
+        # print pred.shape, pred.min(), pred.max(), pred.mean()
         return None
     if rois.shape[0] > 0:
         rois = rois[:, :3] #ignore diameter
