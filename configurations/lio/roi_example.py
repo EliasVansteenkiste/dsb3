@@ -73,8 +73,9 @@ def patch_generator(sample):
 
 def extract_nodules(pred, patch):
     rois = nodule_extractor(pred)
+    print type(rois), rois
     #local to global roi
-    rois += patch["offset"]
+    # rois += patch["offset"]
     return rois
 
 
