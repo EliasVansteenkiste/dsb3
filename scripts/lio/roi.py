@@ -50,7 +50,7 @@ def extract_rois(expid):
     top_layer = lasagne.layers.MergeLayer(
         incomings=output_layers.values()
     )
-    config.segmentation_shape = output_layers["predicted_segmentation"].output_shape[:-3]
+    config.segmentation_shape = output_layers["predicted_segmentation"].output_shape[1:]
     print "segmentation shape:", config.segmentation_shape
 
     # get all the trainable parameters from the model
