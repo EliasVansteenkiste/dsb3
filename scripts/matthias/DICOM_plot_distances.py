@@ -129,7 +129,7 @@ if __name__ == '__main__':
             # check if the image plains are aligned
             try:
                 actual_distance=compute_distance_between_images(current_dcm, next_dcm)
-                naive_distance = float(next_dcm.SliceLocation) - float(current_dcm.SliceLocation)
+                #naive_distance = float(next_dcm.SliceLocation) - float(current_dcm.SliceLocation)
                 patient_distances.append(actual_distance)
 
             except ImagesNotAlignedError as not_aligned_error:
