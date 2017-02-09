@@ -194,6 +194,19 @@ def make_3d_mask_from_annotations(img_shape, annotations, shape):
     return mask
 
 
+def make_gaussian_annotation(patch_annotation_tf, patch_size):
+    radius = patch_annotation_tf[-1] / 2.
+    zyx = patch_annotation_tf[:3]
+    distance_z = (zyx[0] - np.arange(patch_size[0])) ** 2
+    distance_y = (zyx[1] - np.arange(patch_size[1])) ** 2
+    distance_x = (zyx[2] - np.arange(patch_size[2])) ** 2
+    z_label = np.exp(- 1. * distance_z / (2 * radius ** 2))
+    y_label = np.exp(- 1. * distance_y / (2 * radius ** 2))
+    x_label = np.exp(- 1. * distance_x / (2 * radius ** 2))
+    label = np.vstack((z_label, y_label, x_label))
+    return label
+
+
 def affine_transform(scale=None, rotation=None, translation=None):
     """
     rotation and shear in degrees
@@ -232,7 +245,7 @@ def affine_transform(scale=None, rotation=None, translation=None):
         mx[1, 0] = -sin[2]
         mx[1, 1] = cos[2]
 
-        matrix = matrix.dot(mx).dot(my).dot(mz)
+        matrix = mx.dot(my).dot(mz).dot(matrix)
 
     return matrix
 

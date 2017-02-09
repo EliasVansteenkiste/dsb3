@@ -256,3 +256,16 @@ class Upscale3DLayer(nn.layers.Layer):
                 upscaled = T.set_subtensor(
                     upscaled[:, :, ::a, ::b, ::c], input)
         return upscaled
+
+
+class CastingLayer(nn.layers.Layer):
+    def __init__(self, incoming, dtype, **kwargs):
+        super(CastingLayer, self).__init__(incoming, **kwargs)
+        self.dtype = dtype
+
+    def get_output_for(self, input, **kwargs):
+        return T.cast(input, self.dtype)
+
+
+def heaviside(x, size):
+    return T.arange(0, size).dimshuffle('x', 0) - T.repeat(x, size, axis=1) >= 0.

@@ -14,7 +14,7 @@ import buffering
 from configuration import config, set_configuration
 import pathfinder
 
-theano.config.warn_float64 = 'raise'
+# theano.config.warn_float64 = 'raise'
 
 if len(sys.argv) < 2:
     sys.exit("Usage: train.py <configuration_name>")

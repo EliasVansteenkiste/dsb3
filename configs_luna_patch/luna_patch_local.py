@@ -7,21 +7,15 @@ from functools import partial
 
 restart_from_save = None
 rng = np.random.RandomState(42)
-# transformations# transformations
-# p_transform = {'patch_size': (128, 128, 128),
-#                'mm_patch_size': (128, 128, 128),
-#                'pixel_spacing': (1., 0.6, 0.6)
-#                }
-
+# transformations
 p_transform = {'patch_size': (64, 64, 64),
                'mm_patch_size': (64, 64, 64),
-               'pixel_spacing': (1., 0.7, 0.7)
+               'pixel_spacing': (1., 1., 1.)
                }
-
 p_transform_augment = {
-    'translation_range_z': [-20, 20],
-    'translation_range_y': [-20, 20],
-    'translation_range_x': [-20, 20],
+    'translation_range_z': [-27, 27],
+    'translation_range_y': [-27, 27],
+    'translation_range_x': [-27, 27],
     'rotation_range_z': [-180, 180],
     'rotation_range_y': [-180, 180],
     'rotation_range_x': [-180, 180]
@@ -39,32 +33,37 @@ def data_prep_function(data, patch_center, luna_annotations, pixel_spacing, luna
                                                                                p_transform_augment=p_transform_augment,
                                                                                pixel_spacing=pixel_spacing,
                                                                                luna_origin=luna_origin)
-    y = data_transforms.make_3d_mask_from_annotations(img_shape=x.shape, annotations=annotations_tf, shape='sphere')
-    return x, y
+    gaussian_nodule_annotation = data_transforms.make_gaussian_annotation(patch_annotation_tf,
+                                                                          patch_size=p_transform['patch_size'])
+    return x, gaussian_nodule_annotation
 
 
-data_prep_function_train = partial(data_prep_function, p_transform_augment=p_transform_augment, p_transform=p_transform)
-data_prep_function_test = partial(data_prep_function, p_transform_augment=None, p_transform=p_transform)
+data_prep_function_train = partial(data_prep_function, p_transform_augment=p_transform_augment,
+                                   p_transform=p_transform)
+data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
+                                   p_transform=p_transform)
 
 # data iterators
 batch_size = 1
-nbatches_chunk = 1
+nbatches_chunk = 4
 chunk_size = batch_size * nbatches_chunk
 
 train_valid_ids = utils.load_pkl(pathfinder.LUNA_VALIDATION_SPLIT_PATH)
-valid_pids = train_valid_ids['valid']
+train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['valid']
 
-train_data_iterator = data_iterators.PatchPositiveLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
-                                                                    batch_size=chunk_size,
-                                                                    transform_params=p_transform,
-                                                                    data_prep_fun=data_prep_function_train,
-                                                                    rng=rng,
-                                                                    patient_ids=train_valid_ids['train'][:5],
-                                                                    full_batch=True, random=True, infinite=True)
+train_data_iterator = data_iterators.PatchCentersPositiveLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
+                                                                           batch_size=chunk_size,
+                                                                           transform_params=p_transform,
+                                                                           data_prep_fun=data_prep_function_train,
+                                                                           rng=rng,
+                                                                           patient_ids=train_valid_ids['train'],
+                                                                           full_batch=True, random=True, infinite=True)
 
-test_data_iterator = data_iterators.PatchPositiveLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
-                                                                   batch_size=chunk_size,
-                                                                   transform_params=p_transform,
-                                                                   data_prep_fun=data_prep_function_test,
-                                                                   rng=rng,
-                                                                   full_batch=False, random=False, infinite=False)
+valid_data_iterator = data_iterators.PatchCentersPositiveLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
+                                                                           batch_size=1,
+                                                                           transform_params=p_transform,
+                                                                           data_prep_fun=data_prep_function_valid,
+                                                                           rng=rng,
+                                                                           patient_ids=train_valid_ids['valid'],
+                                                                           full_batch=False, random=False,
+                                                                           infinite=False)
