@@ -12,7 +12,8 @@ import time
 sys.path.append(".")
 from theano_utils import theano_printer
 import utils
-from utils import LOGS_PATH, MODEL_PATH, MODEL_PREDICTIONS_PATH
+import utils.plt
+from utils import LOGS_PATH, MODEL_PATH, MODEL_PREDICTIONS_PATH, paths
 from utils.log import print_to_file
 from utils.configuration import set_configuration, config, get_configuration_name
 
@@ -123,6 +124,9 @@ def extract_rois(expid):
                 predictions = th_result[:len(network_outputs)]
 
                 pred = predictions[0][0]
+
+                utils.plt.cross_sections([data["input"][xs_shared.keys()[0]]],
+                                         save=paths.ANALYSIS_PATH+"lio/roi.jpg")
 
                 t0 = time.time()
                 rois = config.extract_nodules(pred, patch)
