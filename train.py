@@ -513,3 +513,4 @@ if __name__ == "__main__":
 
         train_model(expid)
         print "log saved to '%s'" % log_file
+        sys.stdout.flush()

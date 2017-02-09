@@ -26,13 +26,6 @@ preprocessors = [
     # RescaleInput(input_scale=(0,255), output_scale=(0.0, 1.0)),
     #AugmentInput(output_shape=(160,120),**augmentation_parameters),
     #NormalizeInput(num_samples=100),
-    AugmentOnlyPositive(
-        tags=["luna:3d", "luna:segmentation"],
-        output_shape=(128, 128, 128),
-        norm_patch_size=(32, 32, 32),
-        augmentation_params=AUGMENTATION_PARAMETERS
-    ),
-    ZMUV("luna:3d", bias =  -648.59027, std = 679.21021),
 ]
 
 #####################
@@ -41,7 +34,7 @@ preprocessors = [
 training_data = LunaDataLoader(
     only_positive=True,
     sets=TRAINING,
-    epochs=1,
+    epochs=10,
     preprocessors=preprocessors,
     multiprocess=False,
     crash_on_exception=True
@@ -50,18 +43,22 @@ training_data = LunaDataLoader(
 chunk_size = 1
 training_data.prepare()
 data,segm = None,None
+sample_nr = 0
 
 def get_data():
     global data,segm
-    if False:
+    global sample_nr
+    while True:
         #####################
         #      single       #
         #####################
-
-        sample = training_data.load_sample(0,input_keys_to_do=["luna:3d"], output_keys_to_do=["luna:segmentation"])
+        if sample_nr>=483:
+            return True
+        print sample_nr
+        sample = training_data.load_sample(sample_nr,input_keys_to_do=["luna:3d"], output_keys_to_do=["luna:segmentation"])
         data = sample[INPUT]["luna:3d"][:,:,:]
         segm = sample[OUTPUT]["luna:segmentation"][:,:,:]
-
+        sample_nr += 1
 
     else:
         batches = training_data.generate_batch(
@@ -74,34 +71,37 @@ def get_data():
         print "ids:", sample['ids']
         data = sample[INPUT]["luna:3d"][0,:,:,:]
         segm = sample[OUTPUT]["luna:segmentation"][0,:,:,:]
+    return False
 
 def sigmoid(x):
     return 1. / (1. + np.exp(-x))
 
+bin_edges = None
+total_all = None
+total_tumor = None
+
+MAX = 1500
+MIN = -1500
+RANGE = range(MIN,MAX,10)
 while True:
-    get_data()
-    data = sigmoid(data) # to get from normalized to [0,1] range
-    segm = (segm>0.5) - ndimage.binary_erosion((segm>0.5)).astype('float32')
+    if get_data():
+        break
+    valid_data = data[np.logical_and(MIN<=data, data<=MAX)]
+    if total_all is None:
 
+        hist, bin_edges = np.histogram(valid_data, range=(MIN,MAX), bins = len(RANGE), density=False)
+        total_all = np.array(hist)
+        hist, bin_edges = np.histogram(data[segm>0.5], range=(MIN,MAX), bins = len(RANGE), density=False)
+        total_tumor = np.array(hist)
+    else:
+        hist, bin_edges = np.histogram(valid_data, range=(MIN,MAX), bins = len(RANGE), density=False)
+        total_all += np.array(hist)
+        hist, bin_edges = np.histogram(data[segm>0.5], range=(MIN,MAX), bins = len(RANGE), density=False)
+        total_tumor += np.array(hist)
 
-    def get_data_step(step):
-        return np.concatenate([data[:,:,step,None], data[:,:,step,None], segm[:,:,step,None]], axis=-1)
-
-    data
-    fig = plt.figure()
-    im = fig.gca().imshow(get_data_step(0))
-
-
-    # initialization function: plot the background of each frame
-    def init():
-        im.set_data(get_data_step(0))
-        return im,
-
-    # animation function.  This is called sequentially
-    def animate(i):
-        im.set_data(get_data_step(i))
-        return im,
-    anim = animation.FuncAnimation(fig, animate, init_func=init, frames=data.shape[2], interval=50, blit=True)
-
-    plt.show()
+fig = plt.figure()
+ax = plt.subplot(111)
+ax.bar(RANGE, -1.0*total_all/np.sum(total_all), align='edge', width=10, color=[1,0,0], linewidth=0)
+ax.bar(RANGE, 1.0*total_tumor/np.sum(total_tumor), align='edge', width=10, color=[0,0,1], linewidth=0)
+plt.show()
 

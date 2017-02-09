@@ -3,6 +3,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
+from scipy import ndimage
 
 confusion_matrix = np.array([[]])
 confusion_indices = []
@@ -16,7 +17,7 @@ def analyze(id,analysis_path,**kwargs):
     The id is the respective id of this patient
     """
     data = kwargs['luna:3d']
-    segm = kwargs['luna:segmentation']
+    segm = kwargs['luna:gaussian']
     pred = kwargs['predicted_segmentation']
 
     def sigmoid(x):
@@ -32,16 +33,24 @@ def analyze(id,analysis_path,**kwargs):
     false_pos = np.count_nonzero(np.logical_and(1-segm,pred>0.5)) / total
     false_neg = np.count_nonzero(np.logical_and(segm,pred<0.5)) / total
     true_neg = np.count_nonzero(np.logical_and(1-segm,pred<0.5)) / total
+
+
     print
     print "           label=1   label=0"
     print "positive:  %.4f    %.4f"%(true_pos, false_pos)
     print "negative:  %.4f    %.4f"%(false_neg, true_neg)
+    print
+    print "max prediction", np.max(pred)
+    print "nonzeros", np.count_nonzero(pred>0.5)
+    print np.sum(pred*segm), np.sum(pred*(1-segm))
+    #circle = (segm>0.5) - ndimage.binary_erosion((segm>0.5)).astype('float32')
 
     if true_neg==1.0:
         return
 
     def get_data_step(step):
-        return np.concatenate([data[:,:,step,None], segm[:,:,step,None], pred[:,:,step,None]], axis=-1)
+        return np.concatenate([data[:,:,step,None], 0*pred[:,:,step,None]/(np.max(pred[:,:,step,None])+1e-14), segm[:,:,step,None]], axis=-1)
+        return np.concatenate([data[:,:,step,None], pred[:,:,step,None]/(np.max(pred[:,:,step,None])+1e-14), circle[:,:,step,None]], axis=-1)
 
     fig = plt.figure()
     im = fig.gca().imshow(get_data_step(0))
