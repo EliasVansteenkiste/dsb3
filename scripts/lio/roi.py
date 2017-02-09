@@ -113,7 +113,7 @@ def extract_rois(expid):
 
             patch_generator = config.patch_generator(data, output_layers["predicted_segmentation"].output_shape[1:])
             t0 = time.time()
-            for patch in patch_generator:
+            for patch_idx, patch in enumerate(patch_generator):
                 for key in xs_shared:
                     xs_shared[key].set_value(patch[key][None,:])
 
@@ -127,8 +127,10 @@ def extract_rois(expid):
 
                 pred = predictions[0][0]
 
-                utils.plt.cross_sections([data["input"][xs_shared.keys()[0]]],
-                                         save=paths.ANALYSIS_PATH+"lio/roi.jpg")
+                utils.plt.cross_sections([data["input"][xs_shared.keys()[0]],
+                                          pred,
+                                          ],
+                                         save=paths.ANALYSIS_PATH+"lio/roi%i.jpg"%patch_idx)
 
                 t0 = time.time()
                 rois = config.extract_nodules(pred, patch)
