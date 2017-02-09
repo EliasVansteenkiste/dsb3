@@ -8,7 +8,7 @@ from utils import paths
 def cross_sections(volumes, show=False, save=""):
     plt.close('all')
     n = len(volumes)
-    fig, ax = plt.subplots(n, 3, figsize=(7*n, 8))
+    fig, ax = plt.subplots(n, 3, figsize=(14, 4*n))
 
     _ax = lambda i, j: ax[j] if n == 1 else ax[i, j]
     norm = cm.colors.NoNorm()

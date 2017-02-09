@@ -12,6 +12,8 @@ from utils.transformation_3d import affine_transform, apply_affine_transform
 from interfaces.preprocess import ZMUV
 
 
+plot = True
+
 model = valid
 tag = "luna:"
 extra_tags=[tag+"pixelspacing"]
@@ -59,9 +61,9 @@ def patch_generator(sample, segmentation_shape):
         offset = np.array([stride[0]*x, stride[1]*y, stride[2]*z], np.float)
         print (x*patch_count[1]*patch_count[2] + y*patch_count[2] +z), "/", np.prod(patch_count), (x,y,z)
 
-        shift_center = affine_transform(translation=-input_shape / 2. - 0.5)
+        shift_center = affine_transform(translation=-(input_shape / 2. - 0.5))
         normscale = affine_transform(scale=norm_shape / input_shape)
-        offset_patch = affine_transform(translation=norm_shape/2. - 0.5 - offset-stride/2.0-0.5)# - (mm_patch_shape - segmentation_shape)*norm_shape/_patch_shape -segmentation_shape*norm_shape/_patch_shape/2.)
+        offset_patch = affine_transform(translation=norm_shape/2. - 0.5 - offset-(stride/2.0-0.5))# - (mm_patch_shape - segmentation_shape)*norm_shape/_patch_shape -segmentation_shape*norm_shape/_patch_shape/2.)
         patchscale = affine_transform(scale=_patch_shape / norm_shape)
         unshift_center = affine_transform(translation=output_shape / 2. - 0.5)
         matrix = shift_center.dot(normscale).dot(offset_patch).dot(patchscale).dot(unshift_center)

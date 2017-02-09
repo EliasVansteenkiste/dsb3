@@ -111,8 +111,8 @@ def extract_rois(expid):
             data = config.data_loader.load_sample(sample_id,
                                                   input_layers.keys()+config.extra_tags,{})
 
-
-            patch_generator = config.patch_generator(data, output_layers["predicted_segmentation"].output_shape[1:])
+            seg_shape = output_layers["predicted_segmentation"].output_shape[1:]
+            patch_generator = config.patch_generator(data, seg_shape)
             t0 = time.time()
             for patch_idx, patch in enumerate(patch_generator):
                 for key in xs_shared:
@@ -128,17 +128,29 @@ def extract_rois(expid):
 
                 pred = predictions[0][0]
 
-                # print pred
 
-                dat = np.clip((data["input"][xs_shared.keys()[0]]+1000.)/1400.,0,1)
-                utils.plt.cross_sections([dat,
-                                          patch[xs_shared.keys()[0]],
-                                          pred,
-                                          ],
-                                         save=paths.ANALYSIS_PATH+"lio/roi%s.jpg"%str(patch_idx).zfill(3))
 
                 t0 = time.time()
                 rois = config.extract_nodules(pred, patch)
+
+                # print pred
+                if config.plot:
+                    dir_path = paths.ANALYSIS_PATH + expid
+                    if not os.path.exists(dir_path): os.mkdir(dir_path)
+                    k = xs_shared.keys()[0]
+                    # dat = np.clip((data["input"][k]+1000.)/1400.,0,1)
+
+                    roi_vol = np.zeros_like(pred)
+                    x, y, z = np.ogrid[:roi_vol.shape[0], :roi_vol.shape[1], :roi_vol.shape[2]]
+                    for roi in rois:
+                        roi -= patch["offset"]
+                        distance2 = ((x - roi[0]) ** 2 + (y - roi[1]) ** 2 + (z - roi[2]) ** 2)
+                        roi_vol[(distance2 <= 5)] = 1
+
+                    utils.plt.cross_sections([patch[k],
+                                              pred,
+                                              roi_vol],
+                                             save=dir_path + "/roi%s.jpg" % (str(patch_idx).zfill(3)))
 
                 if rois is None:
                     print " extract_nodules", 0, time.time() - t0
