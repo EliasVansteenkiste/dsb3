@@ -8,12 +8,15 @@ def cross_sections(volumes, show=False, save=""):
     plt.close('all')
     n = len(volumes)
     fig, ax = plt.subplots(n, 3, figsize=(7*n, 8))
-    print n
+
+    _ax = lambda i, j: ax[j] if n == 1 else ax[i, j]
+    # if n == 1: _ax = lambda i,j: ax[j]
+    # else: _ax = lambda i,j: ax[i, j]
+
     for i, vol in enumerate(volumes):
-        print vol.shape
-        ax[i, 0].imshow(vol[vol.shape[0] // 2], cmap="gray")
-        ax[i, 1].imshow(vol[:, vol.shape[1] // 2], cmap="gray")
-        ax[i, 2].imshow(vol[:, :, vol.shape[2] // 2], cmap="gray")
+        _ax(i, 0).imshow(vol[vol.shape[0] // 2], cmap="gray")
+        _ax(i, 1).imshow(vol[:, vol.shape[1] // 2], cmap="gray")
+        _ax(i, 2).imshow(vol[:, :, vol.shape[2] // 2], cmap="gray")
     if show: plt.show()
     if len(save)>0: fig.savefig(save)
 
