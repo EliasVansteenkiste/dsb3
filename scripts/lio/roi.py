@@ -127,6 +127,8 @@ def extract_rois(expid):
 
                 pred = predictions[0][0]
 
+                print data["input"][xs_shared.keys()[0]].max(),  data["input"][xs_shared.keys()[0]].min()
+
                 utils.plt.cross_sections([data["input"][xs_shared.keys()[0]],
                                           pred,
                                           ],
