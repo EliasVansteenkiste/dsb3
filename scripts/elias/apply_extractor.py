@@ -52,13 +52,13 @@ def check_nodules_found_v3(patient_id, folder, no_rois=5, plot=False):
 
 
 
-def check_nodules_found_v4(patient_id, folder, no_rois=10, plot=False):
+def check_nodules_found_v4(patient_id, folder_in, folder_out, no_rois=10, plot=False):
 	# load in predicted segmentation
-	pred = np.load(folder+'pred_'+patient_id+'.npy',)
+	pred = np.load(folder_in+'pred_'+patient_id+'.npy',)
 	# load in target
-	target = np.load(folder+'tgt_'+patient_id+'.npy')
+	target = np.load(folder_in+'tgt_'+patient_id+'.npy')
 	# load in original 3D volume
-	original = np.load(folder+'in_'+patient_id+'.npy')
+	original = np.load(folder_in+'in_'+patient_id+'.npy')
 
 
 	if plot:
@@ -86,10 +86,13 @@ def check_nodules_found_v4(patient_id, folder, no_rois=10, plot=False):
 
 	
 	#extract_nodules_conv_filter(pred, original, no_rois=no_rois, dim=32, plot=False, dbg_target=None, nodules=target)
-	extract_nodules_blob_detection(pred, original, dim=32, plot=False, dbg_target=None, nodules=target)
+	rois, centers = extract_nodules_blob_detection(pred, original, dim=32, plot=False, dbg_target=None, nodules=target)
+	
+	with open(folder_out+'prednodules_'+patient_id+'.npy', 'w') as outfile:
+		pred = np.save(outfile, centers)
 
 	print 'number of regions in target', len(target)
-	return len(target) # temporary
+	return len(target)
 
 
 def check_ira_v3():
@@ -106,26 +109,27 @@ def check_ira_v3():
 
 	print 'total nodules in run', total_nodules
 
-def check_ira_v4():
-	folder = 'storage/metadata/dsb3/model-predictions/ikorshun/s_luna_patch_v4_dice/'
-
+def check_ira_v4(folder_in, folder_out):
+	
 	total_nodules = 0
 
-	p_find = subprocess.Popen('find '+folder+' -name "pred_*.npy"', shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	p_find = subprocess.Popen('find '+folder_in+' -name "pred_*.npy"', shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 	lines = p_find.stdout.readlines()
 	total_patients = len(lines)
 	for idx, line in enumerate(lines):
 		patient_id = line.rstrip().split('/')[-1].strip('pred_').rstrip('.npy')
 		print 'patient', idx, '/', total_patients, 'patient_id', patient_id
-		n_nodules_ground_truth = check_nodules_found_v4(patient_id, folder)
+		n_nodules_ground_truth = check_nodules_found_v4(patient_id, folder_in, folder_out)
 		total_nodules+=n_nodules_ground_truth
 
 	print 'total nodules in run', total_nodules
 
 
+
 if __name__ == '__main__':
 	print 'check v4 segmentation'
-	check_ira_v4()
+	#check_ira_v4('storage/metadata/dsb3/model-predictions/ikorshun/s_luna_patch_v4_dice/', 'storage/metadata/dsb3/model-predictions/eavsteen/s_luna_patch_v4_dice/')
+	check_ira_v4('storage/metadata/dsb3/model-predictions/ikorshun/s2_luna_patch_v4_dice/','storage/metadata/dsb3/model-predictions/eavsteen/s2_luna_patch_v4_dice/')
 
 
 

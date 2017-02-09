@@ -100,8 +100,6 @@ def extract_nodules_best_gmix(segmentation_volume, max_n_components=40, plot=Fal
 
 	return best_gmix
 
-
-
 def extract_nodules_conv_filter(segmentation_volume, ct_scan, no_rois=5, dim=8, plot=False, dbg_target=None, nodules=None):
 	assert(segmentation_volume.shape==ct_scan.shape)
 
@@ -182,15 +180,18 @@ def extract_nodules_conv_filter(segmentation_volume, ct_scan, no_rois=5, dim=8, 
 	return rois
 
 def extract_nodules_blob_detection(segmentation_volume, ct_scan, dim=8, plot=False, dbg_target=None, nodules=None):
-	assert(segmentation_volume.shape==ct_scan.shape)
+	print segmentation_volume.shape
+	print ct_scan.shape
+	#assert(segmentation_volume.shape==ct_scan.shape)
 
-	results = blob_dog(segmentation_volume, min_sigma=1.2, max_sigma=35, threshold=0.1)
+	results = blob_dog(segmentation_volume, min_sigma=1, max_sigma=15, threshold=0.1)
 
 	#Extract a given number of regions
 	rois = []
 	if nodules is not None:
 		print nodules
 		nodule_found = np.zeros((len(nodules)))
+		nodule_found_2 = np.zeros((len(nodules)))
 	for i in range(len(results)):
 		center = np.round(results[i]).astype(int)
 		print 'region', i, center
@@ -201,13 +202,18 @@ def extract_nodules_blob_detection(segmentation_volume, ct_scan, dim=8, plot=Fal
 			print 'center in target?', dbg_target[center[0],center[1],center[2]]
 		if nodules is not None:
 			center_in_target = 0
+			center_in_nodule = 0
 			#is center in the neigborhoud of nodule?
 			for idx, nodule in enumerate(nodules):
 				if not nodule_found[idx]:
 					if (abs(center[0]-nodule[0])<dim) and (abs(center[1]-nodule[1])<dim) and (abs(center[2]-nodule[2])<dim):
 						center_in_target += 1
 						nodule_found[idx]=1
+					if nodule[3]**2/4 >= ((center[0]-nodule[0])**2 + (center[1]-nodule[1])**2 + (center[2]-nodule[2])**2):
+						center_in_nodule += 1
+						nodule_found_2[idx]=1
 			print 'center in target?', center_in_target
+			print 'center in nodule?', center_in_nodule
 
 		roi = ct_scan[selection]	
 		rois.append(roi)
@@ -233,8 +239,7 @@ def extract_nodules_blob_detection(segmentation_volume, ct_scan, dim=8, plot=Fal
 				ax3.add_patch(circ3)
 				fig.savefig('coos_'+str(i)+'.jpg')
 
-	return rois
-
+	return rois, results
 
 def compute_bic(kmeans,X):
     """
@@ -391,7 +396,7 @@ if __name__=="__main__":
 			print 'warning sample omitted because it does not fit in volume'
 
 	test_probs = 1.0*occurences/np.sum(occurences)
-	
+
 	extract_nodules_best_kmeans(test_probs)
 
 
