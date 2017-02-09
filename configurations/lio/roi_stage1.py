@@ -2,7 +2,7 @@ import numpy as np
 from itertools import product
 from functools import partial
 
-from configurations.jonas import valid, ira_config_2
+from configurations.jonas import valid
 from scripts.elias.blob import blob_dog
 
 from application.stage1 import Stage1DataLoader
@@ -23,7 +23,7 @@ norm_patch_shape = IMAGE_SIZE, IMAGE_SIZE, IMAGE_SIZE  # in mms
 replace_input_tags = {"luna:3d": tag+"3d"}
 
 preprocessors = [DicomToHU(tags=[tag+"3d"])]
-postpreprocessors = [ZMUV(tag+"3d", bias =  -648.59027, std = 679.21021)] #lol
+postpreprocessors = [ZMUV(tag+"3d", bias =  -648.59027, std = 679.21021)]
 
 data_loader= Stage1DataLoader(
     sets=[TRAINING, VALIDATION],
@@ -52,23 +52,27 @@ def patch_generator(sample, segmentation_shape):
     patch_count = np.ceil(norm_shape / stride).astype("int")
     print "patch_count", patch_count
     print "stride", stride
+    print spacing
 
     for x,y,z in product(range(patch_count[0]), range(patch_count[1]), range(patch_count[2])):
 
         offset = np.array([stride[0]*x, stride[1]*y, stride[2]*z], np.float)
-        print (x*patch_count[1]*patch_count[2] + y*patch_count[2] +z), "/", np.prod(patch_count)
+        print (x*patch_count[1]*patch_count[2] + y*patch_count[2] +z), "/", np.prod(patch_count), (x,y,z)
 
-        shift_center = affine_transform(translation=-input_shape / 2. - 0.5)
+        shift_center = affine_transform(translation=-(input_shape / 2. - 0.5))
         normscale = affine_transform(scale=norm_shape / input_shape)
-        offset_patch = affine_transform(translation=norm_shape/2.-0.5-offset+mm_patch_shape - segmentation_shape)
+        offset_patch = affine_transform(translation=norm_shape/2. - 0.5 - (offset-stride/2.0-0.5))# - (mm_patch_shape - segmentation_shape)*norm_shape/_patch_shape -segmentation_shape*norm_shape/_patch_shape/2.)
         patchscale = affine_transform(scale=_patch_shape / norm_shape)
         unshift_center = affine_transform(translation=output_shape / 2. - 0.5)
         matrix = shift_center.dot(normscale).dot(offset_patch).dot(patchscale).dot(unshift_center)
         output = apply_affine_transform(data, matrix, output_shape=output_shape.astype(np.int))
 
+
         patch = {}
         patch[tag+"3d"] = output
         patch["offset"] = offset
+        s = {INPUT: patch}
+        for prep in postpreprocessors: prep.process(s)
         yield patch
 
 

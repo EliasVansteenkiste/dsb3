@@ -36,10 +36,9 @@ class DicomToHU(BasePreprocessor):
         slope = first_slice["RescaleSlope"]
         intercept = first_slice["RescaleIntercept"]
         # Convert to Hounsfield units (HU)
-        if slope != 1:
-            data = slope * data.astype(np.float64)
-            data = data.astype(np.int16)
-        data += np.int16(intercept)
+        data = data.astype(np.float32)
+        if slope != 1: data = np.float32(slope) * data
+        data += np.float32(intercept)
 
         image_positions.sort()
         spacing = first_slice["PixelSpacing"][::-1] + [image_positions[1] - image_positions[0]]

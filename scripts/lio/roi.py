@@ -111,6 +111,7 @@ def extract_rois(expid):
             data = config.data_loader.load_sample(sample_id,
                                                   input_layers.keys()+config.extra_tags,{})
 
+
             patch_generator = config.patch_generator(data, output_layers["predicted_segmentation"].output_shape[1:])
             t0 = time.time()
             for patch_idx, patch in enumerate(patch_generator):
@@ -127,17 +128,21 @@ def extract_rois(expid):
 
                 pred = predictions[0][0]
 
-                print data["input"][xs_shared.keys()[0]].max(),  data["input"][xs_shared.keys()[0]].min()
+                # print pred
 
-                utils.plt.cross_sections([data["input"][xs_shared.keys()[0]],
+                dat = np.clip((data["input"][xs_shared.keys()[0]]+1000.)/1400.,0,1)
+                utils.plt.cross_sections([dat,
+                                          patch[xs_shared.keys()[0]],
                                           pred,
                                           ],
-                                         save=paths.ANALYSIS_PATH+"lio/roi%i.jpg"%patch_idx)
+                                         save=paths.ANALYSIS_PATH+"lio/roi%s.jpg"%str(patch_idx).zfill(3))
 
                 t0 = time.time()
                 rois = config.extract_nodules(pred, patch)
 
-                if rois is not None:
+                if rois is None:
+                    print " extract_nodules", 0, time.time() - t0
+                else:
                     print " extract_nodules", len(rois), time.time() - t0
                     if sample_id not in all_predictions:
                         all_predictions[sample_id] = rois
