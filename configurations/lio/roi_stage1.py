@@ -12,13 +12,13 @@ from utils.transformation_3d import affine_transform, apply_affine_transform
 from interfaces.preprocess import ZMUV
 
 
-plot = True
+plot = False
 
 model = valid
 tag = "stage1:"
 extra_tags=[]
 
-IMAGE_SIZE = 128
+IMAGE_SIZE = 160
 patch_shape = IMAGE_SIZE, IMAGE_SIZE, IMAGE_SIZE  # in pixels
 norm_patch_shape = IMAGE_SIZE, IMAGE_SIZE, IMAGE_SIZE  # in mms
 
@@ -52,6 +52,7 @@ def patch_generator(sample, segmentation_shape):
     _patch_shape = norm_shape * output_shape / mm_patch_shape
 
     patch_count = np.ceil(norm_shape / stride).astype("int")
+    print "norm_shape", norm_shape
     print "patch_count", patch_count
     print "stride", stride
     print spacing
@@ -85,8 +86,8 @@ def extract_nodules(pred, patch):
         print "blob_dog failed"
         return None
     if rois.shape[0] > 0:
-        rois = rois[:, :3] #ignore diameter
-        rois += patch["offset"][None,:]
+        rois = rois[:, :3] #ignore diameter, elias says it's bad
+        rois += patch["offset"][None,:] # the output scale is the same as mm (else, need to convert ROI coordinates)
     else: return None
     #local to global roi
     # rois += patch["offset"]

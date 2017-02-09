@@ -18,6 +18,7 @@ import utils.plt
 from utils import LOGS_PATH, MODEL_PATH, MODEL_PREDICTIONS_PATH, paths
 from utils.log import print_to_file
 from utils.configuration import set_configuration, config, get_configuration_name
+from interfaces.data_loader import TRAIN, VALIDATION, TEST
 
 
 def extract_rois(expid):
@@ -100,20 +101,27 @@ def extract_rois(expid):
     start_time, prev_time = None, None
     all_predictions = dict()
 
-    for set, set_indices in config.data_loader.indices.iteritems():
-        for sample_id in set_indices:
+    for set in [TRAIN, VALIDATION, TEST]:
+        set_indices = config.data_loader.indices[set]
+        for _i, sample_id in enumerate(set_indices):
 
             if start_time is None:
                 start_time = time.time()
                 prev_time = start_time
-            print "sample_id", sample_id
+            print "sample_id", sample_id, _i, "/", len(set_indices), "in", set
 
+            filenametag = input_layers.keys()[0].split(":")[0] + ":filename"
             data = config.data_loader.load_sample(sample_id,
-                                                  input_layers.keys()+config.extra_tags,{})
+                                                  input_layers.keys()+config.extra_tags+[filenametag],{})
 
+
+            print data["input"][filenametag]
+            filename = data["input"][filenametag].split(os.path.sep)[-2]
+            print filename
             seg_shape = output_layers["predicted_segmentation"].output_shape[1:]
             patch_generator = config.patch_generator(data, seg_shape)
             t0 = time.time()
+            roi_vol = None
             for patch_idx, patch in enumerate(patch_generator):
                 for key in xs_shared:
                     xs_shared[key].set_value(patch[key][None,:])
@@ -128,60 +136,59 @@ def extract_rois(expid):
 
                 pred = predictions[0][0]
 
-
-
                 t0 = time.time()
                 rois = config.extract_nodules(pred, patch)
-
-                # print pred
-                if config.plot:
-                    dir_path = paths.ANALYSIS_PATH + expid
-                    if not os.path.exists(dir_path): os.mkdir(dir_path)
-                    k = xs_shared.keys()[0]
-                    # dat = np.clip((data["input"][k]+1000.)/1400.,0,1)
-
-                    roi_vol = np.zeros_like(pred)
-                    x, y, z = np.ogrid[:roi_vol.shape[0], :roi_vol.shape[1], :roi_vol.shape[2]]
-                    for roi in rois:
-                        roi -= patch["offset"]
-                        distance2 = ((x - roi[0]) ** 2 + (y - roi[1]) ** 2 + (z - roi[2]) ** 2)
-                        roi_vol[(distance2 <= 5)] = 1
-
-                    utils.plt.cross_sections([patch[k],
-                                              pred,
-                                              roi_vol],
-                                             save=dir_path + "/roi%s.jpg" % (str(patch_idx).zfill(3)))
 
                 if rois is None:
                     print " extract_nodules", 0, time.time() - t0
                 else:
                     print " extract_nodules", len(rois), time.time() - t0
-                    if sample_id not in all_predictions:
-                        all_predictions[sample_id] = rois
+                    if filename not in all_predictions:
+                        all_predictions[filename] = rois
                     else:
-                        all_predictions[sample_id] = np.vstack((all_predictions[sample_id], rois))
+                        all_predictions[filename] = np.vstack((all_predictions[filename], rois))
+
+                if config.plot:
+                    dir_path = paths.ANALYSIS_PATH + expid
+                    if not os.path.exists(dir_path): os.mkdir(dir_path)
+                    k = xs_shared.keys()[0]
+                    dat = np.clip((data["input"][k]+1000.)/1400.,0,1)
+                    if roi_vol is None:
+                        roi_vol = np.zeros((int(dat.shape[0]*0.78125), int(dat.shape[1]*0.78125), dat.shape[2]*2))
+                    if rois is not None:
+                        x, y, z = np.ogrid[:roi_vol.shape[0], :roi_vol.shape[1], :roi_vol.shape[2]]
+                        for roi in rois:
+                            # roi -= patch["offset"]
+                            distance2 = ((x - roi[0]) ** 2 + (y - roi[1]) ** 2 + (z - roi[2]) ** 2)
+                            roi_vol[(distance2 <= 5)] = 1
+
+                    utils.plt.cross_sections([patch[k],
+                                              pred,
+                                              dat,
+                                              roi_vol],
+                                             save=dir_path + "/roi%s.jpg" % (str(patch_idx).zfill(3)))
 
                 t0 = time.time()
 
-            print "patient", sample_id, all_predictions[sample_id].shape[0], "nodules"
+            print "patient", sample_id, all_predictions[filename].shape[0], "nodules"
             now = time.time()
             time_since_start = now - start_time
             time_since_prev = now - prev_time
             prev_time = now
             print "  %s since start (+%.2f s)" % (utils.hms(time_since_start), time_since_prev)
 
-    with open(prediction_path, 'w') as f:
-        pickle.dump({
-            'metadata_path': metadata_path,
-            'prediction_path': prediction_path,
-            'configuration_file': config.__name__,
-            'git_revision_hash': utils.get_git_revision_hash(),
-            'experiment_id': expid,
-            'predictions': all_predictions,
-        }, f, pickle.HIGHEST_PROTOCOL)
+            with open(prediction_path, 'w') as f:
+                pickle.dump({
+                    'metadata_path': metadata_path,
+                    'prediction_path': prediction_path,
+                    'configuration_file': config.__name__,
+                    'git_revision_hash': utils.get_git_revision_hash(),
+                    'experiment_id': expid,
+                    'predictions': all_predictions,
+                }, f, pickle.HIGHEST_PROTOCOL)
 
-    print "  saved to %s" % prediction_path
-    print
+            print "  saved to %s" % prediction_path
+            print
 
     return
 
