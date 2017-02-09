@@ -127,8 +127,6 @@ def extract_rois(expid):
 
                 pred = predictions[0][0]
 
-                print xs_shared.keys()
-                print data["input"][xs_shared.keys()[0]].shape
                 utils.plt.cross_sections([data["input"][xs_shared.keys()[0]]],
                                          save=paths.ANALYSIS_PATH+"lio/roi.jpg")
 
