@@ -4,13 +4,8 @@ import numpy as np
 import theano.tensor as T
 import os
 import sys
-from itertools import izip
 import cPickle as pickle
 import string
-import time
-import datetime
-import math
-import itertools
 import lasagne
 import time
 
@@ -19,10 +14,7 @@ from theano_utils import theano_printer
 import utils
 from utils import LOGS_PATH, MODEL_PATH, MODEL_PREDICTIONS_PATH
 from utils.log import print_to_file
-from utils import buffering
 from utils.configuration import set_configuration, config, get_configuration_name
-from interfaces.data_loader import VALIDATION, VALID_SAMPLES, TRAINING, IDS
-from interfaces.objectives import MAXIMIZE
 
 
 def extract_rois(expid):
@@ -102,9 +94,6 @@ def extract_rois(expid):
     metadata = np.load(metadata_path)
     lasagne.layers.set_all_param_values(top_layer, metadata['param_values'])
 
-    chunks_test_idcs = itertools.count(0)
-    num_chunks_test = math.ceil(1.0 * config.data_loader.epochs * config.data_loader.number_of_samples / config.batch_size)
-
     start_time, prev_time = None, None
     all_predictions = dict()
 
@@ -173,9 +162,6 @@ def extract_rois(expid):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("config", help='configuration to run',)
-    # required = parser.add_argument_group('required arguments')
-    # required.add_argument('-c', '--config',
-    #                       required=True)
     args = parser.parse_args()
     set_configuration(args.config)
 
