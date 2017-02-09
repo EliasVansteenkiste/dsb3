@@ -131,19 +131,19 @@ def build_objectives(interface_layers):
     )
 
     obj_dice = SoerensonDiceCoefficientObjective(
-        smooth=1e-5,
+        smooth=1.,
         input_layers=interface_layers["outputs"],
         target_name="luna",
     )
 
     obj_precision = PrecisionObjective(
-        smooth=1e-5,
+        smooth=1.,
         input_layers=interface_layers["outputs"],
         target_name="luna",
     )
 
     obj_recall = RecallObjective(
-        smooth=1e-5,
+        smooth=1.,
         input_layers=interface_layers["outputs"],
         target_name="luna",
     )
