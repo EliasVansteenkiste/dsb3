@@ -68,17 +68,17 @@ def check_nodules_found_v4(patient_id, folder_in, folder_out, no_rois=10, plot=F
 
 		fig = plt.figure()
 
-		ax1 = fig.add_subplot(3,1,1)
+		ax1 = fig.add_subplot(3,1,1, adjustable='box', aspect=1.0)
 		ax1.imshow(target[0,0,center[0],:,:].transpose())
 		circ1 = plt.Circle((center[1],center[2]), 24, color='y', fill=False)
 		ax1.add_patch(circ1)
 
-		ax2 = fig.add_subplot(3,1,2)
+		ax2 = fig.add_subplot(3,1,2, adjustable='box', aspect=1.0)
 		ax2.imshow(target[0,0,:,center[1],:])
 		circ2 = plt.Circle((center[0],center[2]), 24, color='y', fill=False)
 		ax2.add_patch(circ2)
 
-		ax3 = fig.add_subplot(3,1,3)
+		ax3 = fig.add_subplot(3,1,3, adjustable='box', aspect=1.0)
 		ax3.imshow(target[0,0,:,:,center[2]].transpose())
 		circ3 = plt.Circle((center[0],center[1]), 24, color='y', fill=False)
 		ax3.add_patch(circ3)
@@ -86,7 +86,7 @@ def check_nodules_found_v4(patient_id, folder_in, folder_out, no_rois=10, plot=F
 
 	
 	#extract_nodules_conv_filter(pred, original, no_rois=no_rois, dim=32, plot=False, dbg_target=None, nodules=target)
-	rois, centers = extract_nodules_blob_detection(pred, original, dim=32, plot=False, dbg_target=None, nodules=target)
+	rois, centers = extract_nodules_blob_detection(pred, original, patient_id, dim=32, plot=True, dbg_target=None, nodules=target)
 	
 	with open(folder_out+'prednodules_'+patient_id+'.npy', 'w') as outfile:
 		pred = np.save(outfile, centers)
