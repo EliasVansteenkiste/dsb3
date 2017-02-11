@@ -2,7 +2,7 @@ import numpy as np
 from itertools import product
 from functools import partial
 
-from configurations.jonas import valid
+from configurations.jonas import valid, ira_config_2
 from scripts.elias.blob import blob_dog
 from application.luna import LunaDataLoader
 from application.stage1 import Stage1DataLoader
@@ -12,14 +12,22 @@ from utils.transformation_3d import affine_transform, apply_affine_transform
 from interfaces.preprocess import ZMUV
 
 
+<<<<<<< HEAD
 plot = False
 multiprocess = True
+=======
+plot = True
+>>>>>>> 30a53442643d68af8b91f38431a01f0dab88c8be
 
 model = valid
 tag = "luna:"
 extra_tags=[tag+"pixelspacing"]
 
+<<<<<<< HEAD
 IMAGE_SIZE = 160
+=======
+IMAGE_SIZE = 180
+>>>>>>> 30a53442643d68af8b91f38431a01f0dab88c8be
 patch_shape = IMAGE_SIZE, IMAGE_SIZE, IMAGE_SIZE  # in pixels
 norm_patch_shape = IMAGE_SIZE, IMAGE_SIZE, IMAGE_SIZE  # in mms
 
@@ -61,7 +69,10 @@ def patch_generator(sample, segmentation_shape):
     print "patch_count", patch_count
     print "stride", stride
     print spacing
+<<<<<<< HEAD
     print norm_shape
+=======
+>>>>>>> 30a53442643d68af8b91f38431a01f0dab88c8be
 
     for x,y,z in product(range(patch_count[0]), range(patch_count[1]), range(patch_count[2])):
 
