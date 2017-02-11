@@ -14,11 +14,12 @@ class LunaDataGenerator(object):
     def __init__(self, data_path, batch_size, transform_params, data_prep_fun, rng,
                  full_batch, random, infinite, patient_ids=None, **kwargs):
 
+
         if patient_ids:
-            self.patient_paths = [data_path + '/' + p + '.mhd' for p in patient_ids]
+            self.patient_paths = [data_path + '/' + p + '.pkl' for p in patient_ids]
         else:
             patient_paths = utils_lung.get_patient_data_paths(data_path)
-            self.patient_paths = [p for p in patient_paths if '.mhd' in p]
+            self.patient_paths = [p for p in patient_paths if '.pkl' in p]
 
         self.id2annotations = utils_lung.read_luna_labels(pathfinder.LUNA_LABELS_PATH)
         self.nsamples = len(self.patient_paths)
@@ -33,6 +34,7 @@ class LunaDataGenerator(object):
         self.transform_params = transform_params
 
     def generate(self):
+        print 'generate bitch'
         while True:
             rand_idxs = np.arange(self.nsamples)
             if self.random:
@@ -48,10 +50,12 @@ class LunaDataGenerator(object):
 
                 for i, idx in enumerate(idxs_batch):
                     patient_path = self.patient_paths[idx]
-                    id = utils_lung.luna_extract_pid(patient_path)
-                    patients_ids.append(id)
+                    id = utils_lung.luna_extract_pid(patient_path,'.pkl')
 
-                    img, origin, pixel_spacing = utils_lung.read_mhd(patient_path)
+                    patients_ids.append(id)
+                    print 'patiend id', id 
+                    img, origin, pixel_spacing = utils_lung.read_pkl(patient_path)
+                    print 'reading done'
                     x_batch[i, 0, :, :, :], y_batch[i, 0, :, :, :], annotations_i = self.data_prep_fun(data=img,
                                                                                                        pixel_spacing=pixel_spacing,
                                                                                                        luna_annotations=
@@ -74,9 +78,9 @@ class PositiveLunaDataGenerator(LunaDataGenerator):
                  full_batch, random, infinite, patient_ids=None, **kwargs):
         super(PositiveLunaDataGenerator, self).__init__(data_path, batch_size, transform_params, data_prep_fun, rng,
                                                         full_batch, random, infinite, patient_ids, **kwargs)
-        patient_ids_all = [utils_lung.luna_extract_pid(p) for p in self.patient_paths]
+        patient_ids_all = [utils_lung.luna_extract_pid(p,'.pkl') for p in self.patient_paths]
         patient_ids_pos = [pid for pid in patient_ids_all if pid in self.id2annotations.keys()]
-        self.patient_paths = [data_path + '/' + p + '.mhd' for p in patient_ids_pos]
+        self.patient_paths = [data_path + '/' + p + '.pkl' for p in patient_ids_pos]
         self.nsamples = len(self.patient_paths)
 
 
@@ -86,9 +90,9 @@ class PatchPositiveLunaDataGenerator(LunaDataGenerator):
         super(PatchPositiveLunaDataGenerator, self).__init__(data_path, batch_size, transform_params, data_prep_fun,
                                                              rng,
                                                              full_batch, random, infinite, patient_ids, **kwargs)
-        patient_ids_all = [utils_lung.luna_extract_pid(p) for p in self.patient_paths]
+        patient_ids_all = [utils_lung.luna_extract_pid(p,'.pkl') for p in self.patient_paths]
         patient_ids_pos = [pid for pid in patient_ids_all if pid in self.id2annotations.keys()]
-        self.patient_paths = [data_path + '/' + p + '.mhd' for p in patient_ids_pos]
+        self.patient_paths = [data_path + '/' + p + '.pkl' for p in patient_ids_pos]
         self.nsamples = len(self.patient_paths)
 
     def generate(self):
@@ -106,10 +110,10 @@ class PatchPositiveLunaDataGenerator(LunaDataGenerator):
 
                 for i, idx in enumerate(idxs_batch):
                     patient_path = self.patient_paths[idx]
-                    id = utils_lung.luna_extract_pid(patient_path)
+                    id = utils_lung.luna_extract_pid(patient_path,'.pkl')
                     patients_ids.append(id)
 
-                    img, origin, pixel_spacing = utils_lung.read_mhd(patient_path)
+                    img, origin, pixel_spacing = utils_lung.read_pkl(patient_path)
 
                     patient_annotations = self.id2annotations[id]
                     patch_center = patient_annotations[self.rng.randint(len(patient_annotations))]
@@ -134,9 +138,10 @@ class Luna_DG_Elias(LunaDataGenerator):
         super(Luna_DG_Elias, self).__init__(data_path, batch_size, transform_params, data_prep_fun,
                                                              rng,
                                                              full_batch, random, infinite, patient_ids, **kwargs)
-        patient_ids_all = [utils_lung.luna_extract_pid(p) for p in self.patient_paths]
+        patient_ids_all = [utils_lung.luna_extract_pid(p,'.pkl') for p in self.patient_paths]
+
         patient_ids_pos = [pid for pid in patient_ids_all if pid in self.id2annotations.keys()]
-        self.patient_paths = [data_path + '/' + p + '.mhd' for p in patient_ids_pos]
+        self.patient_paths = [data_path + '/' + p + '.pkl' for p in patient_ids_pos]
         self.nsamples = len(self.patient_paths)
         self.id2_no_nodules, self.id2_nodules  = utils_lung.read_luna_candidates('candidates_V2.csv')
 
@@ -155,10 +160,10 @@ class Luna_DG_Elias(LunaDataGenerator):
 
                 for i, idx in enumerate(idxs_batch):
                     patient_path = self.patient_paths[idx]
-                    id = utils_lung.luna_extract_pid(patient_path)
+                    id = utils_lung.luna_extract_pid(patient_path,'.pkl')
                     patients_ids.append(id)
 
-                    img, origin, pixel_spacing = utils_lung.read_mhd(patient_path)
+                    img, origin, pixel_spacing = utils_lung.read_pkl(patient_path)
 
                     patient_nodules = self.id2_nodules[id]
                     patient_no_nodules = self.id2_no_nodules[id]

@@ -4,20 +4,37 @@ import csv
 import dicom
 import os
 import re
-import SimpleITK as sitk
 import numpy as np
 import csv
 import os
 from PIL import Image
 from collections import defaultdict
-
+import time
+import pickle
 
 def read_mhd(path):
-    itk_data = sitk.ReadImage(path.encode('utf-8'))
-    pixel_data = sitk.GetArrayFromImage(itk_data)
-    origin = np.array(list(reversed(itk_data.GetOrigin())))
-    spacing = np.array(list(reversed(itk_data.GetSpacing())))
+    lock_file = '/home/eavsteen/._SimpleITK_lock'
+    while os.path.exists(lock_file):
+        time.sleep(0.05)
+    with open(lock_file, 'w') as outfile:
+        outfile.write(str(time.time()))
+        import SimpleITK as sitk 
+        itk_data = sitk.ReadImage(path.encode('utf-8'))
+        pixel_data = sitk.GetArrayFromImage(itk_data)
+        origin = np.array(list(reversed(itk_data.GetOrigin())))
+        spacing = np.array(list(reversed(itk_data.GetSpacing())))
+    try:
+        os.remove(lock_file)
+    except OSError:
+        pass
     return pixel_data, origin, spacing
+
+
+
+def read_pkl(path):
+    lock_file = '/home/eavsteen/._SimpleITK_lock'
+    d = pickle.load(open(path, "rb" ))
+    return d['pixel_data'], d['origin'], d['spacing']
 
 
 def world2voxel(world_coord, origin, spacing):
@@ -55,7 +72,7 @@ def extract_pid(patient_data_path):
     return patient_data_path.split('/')[-1]
 
 
-def luna_extract_pid(patient_data_path, replace_str='.mhd'):
+def luna_extract_pid(patient_data_path, replace_str):
     return os.path.basename(patient_data_path).replace(replace_str, '')
 
 

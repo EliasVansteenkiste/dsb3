@@ -14,6 +14,8 @@ import buffering
 from configuration import config, set_configuration
 import pathfinder
 
+
+
 theano.config.warn_float64 = 'raise'
 
 if len(sys.argv) < 2:
@@ -91,7 +93,7 @@ iter_get_inputs = theano.function([idx], nn.layers.get_output(model.l_in), given
 
 if config().restart_from_save:
     print 'Load model parameters for resuming'
-    resume_metadata = utils.load_pkl(config().restart_from_save)
+    resume_metadata = utils.load_pkl(config().restart_from_file)
     nn.layers.set_all_param_values(model.l_out, resume_metadata['param_values'],trainable=True)
     start_chunk_idx = resume_metadata['chunks_since_start'] + 1
     chunk_idxs = range(start_chunk_idx, config().max_nchunks)
@@ -122,6 +124,7 @@ chunk_idx = 0
 start_time = time.time()
 prev_time = start_time
 tmp_losses_train = []
+
 
 # use buffering.buffered_gen_threaded()
 for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buffering.buffered_gen_threaded(
@@ -158,7 +161,7 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
             x_shared.set_value(x_chunk_valid)
             y_shared.set_value(y_chunk_valid)
             l_valid = iter_validate()
-            print l_valid, x_chunk_valid.shape
+            print l_valid, ids_batch
             tmp_losses_valid.append(l_valid)
 
         # calculate validation loss across validation set
