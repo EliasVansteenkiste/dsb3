@@ -11,7 +11,8 @@ import theano.tensor as T
 import utils
 import nn_lung
 
-restart_from_save = None
+restart_from_save = True
+restart_from_file = '/data/metadata/dsb3//models/eavsteen/luna_direct_v4-20170210-000843.pkl'
 rng = np.random.RandomState(33)
 
 # transformations
@@ -107,68 +108,12 @@ dense = partial(lasagne.layers.DenseLayer,
     b=lasagne.init.Constant(0.0),
     nonlinearity=lasagne.nonlinearities.rectify)
 
-# def build_model():
-#     l_in = nn.layers.InputLayer((None,) + p_transform['patch_size'])
-#     l_target = nn.layers.InputLayer((None, ))
-
-#     print 'l_target.output_shape', l_target.output_shape
-
-#     print 'l_in.output_shape', l_in.output_shape
-
-#     # n = 16
-#     # # l = conv3d(l, n, filter_size=7, stride=2))
-#     # # l = max_pool3d(l)
-#     # l = conv3d(l_in, n))
-#     # l = conv3d(l, n))
-#     # l = max_pool3d(l)
-
-#     # n *= 2
-#     # l = conv3d(l, n))
-#     # l = conv3d(l, n))
-#     # l = max_pool3d(l)
-
-#     # n *= 2
-#     # l = conv3d(l, n))
-#     # l = conv3d(l, n))
-#     # l = max_pool3d(l)
-
-#     # n *= 2
-#     # l = conv3d(l, n))
-#     # l = conv3d(l, n))
-#     # l = max_pool3d(l)
-
-#     # n *= 2
-#     # l = conv3d(l, n))
-#     # l = conv3d(l, n))
-#     # l = max_pool3d(l)
-
-#     # n *= 2
-#     # l = dense(drop(l), n))
-#     # l = dense(drop(l), n))
-
-#     # l_out = lasagne.layers.DenseLayer(l_in,
-#     #                              num_units=2,
-#     #                              W=lasagne.init.Constant(0.0),
-#     #                              b=None,
-#     #                              nonlinearity=lasagne.nonlinearities.softmax)
-
-#     l_out = lasagne.layers.DenseLayer(l_in,
-#                                  num_units=1,
-#                                  W=lasagne.init.Constant(0.5),
-#                                  b=None,
-#                                  nonlinearity=lasagne.nonlinearities.sigmoid)
-
-#     print 'l_out.output_shape', l_out.output_shape
-
-#     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
-
 
 def build_model():
     l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
     l_target = nn.layers.InputLayer((None, 1))
 
     net = {}
-    base_n_filters = 64
 
     n = 16
     l = conv3d(l_in, n)
