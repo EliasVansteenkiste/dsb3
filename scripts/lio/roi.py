@@ -18,6 +18,7 @@ import utils.plt
 from utils import LOGS_PATH, MODEL_PATH, MODEL_PREDICTIONS_PATH, paths
 from utils.log import print_to_file
 from utils.configuration import set_configuration, config, get_configuration_name
+from interfaces.data_loader import TRAIN, VALIDATION, TEST
 
 
 def extract_rois(expid):
@@ -98,21 +99,32 @@ def extract_rois(expid):
     lasagne.layers.set_all_param_values(top_layer, metadata['param_values'])
 
     start_time, prev_time = None, None
-    all_predictions = dict()
 
-    for set, set_indices in config.data_loader.indices.iteritems():
-        for sample_id in set_indices:
+    import multiprocessing as mp
+    # job_pool = mp.Pool(3)
+    jobs = []
+
+    for set in [VALIDATION, TRAIN, TEST]:
+        set_indices = config.data_loader.indices[set]
+        for _i, sample_id in enumerate(set_indices):
 
             if start_time is None:
                 start_time = time.time()
                 prev_time = start_time
-            print "sample_id", sample_id
+            print "sample_id", sample_id, _i+1, "/", len(set_indices), "in", set
 
+            filenametag = input_layers.keys()[0].split(":")[0] + ":patient_id"
             data = config.data_loader.load_sample(sample_id,
-                                                  input_layers.keys()+config.extra_tags,{})
+                                                  input_layers.keys()+config.extra_tags+[filenametag],{})
 
-            patch_generator = config.patch_generator(data, output_layers["predicted_segmentation"].output_shape[1:])
+            patient_id = data["input"][filenametag]
+            print patient_id
+            seg_shape = output_layers["predicted_segmentation"].output_shape[1:]
+            patch_generator = config.patch_generator(data, seg_shape)
             t0 = time.time()
+            roi_vol = None
+            preds = []
+            patches = []
             for patch_idx, patch in enumerate(patch_generator):
                 for key in xs_shared:
                     xs_shared[key].set_value(patch[key][None,:])
@@ -125,48 +137,68 @@ def extract_rois(expid):
 
                 predictions = th_result[:len(network_outputs)]
 
-                pred = predictions[0][0]
-
-                print data["input"][xs_shared.keys()[0]].max(),  data["input"][xs_shared.keys()[0]].min()
-
-                utils.plt.cross_sections([data["input"][xs_shared.keys()[0]],
-                                          pred,
-                                          ],
-                                         save=paths.ANALYSIS_PATH+"lio/roi%i.jpg"%patch_idx)
-
-                t0 = time.time()
-                rois = config.extract_nodules(pred, patch)
-
-                if rois is not None:
-                    print " extract_nodules", len(rois), time.time() - t0
-                    if sample_id not in all_predictions:
-                        all_predictions[sample_id] = rois
-                    else:
-                        all_predictions[sample_id] = np.vstack((all_predictions[sample_id], rois))
-
+                preds.append(predictions[0][0])
+                patches.append(patch[xs_shared.keys()[0]])
                 t0 = time.time()
 
-            print "patient", sample_id, all_predictions[sample_id].shape[0], "nodules"
+            pred = config.glue_patches(preds)
+
+            for i, patch in enumerate(patches):
+                patches[i] = patch[10:-10, 10:-10, 10:-10]
+            dat = config.glue_patches(patches)
+
+            if not config.plot and config.multiprocess:
+                jobs = [job for job in jobs if job.is_alive]
+                if len(jobs) >= 3:
+                    print "waiting", len(jobs)
+                    jobs[0].join()
+                    del jobs[0]
+                jobs.append(mp.Process(target=extract_nodules, args=((pred, patient_id, expid),) ) )
+                jobs[-1].daemon=True
+                jobs[-1].start()
+            else:
+                rois = extract_nodules((pred, patient_id, expid))
+                print "patient", patient_id, len(rois), "nodules"
+
             now = time.time()
             time_since_start = now - start_time
             time_since_prev = now - prev_time
             prev_time = now
             print "  %s since start (+%.2f s)" % (utils.hms(time_since_start), time_since_prev)
 
-    with open(prediction_path, 'w') as f:
-        pickle.dump({
-            'metadata_path': metadata_path,
-            'prediction_path': prediction_path,
-            'configuration_file': config.__name__,
-            'git_revision_hash': utils.get_git_revision_hash(),
-            'experiment_id': expid,
-            'predictions': all_predictions,
-        }, f, pickle.HIGHEST_PROTOCOL)
+            if config.plot:
+                    dir_path = paths.ANALYSIS_PATH + expid
+                    if not os.path.exists(dir_path): os.mkdir(dir_path)
+                    # k = xs_shared.keys()[0]
+                    # dat = np.clip((data["input"][k]+1000.)/1400.,0,1)
+                    if roi_vol is None:
+                        roi_vol = np.zeros_like(dat)
+                    if rois is not None:
+                        x, y, z = np.ogrid[:roi_vol.shape[0], :roi_vol.shape[1], :roi_vol.shape[2]]
+                        for roi in rois:
+                            distance2 = ((x - roi[0]) ** 2 + (y - roi[1]) ** 2 + (z - roi[2]) ** 2)
+                            roi_vol[(distance2 <= 5)] = 1
 
-    print "  saved to %s" % prediction_path
-    print
+                    utils.plt.cross_sections([dat,pred,roi_vol], save=dir_path + "/roi%s.jpg" %patient_id, normalize=False)
 
     return
+
+
+def extract_nodules((pred, patient_id, expid)):
+    t0 = time.time()
+
+    rois = config.extract_nodules(pred)
+
+    if rois is None:
+        print " extract_nodules", 0, time.time() - t0
+    else:
+        print " extract_nodules", len(rois), time.time() - t0
+        dir_path = MODEL_PREDICTIONS_PATH + expid
+        if not os.path.exists(dir_path): os.mkdir(dir_path)
+        with open(dir_path+"/%s.pkl"%patient_id, 'w') as f:
+            pickle.dump(rois, f, pickle.HIGHEST_PROTOCOL)
+
+    return rois
 
 
 if __name__ == "__main__":

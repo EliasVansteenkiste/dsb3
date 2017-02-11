@@ -61,7 +61,7 @@ def augment_3d(volume, pixel_spacing, output_shape, norm_patch_shape, augment_p,
     patch_shape = norm_shape * output_shape / norm_patch_shape
     # else, use this: patch_shape = norm_shape * np.min(output_shape / norm_patch_shape)
 
-    shift_center = affine_transform(translation=-input_shape / 2. - 0.5)
+    shift_center = affine_transform(translation=- (input_shape / 2. - 0.5))
     normscale = affine_transform(scale=norm_shape / input_shape)
     augments = affine_transform(**augment_p)
     patchscale = affine_transform(scale=patch_shape / norm_shape)

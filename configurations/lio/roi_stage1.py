@@ -4,7 +4,7 @@ from functools import partial
 
 from configurations.jonas import valid
 from scripts.elias.blob import blob_dog
-from application.luna import LunaDataLoader
+
 from application.stage1 import Stage1DataLoader
 from interfaces.data_loader import VALIDATION, TRAINING, TEST, TRAIN, INPUT
 from application.preprocessors.dicom_to_HU import DicomToHU
@@ -13,11 +13,10 @@ from interfaces.preprocess import ZMUV
 
 
 plot = False
-multiprocess = True
 
 model = valid
-tag = "luna:"
-extra_tags=[tag+"pixelspacing"]
+tag = "stage1:"
+extra_tags=[]
 
 IMAGE_SIZE = 160
 patch_shape = IMAGE_SIZE, IMAGE_SIZE, IMAGE_SIZE  # in pixels
@@ -25,10 +24,10 @@ norm_patch_shape = IMAGE_SIZE, IMAGE_SIZE, IMAGE_SIZE  # in mms
 
 replace_input_tags = {"luna:3d": tag+"3d"}
 
-preprocessors = []
+preprocessors = [DicomToHU(tags=[tag+"3d"])]
 postpreprocessors = [ZMUV(tag+"3d", bias =  -648.59027, std = 679.21021)]
 
-data_loader= LunaDataLoader(
+data_loader= Stage1DataLoader(
     sets=[TRAINING, VALIDATION],
     preprocessors=preprocessors,
     epochs=1,
@@ -36,13 +35,8 @@ data_loader= LunaDataLoader(
     crash_on_exception=True)
 
 batch_size = 1
-stride = None
-patch_count = None
-norm_shape = None
 
 def patch_generator(sample, segmentation_shape):
-    global patch_count, stride, norm_shape
-
     for prep in preprocessors: prep.process(sample)
 
     data = sample[INPUT][tag+"3d"]
@@ -58,10 +52,10 @@ def patch_generator(sample, segmentation_shape):
     _patch_shape = norm_shape * output_shape / mm_patch_shape
 
     patch_count = np.ceil(norm_shape / stride).astype("int")
+    print "norm_shape", norm_shape
     print "patch_count", patch_count
     print "stride", stride
     print spacing
-    print norm_shape
 
     for x,y,z in product(range(patch_count[0]), range(patch_count[1]), range(patch_count[2])):
 
@@ -85,33 +79,15 @@ def patch_generator(sample, segmentation_shape):
         yield patch
 
 
-def glue_patches(p):
-    global patch_count, stride, norm_shape
-
-    preds = []
-    for x in range(patch_count[0]):
-        preds_y = []
-        for y in range(patch_count[1]):
-            ofs = y * patch_count[2] + x * patch_count[2] * patch_count[1]
-            preds_z = np.concatenate(p[ofs:ofs + patch_count[2]], axis=2)
-            preds_y.append(preds_z)
-        preds_y = np.concatenate(preds_y, axis=1)
-        preds.append(preds_y)
-
-    preds = np.concatenate(preds, axis=0)
-    preds = preds[:int(round(norm_shape[0])), :int(round(norm_shape[1])), :int(round(norm_shape[2]))]
-    return preds
-
-
-def extract_nodules(pred):
+def extract_nodules(pred, patch):
     try:
-        rois = blob_dog(pred, min_sigma=1, max_sigma=15, threshold=0.1)
+        rois = blob_dog(pred, min_sigma=1.2, max_sigma=35, threshold=0.1)
     except:
         print "blob_dog failed"
         return None
     if rois.shape[0] > 0:
-        rois = rois[:, :3] #ignore diameter
-        # rois += patch["offset"][None,:]
+        rois = rois[:, :3] #ignore diameter, elias says it's bad
+        rois += patch["offset"][None,:] # the output scale is the same as mm (else, need to convert ROI coordinates)
     else: return None
     #local to global roi
     # rois += patch["offset"]

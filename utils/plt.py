@@ -1,24 +1,25 @@
 import matplotlib.pyplot as plt
+from matplotlib import cm
 import numpy as np
 
 from utils import paths
 
 
-def cross_sections(volumes, show=False, save=""):
+def cross_sections(volumes, show=False, save="", normalize=True):
     plt.close('all')
     n = len(volumes)
-    fig, ax = plt.subplots(n, 3, figsize=(7*n, 8))
+    fig, ax = plt.subplots(n, 3, figsize=(14, 4*n))
 
     _ax = lambda i, j: ax[j] if n == 1 else ax[i, j]
-    # if n == 1: _ax = lambda i,j: ax[j]
-    # else: _ax = lambda i,j: ax[i, j]
+    if normalize: norm = cm.colors.Normalize()
+    else: norm = cm.colors.NoNorm()
 
     for i, vol in enumerate(volumes):
-        _ax(i, 0).imshow(vol[vol.shape[0] // 2], cmap="gray", interpolation='nearest')
-        _ax(i, 1).imshow(vol[:, vol.shape[1] // 2], cmap="gray", interpolation='nearest')
-        _ax(i, 2).imshow(vol[:, :, vol.shape[2] // 2], cmap="gray", interpolation='nearest')
+        _ax(i, 0).imshow(vol[vol.shape[0] // 2], cmap="gray", interpolation='nearest', norm=norm)
+        _ax(i, 1).imshow(vol[:, vol.shape[1] // 2], cmap="gray", interpolation='nearest', norm=norm)
+        _ax(i, 2).imshow(vol[:, :, vol.shape[2] // 2], cmap="gray", interpolation='nearest', norm=norm)
     if show: plt.show()
-    if len(save)>0: fig.savefig(save)
+    if len(save)>0: fig.savefig(save, bbox_inches='tight')
 
 
 def show_compare(volume1, volume2):
