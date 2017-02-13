@@ -269,3 +269,23 @@ class CastingLayer(nn.layers.Layer):
 
 def heaviside(x, size):
     return T.arange(0, size).dimshuffle('x', 0) - T.repeat(x, size, axis=1) >= 0.
+
+
+class NormalCDFLayer(nn.layers.MergeLayer):
+    def __init__(self, mu, sigma, max_support, **kwargs):
+        super(NormalCDFLayer, self).__init__([mu, sigma], **kwargs)
+        self.max_support = max_support
+
+    def get_output_shape_for(self, input_shapes):
+        return input_shapes[0][0], self.max_support
+
+    def get_output_for(self, input, **kwargs):
+        mu = input[0]
+        sigma = input[1]
+
+        x_range = T.arange(0, self.max_support).dimshuffle('x', 0)
+        mu = T.repeat(mu, self.max_support, axis=1)
+        sigma = T.repeat(sigma, self.max_support, axis=1)
+        x = (x_range - mu) / (sigma * T.sqrt(2.) + 1e-16)
+        cdf = (T.erf(x) + 1.) / 2.
+        return cdf

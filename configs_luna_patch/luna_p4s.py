@@ -22,9 +22,9 @@ p_transform_augment = {
     'translation_range_z': [-27, 27],
     'translation_range_y': [-27, 27],
     'translation_range_x': [-27, 27],
-    'rotation_range_z': [-27, 27],
-    'rotation_range_y': [-27, 27],
-    'rotation_range_x': [-27, 27]
+    'rotation_range_z': [-180, 180],
+    'rotation_range_y': [-180, 180],
+    'rotation_range_x': [-180, 180]
 }
 
 
@@ -115,7 +115,9 @@ def build_model():
     net['encode_1'] = nn.layers.ParametricRectifierLayer(net['encode_1'])
     net['encode_2'] = conv3d(net['encode_1'], base_n_filters)
     net['encode_2'] = nn.layers.ParametricRectifierLayer(net['encode_2'])
-    net['upscale1'] = nn_lung.Upscale3DLayer(net['encode_2'], 2)
+    net['encode_3'] = conv3d(net['encode_2'], base_n_filters)
+    net['encode_3'] = nn.layers.ParametricRectifierLayer(net['encode_3'])
+    net['upscale1'] = nn_lung.Upscale3DLayer(net['encode_3'], 2)
 
     net['concat1'] = nn.layers.ConcatLayer([net['upscale1'], net['contr_1_3']],
                                            cropping=(None, None, "center", "center", "center"))
@@ -128,6 +130,7 @@ def build_model():
 
     l_out = dnn.Conv3DDNNLayer(net['expand_1_3'], num_filters=1,
                                filter_size=1,
+                               W=nn.init.Constant(0.),
                                nonlinearity=nn.nonlinearities.sigmoid)
 
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
@@ -136,7 +139,7 @@ def build_model():
 def build_objective(model, deterministic=False, epsilon=1e-12):
     predictions = T.flatten(nn.layers.get_output(model.l_out))
     targets = T.flatten(nn.layers.get_output(model.l_target))
-    targets = T.clip(targets, 1e-6, 1.)
+    targets = T.clip(targets, 1e-3, 1.)
     dice = (2. * T.sum(targets * predictions) + epsilon) / (T.sum(predictions) + T.sum(targets) + epsilon)
     return -1. * dice
 

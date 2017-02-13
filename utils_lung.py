@@ -1,5 +1,4 @@
 import numpy as np
-import pathfinder
 import csv
 import dicom
 import os
@@ -175,7 +174,7 @@ def read_labels(file_path):
     return id2labels
 
 
-def read_luna_labels(file_path):
+def read_luna_annotations(file_path):
     id2xyzd = defaultdict(list)
     train_csv = open(file_path)
     lines = train_csv.readlines()
@@ -189,12 +188,27 @@ def read_luna_labels(file_path):
     return id2xyzd
 
 
+def read_luna_negative_candidates(file_path):
+    id2xyzd = defaultdict(list)
+    train_csv = open(file_path)
+    lines = train_csv.readlines()
+    i = 0
+    for item in lines:
+        if i == 0:
+            i = 1
+            continue
+        id, x, y, z, d = item.replace('\n', '').split(',')
+        if float(d) == 0:
+            id2xyzd[id].append([float(z), float(y), float(x), float(d)])
+    return id2xyzd
+
+
 def write_submission(patient_predictions, submission_path):
     """
     :param patient_predictions: dict of {patient_id: label}
     :param submission_path:
     """
-    fi = csv.reader(open(pathfinder.SAMPLE_SUBMISSION_PATH))
+    fi = csv.reader(open(submission_path))
     f = open(submission_path, 'w+')
     fo = csv.writer(f, lineterminator='\n')
     fo.writerow(fi.next())
@@ -221,9 +235,22 @@ def cross_entropy(predictions, targets, epsilon=1e-12):
     ce = np.mean(np.log(predictions) * targets + np.log(1 - predictions) * (1. - targets))
     return ce
 
-
-if __name__ == "__main__":
-    pid2label = read_labels(pathfinder.SAMPLE_SUBMISSION_PATH)
-    for k, v in pid2label.iteritems():
-        pid2label[k] += 1
-    write_submission(pid2label, 'aaa.csv')
+# def luna_merge_negative_candidates(file_path1, file_path2, output_file_path):
+#     candidates_csv1 = csv.reader(open(file_path1))
+#     candidates_csv2 = csv.reader(open(file_path2))
+#
+#     f = open(output_file_path, 'w+')
+#     fo = csv.writer(f, lineterminator='\n')
+#
+#     fo.writerow(candidates_csv1.next())
+#     for line in candidates_csv1:
+#         label = int(line[-1])
+#         if label == 0:
+#             fo.writerow(line)
+#
+#     candidates_csv2.next()
+#     for line in candidates_csv2:
+#         label = int(line[-1])
+#         if label == 0:
+#             fo.writerow(line)
+#     f.close()

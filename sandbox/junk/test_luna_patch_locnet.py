@@ -9,8 +9,9 @@ import utils
 from configuration import config, set_configuration
 from utils_plots import plot_slice_3d_3
 import utils_lung
+import data_transforms
 
-theano.config.warn_float64 = 'raise'
+# theano.config.warn_float64 = 'raise'
 
 if len(sys.argv) < 2:
     sys.exit("Usage: train.py <configuration_name>")
@@ -56,7 +57,9 @@ givens_valid[model.l_in.input_var] = x_shared
 
 # theano functions
 iter_get_predictions = theano.function([], nn.layers.get_output(model.l_out), givens=givens_valid)
-valid_data_iterator = config().valid_data_iterator
+iter_get_mu = theano.function([], nn.layers.get_output(model.l_mu), givens=givens_valid)
+# valid_data_iterator = config().valid_data_iterator
+valid_data_iterator = config().train_data_iterator
 
 print
 print 'Data'
@@ -67,26 +70,24 @@ valid_losses_ce = []
 for n, (x_chunk, y_chunk, id_chunk) in enumerate(buffering.buffered_gen_threaded(valid_data_iterator.generate())):
     # load chunk to GPU
     x_shared.set_value(x_chunk)
-    print 'loaded chunk'
-    predictions = iter_get_predictions()
+
     targets = y_chunk
     inputs = x_chunk
-    print 'dice'
+    predictions = iter_get_predictions()
+    print 'targets', targets
+    print 'predictions', iter_get_mu()
 
-    z = y_chunk[0, 0, :]
-    y = y_chunk[0, 1, :]
-    x = y_chunk[0, 2, :]
-    targets = z[:, None, None] * y[None, :, None] * x[None, None, :]
+    # targets = data_transforms.make_3d_mask_from_annotations(inputs[0, 0].shape, targets, shape='sphere')
 
-    z = predictions[0, 0, :]
-    y = predictions[0, 1, :]
-    x = predictions[0, 2, :]
-    pp = z[:, None, None] * y[None, :, None] * x[None, None, :]
-
-    for k in xrange(predictions.shape[0]):
-        plot_slice_3d_3(input=inputs[k, 0], mask=targets, prediction=pp,
-                        axis=0, pid='-'.join([str(n), str(k), str(id_chunk[k])]),
-                        img_dir=outputs_path)
+    # z = predictions[0, 0, :]
+    # y = predictions[0, 1, :]
+    # x = predictions[0, 2, :]
+    # pp = z[:, None, None] * y[None, :, None] * x[None, None, :]
+    #
+    # for k in xrange(predictions.shape[0]):
+    #     plot_slice_3d_3(input=inputs[k, 0], mask=targets, prediction=pp,
+    #                     axis=0, pid='-'.join([str(n), str(k), str(id_chunk[k])]),
+    #                     img_dir=outputs_path)
 
 print 'Dice index validation loss', np.mean(valid_losses_dice)
 print 'CE validation loss', np.mean(valid_losses_ce)

@@ -14,7 +14,8 @@ restart_from_save = None
 rng = np.random.RandomState(42)
 
 # transformations
-p_transform = {'patch_size': (64, 64, 64),
+patch_size = (64, 64, 64)
+p_transform = {'patch_size': patch_size,
                'mm_patch_size': (64, 64, 64),
                'pixel_spacing': (1., 1., 1.)
                }
@@ -49,18 +50,18 @@ data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
 
 # data iterators
 batch_size = 1
-nbatches_chunk = 4
+nbatches_chunk = 1
 chunk_size = batch_size * nbatches_chunk
 
 train_valid_ids = utils.load_pkl(pathfinder.LUNA_VALIDATION_SPLIT_PATH)
-train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['valid']
+train_pids, valid_pids = train_valid_ids['train'][:7], train_valid_ids['valid'][:7]
 
 train_data_iterator = data_iterators.PatchCentersPositiveLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                            batch_size=chunk_size,
                                                                            transform_params=p_transform,
                                                                            data_prep_fun=data_prep_function_train,
                                                                            rng=rng,
-                                                                           patient_ids=train_valid_ids['train'],
+                                                                           patient_ids=train_pids,
                                                                            full_batch=True, random=True, infinite=True)
 
 valid_data_iterator = data_iterators.PatchCentersPositiveLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
@@ -68,21 +69,21 @@ valid_data_iterator = data_iterators.PatchCentersPositiveLunaDataGenerator(data_
                                                                            transform_params=p_transform,
                                                                            data_prep_fun=data_prep_function_valid,
                                                                            rng=rng,
-                                                                           patient_ids=train_valid_ids['valid'],
+                                                                           patient_ids=valid_pids,
                                                                            full_batch=False, random=False,
                                                                            infinite=False)
 
-nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
-max_nchunks = nchunks_per_epoch * 30
+nchunks_per_epoch = 10
+max_nchunks = 100000
 
 validate_every = int(1. * nchunks_per_epoch)
-save_every = int(0.5 * nchunks_per_epoch)
+save_every = int(4. * nchunks_per_epoch)
 
 learning_rate_schedule = {
-    0: 3e-4,
-    int(max_nchunks * 0.5): 2e-4,
-    int(max_nchunks * 0.6): 1e-4,
-    int(max_nchunks * 0.9): 1e-5
+    0: 3e-5,
+    int(max_nchunks * 0.5): 2e-6,
+    int(max_nchunks * 0.6): 1e-6,
+    int(max_nchunks * 0.9): 1e-7
 }
 
 # model
@@ -101,13 +102,9 @@ def build_model():
     l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
     l_target = nn.layers.InputLayer((None, 3))
 
-    l = conv3d(l_in, num_filters=32)
-    l = conv3d(l, num_filters=32)
-
-    l = max_pool3d(l)
-
-    l = conv3d(l, num_filters=32)
-    l = conv3d(l, num_filters=32)
+    l = conv3d(l_in, num_filters=64)
+    l = conv3d(l, num_filters=64)
+    l = conv3d(l, num_filters=64)
 
     l = max_pool3d(l)
 
@@ -115,47 +112,57 @@ def build_model():
     l = conv3d(l, num_filters=64)
     l = conv3d(l, num_filters=64)
 
-    l = max_pool3d(l)
+    # Z
+    l_dz = nn.layers.DenseLayer(l, num_units=64, W=nn.init.Orthogonal("relu"),
+                                b=nn.init.Constant(0.1), nonlinearity=nn.nonlinearities.very_leaky_rectify)
+    mu_z = nn.layers.DenseLayer(l_dz, num_units=1, W=nn.init.Orthogonal(),
+                                b=nn.init.Constant(patch_size[0] / 2), nonlinearity=nn.nonlinearities.softplus)
+    sigma_z = nn.layers.DenseLayer(l_dz, num_units=1, W=nn.init.Orthogonal(),
+                                   b=nn.init.Constant(1.), nonlinearity=nn.nonlinearities.softplus)
 
-    l = conv3d(l, num_filters=128)
-    l = conv3d(l, num_filters=128)
-    l = conv3d(l, num_filters=128)
+    lz = nn_lung.NormalCDFLayer(mu_z, sigma_z, patch_size[0])
 
-    l = max_pool3d(l)
+    # Y
+    l_dy = nn.layers.DenseLayer(l, num_units=64, W=nn.init.Orthogonal("relu"),
+                                b=nn.init.Constant(0.1), nonlinearity=nn.nonlinearities.very_leaky_rectify)
+    mu_y = nn.layers.DenseLayer(l_dy, num_units=1, W=nn.init.Orthogonal(),
+                                b=nn.init.Constant(patch_size[1] / 2), nonlinearity=nn.nonlinearities.softplus)
+    sigma_y = nn.layers.DenseLayer(l_dy, num_units=1, W=nn.init.Orthogonal(),
+                                   b=nn.init.Constant(1.), nonlinearity=nn.nonlinearities.softplus)
 
-    l = conv3d(l, num_filters=128)
-    l = conv3d(l, num_filters=128)
-    l = conv3d(l, num_filters=128)
+    ly = nn_lung.NormalCDFLayer(mu_y, sigma_y, patch_size[1])
 
-    l = max_pool3d(l)
+    # X
+    l_dx = nn.layers.DenseLayer(l, num_units=64, W=nn.init.Orthogonal("relu"),
+                                b=nn.init.Constant(0.1), nonlinearity=nn.nonlinearities.very_leaky_rectify)
+    mu_x = nn.layers.DenseLayer(l_dx, num_units=1, W=nn.init.Orthogonal(),
+                                b=nn.init.Constant(patch_size[2] / 2), nonlinearity=nn.nonlinearities.softplus)
+    sigma_x = nn.layers.DenseLayer(l_dx, num_units=1, W=nn.init.Orthogonal(),
+                                   b=nn.init.Constant(1.), nonlinearity=nn.nonlinearities.softplus)
 
-    l_z = nn.layers.DenseLayer(l, num_units=p_transform['patch_size'][0],
-                               nonlinearity=nn.nonlinearities.softmax)
-    l_y = nn.layers.DenseLayer(l, num_units=p_transform['patch_size'][1],
-                               nonlinearity=nn.nonlinearities.softmax)
-    l_x = nn.layers.DenseLayer(l, num_units=p_transform['patch_size'][2],
-                               nonlinearity=nn.nonlinearities.softmax)
+    lx = nn_lung.NormalCDFLayer(mu_x, sigma_x, patch_size[2])
 
-    l_z = nn.layers.DimshuffleLayer(l_z, (0, 'x', 1))
-    l_y = nn.layers.DimshuffleLayer(l_y, (0, 'x', 1))
-    l_x = nn.layers.DimshuffleLayer(l_x, (0, 'x', 1))
+    lzd = nn.layers.DimshuffleLayer(lz, (0, 'x', 1))
+    lyd = nn.layers.DimshuffleLayer(ly, (0, 'x', 1))
+    lxd = nn.layers.DimshuffleLayer(lx, (0, 'x', 1))
 
-    l_out = nn.layers.ConcatLayer([l_z, l_y, l_x], axis=1)
+    l_mu = nn.layers.ConcatLayer([mu_z, mu_y, mu_x])
 
-    return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
+    l_out = nn.layers.ConcatLayer([lzd, lyd, lxd])
+
+    return namedtuple('Model', ['l_in', 'l_out', 'l_target', 'lz', 'ly', 'lx', 'l_mu'])(l_in, l_out, l_target,
+                                                                                        lz, ly, lx, l_mu)
 
 
-def build_objective(model, deterministic=False, epsilon=1e-12):
-    predictions = nn.layers.get_output(model.l_out, deterministic=deterministic)
-
-    pred_z = T.cumsum(predictions[:, 0, :], axis=-1)
-    pred_y = T.cumsum(predictions[:, 1, :], axis=-1)
-    pred_x = T.cumsum(predictions[:, 2, :], axis=-1)
+def build_objective(model, deterministic=False):
+    pred_z = nn.layers.get_output(model.lz, deterministic=deterministic)
+    pred_y = nn.layers.get_output(model.ly, deterministic=deterministic)
+    pred_x = nn.layers.get_output(model.lx, deterministic=deterministic)
 
     targets = nn.layers.get_output(model.l_target)
-    tz_heaviside = nn_lung.heaviside(targets[:, :1], p_transform['patch_size'][0])
-    ty_heaviside = nn_lung.heaviside(targets[:, 1:2], p_transform['patch_size'][1])
-    tx_heaviside = nn_lung.heaviside(targets[:, 2:], p_transform['patch_size'][2])
+    tz_heaviside = nn_lung.heaviside(targets[:, :1], patch_size[0])
+    ty_heaviside = nn_lung.heaviside(targets[:, 1:2], patch_size[1])
+    tx_heaviside = nn_lung.heaviside(targets[:, 2:], patch_size[2])
 
     crps_z = T.mean((pred_z - tz_heaviside) ** 2)
     crps_y = T.mean((pred_y - ty_heaviside) ** 2)

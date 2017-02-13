@@ -9,6 +9,7 @@ import utils
 from configuration import config, set_configuration
 from utils_plots import plot_slice_3d_3
 import utils_lung
+import logger
 
 theano.config.warn_float64 = 'raise'
 
@@ -24,6 +25,11 @@ metadata_path = utils.find_model_metadata(metadata_dir, config_name)
 
 metadata = utils.load_pkl(metadata_path)
 expid = metadata['experiment_id']
+
+# logs
+logs_dir = utils.get_dir_path('logs', pathfinder.METADATA_PATH)
+sys.stdout = logger.Logger(logs_dir + '/%s-test.log' % expid)
+sys.stderr = sys.stdout
 
 # predictions path
 predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
@@ -63,21 +69,21 @@ print 'Data'
 print 'n validation: %d' % valid_data_iterator.nsamples
 
 valid_losses_dice = []
-valid_losses_ce = []
+tp = 0
 for n, (x_chunk, y_chunk, id_chunk) in enumerate(buffering.buffered_gen_threaded(valid_data_iterator.generate())):
     # load chunk to GPU
     x_shared.set_value(x_chunk)
-    print 'loaded chunk'
     predictions = iter_get_predictions()
     targets = y_chunk
     inputs = x_chunk
-    print 'dice'
 
     dice = utils_lung.dice_index(predictions, targets)
-    ce = utils_lung.cross_entropy(predictions, targets)
-    print n, dice, ce
+    print n, id_chunk, dice
     valid_losses_dice.append(dice)
-    valid_losses_ce.append(ce)
+    if np.sum(predictions * targets) / np.sum(targets) > 0.1:
+        tp += 1
+    else:
+        print 'not detected!!!!'
 
     for k in xrange(predictions.shape[0]):
         plot_slice_3d_3(input=inputs[k, 0], mask=targets[k, 0], prediction=predictions[k, 0],
@@ -85,4 +91,4 @@ for n, (x_chunk, y_chunk, id_chunk) in enumerate(buffering.buffered_gen_threaded
                         img_dir=outputs_path)
 
 print 'Dice index validation loss', np.mean(valid_losses_dice)
-print 'CE validation loss', np.mean(valid_losses_ce)
+print 'TP', tp

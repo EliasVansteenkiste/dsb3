@@ -143,12 +143,13 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
 
         # load validation data to GPU
         tmp_losses_valid = []
-        for x_chunk_valid, y_chunk_valid, ids_batch in buffering.buffered_gen_threaded(valid_data_iterator.generate(),
-                                                                                       buffer_size=2):
+        for i, (x_chunk_valid, y_chunk_valid, ids_batch) in enumerate(
+                buffering.buffered_gen_threaded(valid_data_iterator.generate(),
+                                                buffer_size=2)):
             x_shared.set_value(x_chunk_valid)
             y_shared.set_value(y_chunk_valid)
             l_valid = iter_validate()
-            print l_valid, x_chunk_valid.shape
+            print i, l_valid
             tmp_losses_valid.append(l_valid)
 
         # calculate validation loss across validation set

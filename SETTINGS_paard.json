@@ -6,5 +6,6 @@
   "VALIDATION_SPLIT_PATH": "/mnt/storage/data/dsb3/validation_split.pkl",
   "LUNA_DATA_PATH": "/mnt/storage/data/dsb3/luna/dataset/",
   "LUNA_LABELS_PATH": "/mnt/storage/data/dsb3/luna/annotations.csv",
+  "LUNA_CANDIDATES_PATH": "/mnt/storage/data/dsb3/luna/candidates_V2.csv",
   "LUNA_VALIDATION_SPLIT_PATH": "/mnt/storage/data/dsb3/luna/validation_split.pkl"
 }

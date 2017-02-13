@@ -1,15 +1,12 @@
 from collections import namedtuple
 import numpy as np
-import skimage.transform
-import skimage.draw
-from configuration import config
-import skimage.exposure, skimage.filters
 import scipy.ndimage
 import math
 import utils_lung
 
 MAX_HU = 400.
 MIN_HU = -1000.
+rng = np.random.RandomState(317070)
 
 
 def ct2normHU(x, metadata):
@@ -40,14 +37,14 @@ def hu2normHU(x):
 
 
 def sample_augmentation_parameters(transformation):
-    shift_z = config().rng.uniform(*transformation.get('translation_range_z', [0., 0.]))
-    shift_y = config().rng.uniform(*transformation.get('translation_range_y', [0., 0.]))
-    shift_x = config().rng.uniform(*transformation.get('translation_range_x', [0., 0.]))
+    shift_z = rng.uniform(*transformation.get('translation_range_z', [0., 0.]))
+    shift_y = rng.uniform(*transformation.get('translation_range_y', [0., 0.]))
+    shift_x = rng.uniform(*transformation.get('translation_range_x', [0., 0.]))
     translation = (shift_z, shift_y, shift_x)
 
-    rotation_z = config().rng.uniform(*transformation.get('rotation_range_z', [0., 0.]))
-    rotation_y = config().rng.uniform(*transformation.get('rotation_range_y', [0., 0.]))
-    rotation_x = config().rng.uniform(*transformation.get('rotation_range_x', [0., 0.]))
+    rotation_z = rng.uniform(*transformation.get('rotation_range_z', [0., 0.]))
+    rotation_y = rng.uniform(*transformation.get('rotation_range_y', [0., 0.]))
+    rotation_x = rng.uniform(*transformation.get('rotation_range_x', [0., 0.]))
     rotation = (rotation_z, rotation_y, rotation_x)
 
     return namedtuple('Params', ['translation', 'rotation'])(translation, rotation)
@@ -205,6 +202,13 @@ def make_gaussian_annotation(patch_annotation_tf, patch_size):
     x_label = np.exp(- 1. * distance_x / (2 * radius ** 2))
     label = np.vstack((z_label, y_label, x_label))
     return label
+
+
+def zmuv(x, mean, std):
+    if mean is not None and std is not None:
+        return (x - mean) / std
+    else:
+        return x
 
 
 def affine_transform(scale=None, rotation=None, translation=None):

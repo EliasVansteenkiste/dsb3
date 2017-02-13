@@ -112,7 +112,7 @@ for n, (x, y, id, annotations) in enumerate(valid_data_iterator.generate()):
     print 'saved predictions'
 
     print 'computing blobs'
-    blobs = blobs_detection.blob_dog(predictions_scan, min_sigma=1, max_sigma=15, threshold=0.1)
+    blobs = blobs_detection.blob_dog(predictions_scan[0, 0], min_sigma=1, max_sigma=15, threshold=0.1)
     utils.save_np(blobs, outputs_path + '/blob_' + pid)
     print 'saved blobs'
 
