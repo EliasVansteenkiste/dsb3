@@ -1,3 +1,13 @@
+"""
+Usage: python scripts/lio/roi.py <ROI config>
+
+
+Example:
+python scripts/lio/roi.py configurations/lio/roi_stage1.py
+
+-> ROIs are saved in paths.MODEL_PREDICTIONS_PATH
+"""
+
 import matplotlib
 matplotlib.use('Agg')
 import argparse
@@ -103,7 +113,6 @@ def extract_rois(expid):
     start_time, prev_time = None, None
 
     import multiprocessing as mp
-    # job_pool = mp.Pool(3)
     jobs = []
 
     for set in [VALIDATION, TRAIN, TEST]:
