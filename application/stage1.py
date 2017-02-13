@@ -120,6 +120,9 @@ class Stage1DataLoader(StandardDataLoader):
             if "filename" in tags:
                 sample[INPUT][tag] = filename
 
+            if "patient_id" in tags:
+                sample[INPUT][tag] = filename.split(path.sep)[-2]
+
             if "3d" in tags:
                 sample[INPUT][tag] = slices
 

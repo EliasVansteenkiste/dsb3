@@ -139,6 +139,9 @@ class LunaDataLoader(StandardDataLoader):
             if "filename" in tags:
                 sample[INPUT][tag] = self.names[set][sample_index]
 
+            if "patient_id" in tags:
+                sample[INPUT][tag] = self.names[set][sample_index]
+
             if "3d" in tags or "default" in tags:
                 sample[INPUT][tag] = patientdata["pixeldata"].astype('float32')
 

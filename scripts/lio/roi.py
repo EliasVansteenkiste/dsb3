@@ -10,6 +10,7 @@ import cPickle as pickle
 import string
 import lasagne
 import time
+from itertools import product
 
 sys.path.append(".")
 from theano_utils import theano_printer
@@ -18,7 +19,8 @@ import utils.plt
 from utils import LOGS_PATH, MODEL_PATH, MODEL_PREDICTIONS_PATH, paths
 from utils.log import print_to_file
 from utils.configuration import set_configuration, config, get_configuration_name
-from interfaces.data_loader import TRAIN, VALIDATION, TEST
+from interfaces.data_loader import TRAIN, VALIDATION, TEST, INPUT
+from utils.transformation_3d import affine_transform, apply_affine_transform
 
 
 def extract_rois(expid):
@@ -99,30 +101,32 @@ def extract_rois(expid):
     lasagne.layers.set_all_param_values(top_layer, metadata['param_values'])
 
     start_time, prev_time = None, None
-    all_predictions = dict()
 
-    for set in [TRAIN, VALIDATION, TEST]:
+    import multiprocessing as mp
+    # job_pool = mp.Pool(3)
+    jobs = []
+
+    for set in [VALIDATION, TRAIN, TEST]:
         set_indices = config.data_loader.indices[set]
         for _i, sample_id in enumerate(set_indices):
 
             if start_time is None:
                 start_time = time.time()
                 prev_time = start_time
-            print "sample_id", sample_id, _i, "/", len(set_indices), "in", set
+            print "sample_id", sample_id, _i+1, "/", len(set_indices), "in", set
 
-            filenametag = input_layers.keys()[0].split(":")[0] + ":filename"
+            filenametag = input_layers.keys()[0].split(":")[0] + ":patient_id"
             data = config.data_loader.load_sample(sample_id,
                                                   input_layers.keys()+config.extra_tags+[filenametag],{})
 
-
-            print data["input"][filenametag]
-            filename = data["input"][filenametag].split(os.path.sep)[-2]
-            print filename
+            patient_id = data["input"][filenametag]
+            print patient_id
             seg_shape = output_layers["predicted_segmentation"].output_shape[1:]
-            patch_generator = config.patch_generator(data, seg_shape)
+            patch_gen = patch_generator(data, seg_shape, input_layers.keys()[0].split(":")[0]+":")
             t0 = time.time()
-            roi_vol = None
-            for patch_idx, patch in enumerate(patch_generator):
+            preds = []
+            patches = []
+            for patch_idx, patch in enumerate(patch_gen):
                 for key in xs_shared:
                     xs_shared[key].set_value(patch[key][None,:])
 
@@ -134,63 +138,135 @@ def extract_rois(expid):
 
                 predictions = th_result[:len(network_outputs)]
 
-                pred = predictions[0][0]
-
-                t0 = time.time()
-                rois = config.extract_nodules(pred, patch)
-
-                if rois is None:
-                    print " extract_nodules", 0, time.time() - t0
-                else:
-                    print " extract_nodules", len(rois), time.time() - t0
-                    if filename not in all_predictions:
-                        all_predictions[filename] = rois
-                    else:
-                        all_predictions[filename] = np.vstack((all_predictions[filename], rois))
-
-                if config.plot:
-                    dir_path = paths.ANALYSIS_PATH + expid
-                    if not os.path.exists(dir_path): os.mkdir(dir_path)
-                    k = xs_shared.keys()[0]
-                    dat = np.clip((data["input"][k]+1000.)/1400.,0,1)
-                    if roi_vol is None:
-                        roi_vol = np.zeros((int(dat.shape[0]*0.78125), int(dat.shape[1]*0.78125), dat.shape[2]*2))
-                    if rois is not None:
-                        x, y, z = np.ogrid[:roi_vol.shape[0], :roi_vol.shape[1], :roi_vol.shape[2]]
-                        for roi in rois:
-                            # roi -= patch["offset"]
-                            distance2 = ((x - roi[0]) ** 2 + (y - roi[1]) ** 2 + (z - roi[2]) ** 2)
-                            roi_vol[(distance2 <= 5)] = 1
-
-                    utils.plt.cross_sections([patch[k],
-                                              pred,
-                                              dat,
-                                              roi_vol],
-                                             save=dir_path + "/roi%s.jpg" % (str(patch_idx).zfill(3)))
-
+                preds.append(predictions[0][0])
+                patches.append(patch[xs_shared.keys()[0]])
                 t0 = time.time()
 
-            print "patient", sample_id, all_predictions[filename].shape[0], "nodules"
+            pred = glue_patches(preds)
+
+            if not config.plot and config.multiprocess:
+                jobs = [job for job in jobs if job.is_alive]
+                if len(jobs) >= 3:
+                    # print "waiting", len(jobs)
+                    jobs[0].join()
+                    del jobs[0]
+                jobs.append(mp.Process(target=extract_nodules, args=((pred, patient_id, expid),) ) )
+                jobs[-1].daemon=True
+                jobs[-1].start()
+            else:
+                rois = extract_nodules((pred, patient_id, expid))
+                print "patient", patient_id, len(rois), "nodules"
+
             now = time.time()
             time_since_start = now - start_time
             time_since_prev = now - prev_time
             prev_time = now
             print "  %s since start (+%.2f s)" % (utils.hms(time_since_start), time_since_prev)
 
-            with open(prediction_path, 'w') as f:
-                pickle.dump({
-                    'metadata_path': metadata_path,
-                    'prediction_path': prediction_path,
-                    'configuration_file': config.__name__,
-                    'git_revision_hash': utils.get_git_revision_hash(),
-                    'experiment_id': expid,
-                    'predictions': all_predictions,
-                }, f, pickle.HIGHEST_PROTOCOL)
-
-            print "  saved to %s" % prediction_path
-            print
+            if config.plot:
+                plot_segmentation_and_nodules(patches, rois, pred, patient_id)
 
     return
+
+
+def plot_segmentation_and_nodules(patches, rois, pred, patient_id):
+    dir_path = paths.ANALYSIS_PATH + expid
+    if not os.path.exists(dir_path): os.mkdir(dir_path)
+    for i, patch in enumerate(patches):
+        patches[i] = patch[10:-10, 10:-10, 10:-10]
+    dat = glue_patches(patches)
+    roi_vol = np.zeros_like(dat)
+    if rois is not None:
+        x, y, z = np.ogrid[:roi_vol.shape[0], :roi_vol.shape[1], :roi_vol.shape[2]]
+        for roi in rois:
+            distance2 = ((x - roi[0]) ** 2 + (y - roi[1]) ** 2 + (z - roi[2]) ** 2)
+            roi_vol[(distance2 <= 5)] = 1
+
+    utils.plt.cross_sections([dat, pred, roi_vol], save=dir_path + "/roi%s.jpg" % patient_id, normalize=False)
+
+
+def extract_nodules((pred, patient_id, expid)):
+    t0 = time.time()
+
+    rois = config.extract_nodules(pred)
+
+    if rois is None:
+        print " extract_nodules", 0, time.time() - t0
+    else:
+        print " extract_nodules", len(rois), time.time() - t0
+        dir_path = MODEL_PREDICTIONS_PATH + expid
+        if not os.path.exists(dir_path): os.mkdir(dir_path)
+        with open(dir_path+"/%s.pkl"%patient_id, 'w') as f:
+            pickle.dump(rois, f, pickle.HIGHEST_PROTOCOL)
+
+    return rois
+
+
+stride = None
+patch_count = None
+norm_shape = None
+
+def patch_generator(sample, segmentation_shape, tag):
+    global patch_count, stride, norm_shape
+
+    for prep in config.preprocessors: prep.process(sample)
+
+    data = sample[INPUT][tag+"3d"]
+    spacing = sample[INPUT][tag+"pixelspacing"]
+
+    input_shape = np.asarray(data.shape, np.float)
+    pixel_spacing = np.asarray(spacing, np.float)
+    output_shape = np.asarray(config.patch_shape, np.float)
+    mm_patch_shape = np.asarray(config.norm_patch_shape, np.float)
+    stride = np.asarray(segmentation_shape, np.float) * mm_patch_shape / output_shape
+
+    norm_shape = input_shape * pixel_spacing
+    _patch_shape = norm_shape * output_shape / mm_patch_shape
+
+    patch_count = np.ceil(norm_shape / stride).astype("int")
+    print "patch_count", patch_count
+    print "stride", stride
+    print spacing
+    print norm_shape
+
+    for x,y,z in product(range(patch_count[0]), range(patch_count[1]), range(patch_count[2])):
+
+        offset = np.array([stride[0]*x, stride[1]*y, stride[2]*z], np.float)
+        print (x*patch_count[1]*patch_count[2] + y*patch_count[2] +z), "/", np.prod(patch_count), (x,y,z)
+
+        shift_center = affine_transform(translation=-(input_shape / 2. - 0.5))
+        normscale = affine_transform(scale=norm_shape / input_shape)
+        offset_patch = affine_transform(translation=norm_shape/2. - 0.5 - offset-(stride/2.0-0.5))# - (mm_patch_shape - segmentation_shape)*norm_shape/_patch_shape -segmentation_shape*norm_shape/_patch_shape/2.)
+        patchscale = affine_transform(scale=_patch_shape / norm_shape)
+        unshift_center = affine_transform(translation=output_shape / 2. - 0.5)
+        matrix = shift_center.dot(normscale).dot(offset_patch).dot(patchscale).dot(unshift_center)
+        output = apply_affine_transform(data, matrix, output_shape=output_shape.astype(np.int))
+
+
+        patch = {}
+        patch[tag+"3d"] = output
+        patch["offset"] = offset
+        s = {INPUT: patch}
+        for prep in config.postpreprocessors: prep.process(s)
+        yield patch
+
+
+def glue_patches(p):
+    global patch_count, stride, norm_shape
+
+    preds = []
+    for x in range(patch_count[0]):
+        preds_y = []
+        for y in range(patch_count[1]):
+            ofs = y * patch_count[2] + x * patch_count[2] * patch_count[1]
+            preds_z = np.concatenate(p[ofs:ofs + patch_count[2]], axis=2)
+            preds_y.append(preds_z)
+        preds_y = np.concatenate(preds_y, axis=1)
+        preds.append(preds_y)
+
+    preds = np.concatenate(preds, axis=0)
+    preds = preds[:int(round(norm_shape[0])), :int(round(norm_shape[1])), :int(round(norm_shape[2]))]
+    return preds
 
 
 if __name__ == "__main__":
