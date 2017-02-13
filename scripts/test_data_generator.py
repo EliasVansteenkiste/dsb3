@@ -1,6 +1,6 @@
 from application.luna import LunaDataLoader
 from application.preprocessors.in_the_middle import PutInTheMiddle
-from application.preprocessors.lio_augmentation import LioAugment
+from application.preprocessors.augmentation_3d import Augment3D
 from interfaces.data_loader import INPUT, OUTPUT, TRAINING
 #from interfaces.preprocess import AugmentInput, RescaleInput
 
@@ -36,7 +36,7 @@ augmentation_parameters = {
 }
 
 preprocessors = [
-    LioAugment(tags=[])
+    Augment3D(tags=[])
                  #RescaleInput(input_scale=(0,255), output_scale=(0.0, 1.0)),
                  #AugmentInput(output_shape=(160,120),**augmentation_parameters),
                  #NormalizeInput(num_samples=100),

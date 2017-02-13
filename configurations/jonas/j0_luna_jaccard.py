@@ -11,7 +11,7 @@ import numpy as np
 
 from application.objectives import CrossEntropyObjective, WeightedSegmentationCrossEntropyObjective, \
     JaccardIndexObjective, SoerensonDiceCoefficientObjective, RecallObjective, PrecisionObjective
-from application.data import PatientDataLoader
+from application.stage1 import PatientDataLoader
 from deep_learning.upscale import Upscale3DLayer
 from interfaces.data_loader import VALIDATION, TRAINING, TEST, TRAIN
 from deep_learning.deep_learning_layers import ConvolutionLayer, PoolLayer
@@ -50,7 +50,7 @@ AUGMENTATION_PARAMETERS = {
 preprocessors = [
     LioAugmentOnlyPositive(tags=["luna:3d", "luna:segmentation"],
                output_shape=(128,128,128),  # in pixels
-               norm_patch_size=(128,128,128),  # in mms
+               norm_patch_shape=(128,128,128),  # in mms
                augmentation_params=AUGMENTATION_PARAMETERS
                ),
     ZMUV("luna:3d", bias =  -648.59027, std = 679.21021),
@@ -131,19 +131,19 @@ def build_objectives(interface_layers):
     )
 
     obj_dice = SoerensonDiceCoefficientObjective(
-        smooth=1e-5,
+        smooth=1.,
         input_layers=interface_layers["outputs"],
         target_name="luna",
     )
 
     obj_precision = PrecisionObjective(
-        smooth=1e-5,
+        smooth=1.,
         input_layers=interface_layers["outputs"],
         target_name="luna",
     )
 
     obj_recall = RecallObjective(
-        smooth=1e-5,
+        smooth=1.,
         input_layers=interface_layers["outputs"],
         target_name="luna",
     )

@@ -2,7 +2,7 @@ from functools import partial
 from lasagne.layers import dnn
 from application.luna import LunaDataLoader
 from application.preprocessors.in_the_middle import PutInTheMiddle
-from application.preprocessors.lio_augmentation import LioAugment
+from application.preprocessors.augmentation_3d import Augment3D
 from configurations.default import *
 
 import lasagne
@@ -10,7 +10,7 @@ import theano.tensor as T
 import numpy as np
 
 from application.objectives import CrossEntropyObjective, WeightedSegmentationCrossEntropyObjective
-from application.data import PatientDataLoader
+from application.stage1 import PatientDataLoader
 from deep_learning.upscale import Upscale3DLayer
 from interfaces.data_loader import VALIDATION, TRAINING, TEST, TRAIN
 from deep_learning.deep_learning_layers import ConvolutionLayer, PoolLayer
@@ -47,9 +47,9 @@ AUGMENTATION_PARAMETERS = {
 "Put in here the preprocessors for your data." \
 "They will be run consequently on the datadict of the dataloader in the order of your list."
 preprocessors = [
-    LioAugment(tags=["luna:3d", "luna:segmentation"],
+    Augment3D(tags=["luna:3d", "luna:segmentation"],
                output_shape=(128,128,128),  # in pixels
-               norm_patch_size=(128,128,128),  # in mms
+               norm_patch_shape=(128,128,128),  # in mms
                augmentation_params=AUGMENTATION_PARAMETERS
                ),
     ZMUV("luna:3d", bias =  -648.59027, std = 679.21021),

@@ -1,7 +1,17 @@
 import numpy as np
-from sklearn.mixture import BayesianGaussianMixture
 from sklearn.cluster import KMeans
+from sklearn.mixture import BayesianGaussianMixture
+from blob import blob_dog, blob_doh, blob_log
+
+
 from scipy.spatial import distance
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
+
+from scipy.ndimage.filters import convolve
+from tf_convolution import conv3d
 
 
 def sample_fits_inside_volume(s):
@@ -33,7 +43,7 @@ def fit_gmix(segmentation_volume, n_comp=2):
 
 	return gmix
 
-def extract_nodules_best_gmix(segmentation_volume, max_n_components=10):
+def extract_nodules_best_gmix(segmentation_volume, max_n_components=40, plot=False):
 	"This function finds the best gaussian mix for a volume of probabilities"
 	no_samples = 10000
 	occurences =  np.round(no_samples*segmentation_volume/np.sum(segmentation_volume)).astype(int)
@@ -50,6 +60,7 @@ def extract_nodules_best_gmix(segmentation_volume, max_n_components=10):
 
 	best_score = -1
 	best_gmix = None
+	best_no_c = -1
 	for no_c  in range(1,max_n_components):
 		gmix = BayesianGaussianMixture(n_components=no_c, covariance_type='full')
 		gmix.fit(samples)
@@ -59,11 +70,171 @@ def extract_nodules_best_gmix(segmentation_volume, max_n_components=10):
 		print gmix.means_
 		print 'weights'
 		print gmix.weights_
+		if plot:
+			for idx,mean in enumerate(gmix.means_):
+				center = np.round(mean).astype(np.int)
+				fig = plt.figure()
+				fig.suptitle('weight='+str(gmix.weights_[idx]))
+				ax1 = fig.add_subplot(3,1,1)
+				ax1.imshow(segmentation_volume[center[0],:,:].transpose())
+				circ1 = plt.Circle((center[1],center[2]), 10, color='g', fill=False)
+				ax1.add_patch(circ1)
+
+				ax2 = fig.add_subplot(3,1,2)
+				ax2.imshow(segmentation_volume[:,center[1],:])
+				circ2 = plt.Circle((center[0],center[2]), 10, color='g', fill=False)
+				ax2.add_patch(circ2)
+
+				ax3 = fig.add_subplot(3,1,3)
+				ax3.imshow(segmentation_volume[:,:,center[2]].transpose())
+				circ3 = plt.Circle((center[0],center[1]), 10, color='g', fill=False)
+				ax3.add_patch(circ3)
+				fig.savefig('no_c_'+str(no_c)+'_'+str(idx)+'.pdf')
+
 		if score>best_score:
 			best_score = score
-			best_gmix = gmix
+			best_gmix = best_gmix
+			best_no_c = no_c
+
+	print "Best gaussian mix when using", best_no_c, 'gaussians'
 
 	return best_gmix
+
+
+
+def extract_nodules_conv_filter(segmentation_volume, ct_scan, no_rois=5, dim=8, plot=False, dbg_target=None, nodules=None):
+	assert(segmentation_volume.shape==ct_scan.shape)
+
+	#Construct convolutional filter
+	cfilt = np.zeros((dim,dim,dim))
+	for x in range(dim):
+		for y in range(dim):
+			for z in range(dim):
+				dist = (x-dim/2)**2 + (y-dim/2)**2 + (z-dim/2)**2
+				cfilt[x,y,z] = 3*(dim/2)**2-dist
+	if plot:
+		fig = plt.figure()
+		plt.imshow(cfilt[0])
+		fig.savefig('filter.pdf')
+
+	#Convolution
+	#result = convolve(segmentation_volume, cfilt)
+	result = conv3d(segmentation_volume, cfilt)
+	if plot:
+		fig = plt.figure()
+		plt.imshow(result[result.shape[0]/2])
+		fig.savefig('result.pdf')
+	print result.shape
+
+	#Extract a given number of regions
+	rois = []
+	if nodules is not None:
+		print nodules
+		nodule_found = np.zeros((len(nodules)))
+	for i in range(no_rois):
+		indices = np.where(result == result.max())
+		center = [indices[0][0],indices[1][0],indices[2][0]]
+		print 'region', i, center, 'max', result.max()
+
+		#cut out patch		
+		selection = (slice(center[0]-dim/2,center[0]+dim/2), slice(center[1]-dim/2,center[1]+dim/2), slice(center[2]-dim/2,center[2]+dim/2))
+		if dbg_target is not None:
+			print 'center in target?', dbg_target[center[0],center[1],center[2]]
+		if nodules is not None:
+			center_in_target = 0
+			#is center in the neigborhoud of nodule?
+			for idx, nodule in enumerate(nodules):
+				if not nodule_found[idx]:
+					if (abs(center[0]-nodule[0])<dim) and (abs(center[1]-nodule[1])<dim) and (abs(center[2]-nodule[2])<dim):
+						center_in_target += 1
+						nodule_found[idx]=1
+			print 'center in target?', center_in_target
+
+		roi = ct_scan[selection]	
+		rois.append(roi)
+
+		#set roi to zero in result mask
+		zshape = result[selection].shape
+		result[selection] = np.zeros(zshape)
+
+
+		if plot:
+			for i in range(len(indices[0])):
+				center = [indices[0][i],indices[1][i],indices[2][i]]
+				fig = plt.figure()
+
+				ax1 = fig.add_subplot(3,1,1)
+				ax1.imshow(segmentation_volume[center[0],:,:].transpose())
+				circ1 = plt.Circle((center[1],center[2]), 24, color='y', fill=False)
+				ax1.add_patch(circ1)
+
+				ax2 = fig.add_subplot(3,1,2)
+				ax2.imshow(segmentation_volume[:,center[1],:])
+				circ2 = plt.Circle((center[0],center[2]), 24, color='y', fill=False)
+				ax2.add_patch(circ2)
+
+				ax3 = fig.add_subplot(3,1,3)
+				ax3.imshow(segmentation_volume[:,:,center[2]].transpose())
+				circ3 = plt.Circle((center[0],center[1]), 24, color='y', fill=False)
+				ax3.add_patch(circ3)
+				fig.savefig('coos_'+str(i)+'.jpg')
+
+	return rois
+
+def extract_nodules_blob_detection(segmentation_volume, ct_scan, dim=8, plot=False, dbg_target=None, nodules=None):
+	assert(segmentation_volume.shape==ct_scan.shape)
+
+	results = blob_dog(segmentation_volume, min_sigma=1.2, max_sigma=35, threshold=0.1)
+
+	#Extract a given number of regions
+	rois = []
+	if nodules is not None:
+		print nodules
+		nodule_found = np.zeros((len(nodules)))
+	for i in range(len(results)):
+		center = np.round(results[i]).astype(int)
+		print 'region', i, center
+
+		#cut out patch		
+		selection = (slice(center[0]-dim/2,center[0]+dim/2), slice(center[1]-dim/2,center[1]+dim/2), slice(center[2]-dim/2,center[2]+dim/2))
+		if dbg_target is not None:
+			print 'center in target?', dbg_target[center[0],center[1],center[2]]
+		if nodules is not None:
+			center_in_target = 0
+			#is center in the neigborhoud of nodule?
+			for idx, nodule in enumerate(nodules):
+				if not nodule_found[idx]:
+					if (abs(center[0]-nodule[0])<dim) and (abs(center[1]-nodule[1])<dim) and (abs(center[2]-nodule[2])<dim):
+						center_in_target += 1
+						nodule_found[idx]=1
+			print 'center in target?', center_in_target
+
+		roi = ct_scan[selection]	
+		rois.append(roi)
+
+		if plot:
+			for i in range(len(indices[0])):
+				center = [indices[0][i],indices[1][i],indices[2][i]]
+				fig = plt.figure()
+
+				ax1 = fig.add_subplot(3,1,1)
+				ax1.imshow(segmentation_volume[center[0],:,:].transpose())
+				circ1 = plt.Circle((center[1],center[2]), 24, color='y', fill=False)
+				ax1.add_patch(circ1)
+
+				ax2 = fig.add_subplot(3,1,2)
+				ax2.imshow(segmentation_volume[:,center[1],:])
+				circ2 = plt.Circle((center[0],center[2]), 24, color='y', fill=False)
+				ax2.add_patch(circ2)
+
+				ax3 = fig.add_subplot(3,1,3)
+				ax3.imshow(segmentation_volume[:,:,center[2]].transpose())
+				circ3 = plt.Circle((center[0],center[1]), 24, color='y', fill=False)
+				ax3.add_patch(circ3)
+				fig.savefig('coos_'+str(i)+'.jpg')
+
+	return rois
+
 
 def compute_bic(kmeans,X):
     """
@@ -102,7 +273,7 @@ def compute_bic(kmeans,X):
 
     return(BIC)
 
-def extract_nodules_best_kmeans(segmentation_volume, max_n_components=10):
+def extract_nodules_best_kmeans(segmentation_volume, max_n_components=10, plot=False):
 	"This function finds the best kmeans clustering for a volume of probabilities"
 	no_samples = 50000
 	occurences =  np.round(no_samples*segmentation_volume/np.sum(segmentation_volume)).astype(int)
@@ -126,6 +297,27 @@ def extract_nodules_best_kmeans(segmentation_volume, max_n_components=10):
 		score = compute_bic(km,samples)/1.0e3
 		print score
 		print km.cluster_centers_
+		if plot:
+			for idx,center in enumerate(km.cluster_centers_):
+				center = np.round(center).astype(np.int)
+				fig = plt.figure()
+
+				ax1 = fig.add_subplot(3,1,1)
+				ax1.imshow(segmentation_volume[center[0],:,:].transpose())
+				circ1 = plt.Circle((center[1],center[2]), 10, color='g', fill=False)
+				ax1.add_patch(circ1)
+
+				ax2 = fig.add_subplot(3,1,2)
+				ax2.imshow(segmentation_volume[:,center[1],:])
+				circ2 = plt.Circle((center[0],center[2]), 10, color='g', fill=False)
+				ax2.add_patch(circ2)
+
+				ax3 = fig.add_subplot(3,1,3)
+				ax3.imshow(segmentation_volume[:,:,center[2]].transpose())
+				circ3 = plt.Circle((center[0],center[1]), 10, color='g', fill=False)
+				ax3.add_patch(circ3)
+				fig.savefig('no_c_'+str(no_c)+'_'+str(idx)+'.pdf')
+
 		if score>best_score:
 			best_score = score
 			best_km = km
@@ -199,8 +391,7 @@ if __name__=="__main__":
 			print 'warning sample omitted because it does not fit in volume'
 
 	test_probs = 1.0*occurences/np.sum(occurences)
-
-
+	
 	extract_nodules_best_kmeans(test_probs)
 
 
