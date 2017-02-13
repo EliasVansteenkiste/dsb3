@@ -114,8 +114,8 @@ prev_time = start_time
 tmp_losses_train = []
 
 # use buffering.buffered_gen_threaded()
-for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs,  # buffering.buffered_gen_threaded(
-                                                                train_data_iterator.generate()):
+for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buffering.buffered_gen_threaded(
+        train_data_iterator.generate())):
     if chunk_idx in learning_rate_schedule:
         lr = np.float32(learning_rate_schedule[chunk_idx])
         print '  setting learning rate to %.7f' % lr
@@ -129,11 +129,11 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs,  # b
     # make nbatches_chunk iterations
     for b in xrange(config().nbatches_chunk):
         loss = iter_train(b)
-        p = iter_get_predictions(b)
-        t = iter_get_targets(b)
-        print chunk_idx, loss,
-        for pp, tt, id in zip(p, t, id_train):
-            print pp, tt, id
+        print chunk_idx, loss
+        # p = iter_get_predictions(b)
+        # t = iter_get_targets(b)
+        # for pp, tt, id in zip(p, t, id_train):
+        #     print pp, tt, id
         tmp_losses_train.append(loss)
 
     if ((chunk_idx + 1) % config().validate_every) == 0:
@@ -147,7 +147,8 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs,  # b
 
         # load validation data to GPU
         tmp_losses_valid = []
-        for x_chunk_valid, y_chunk_valid, ids_batch in valid_data_iterator.generate():
+        for x_chunk_valid, y_chunk_valid, ids_batch in buffering.buffered_gen_threaded(valid_data_iterator.generate(),
+                                                                                       buffer_size=2):
             x_shared.set_value(x_chunk_valid)
             y_shared.set_value(y_chunk_valid)
             l_valid = iter_validate()

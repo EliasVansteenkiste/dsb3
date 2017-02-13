@@ -8,7 +8,6 @@ import utils
 restart_from_save = None
 rng = np.random.RandomState(42)
 
-# transformations
 p_transform = {'patch_size': (32, 32, 32),
                'mm_patch_size': (32, 32, 32),
                'pixel_spacing': (1., 1., 1.)
@@ -22,17 +21,19 @@ p_transform_augment = {
     'rotation_range_x': [-180, 180]
 }
 
+zmuv_mean, zmuv_std = None, None
 
-def data_prep_function(data, patch_center, luna_annotations, pixel_spacing, luna_origin, p_transform,
+
+def data_prep_function(data, patch_center, pixel_spacing, luna_origin, p_transform,
                        p_transform_augment, **kwargs):
     x = data_transforms.hu2normHU(data)
-    x, patch_annotation_tf, annotations_tf = data_transforms.transform_patch3d(data=x,
-                                                                               luna_annotations=luna_annotations,
-                                                                               patch_center=patch_center,
-                                                                               p_transform=p_transform,
-                                                                               p_transform_augment=p_transform_augment,
-                                                                               pixel_spacing=pixel_spacing,
-                                                                               luna_origin=luna_origin)
+    x, patch_annotation_tf = data_transforms.transform_patch3d(data=x,
+                                                               patch_center=patch_center,
+                                                               p_transform=p_transform,
+                                                               p_transform_augment=p_transform_augment,
+                                                               pixel_spacing=pixel_spacing,
+                                                               luna_origin=luna_origin)
+    x = data_transforms.zmuv(x, zmuv_mean, zmuv_std)
     return x
 
 
@@ -52,15 +53,11 @@ train_data_iterator = data_iterators.CandidatesLunaDataGenerator(data_path=pathf
                                                                  transform_params=p_transform,
                                                                  data_prep_fun=data_prep_function_train,
                                                                  rng=rng,
-                                                                 patient_ids=train_valid_ids['train'],
-                                                                 positive_proportion=0.7,
+                                                                 patient_ids=train_pids,
+                                                                 positive_proportion=0.5,
                                                                  full_batch=True, random=True, infinite=True)
 
-valid_data_iterator = data_iterators.CandidatesLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
-                                                                 batch_size=1,
-                                                                 transform_params=p_transform,
-                                                                 data_prep_fun=data_prep_function_valid,
-                                                                 rng=rng,
-                                                                 patient_ids=train_valid_ids['valid'],
-                                                                 positive_proportion=0.7,
-                                                                 full_batch=False, random=False, infinite=False)
+valid_data_iterator = data_iterators.CandidatesLunaValidDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
+                                                                      transform_params=p_transform,
+                                                                      data_prep_fun=data_prep_function_valid,
+                                                                      patient_ids=valid_pids)

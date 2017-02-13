@@ -190,7 +190,6 @@ class CandidatesLunaDataGenerator(object):
                 self.id2negative_annotations[pid] = id2negative_annotations[pid]
                 self.patient_paths.append(data_path + '/' + pid + '.mhd')
                 n_positive += len(id2positive_annotations[pid])
-                print pid, len(id2positive_annotations[pid])
                 n_negative += len(id2negative_annotations[pid])
 
         print 'n positive', n_positive
@@ -293,7 +292,6 @@ class CandidatesLunaValidDataGenerator(object):
         y_batch = np.zeros((1, 1), dtype='float32')
 
         for pid in self.id2positive_annotations.iterkeys():
-            print self.id2positive_annotations[pid]
             for patch_center in self.id2positive_annotations[pid]:
                 patient_path = self.id2patient_path[pid]
 

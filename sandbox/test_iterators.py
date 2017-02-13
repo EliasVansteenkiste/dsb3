@@ -4,7 +4,7 @@ import numpy as np
 
 set_configuration('configs_luna_patch', 'luna_patch_local')
 
-data_iter = config().train_data_iterator
+data_iter = config().valid_data_iterator
 for (x_batch, y_batch, pid_batch) in data_iter.generate():
 
     print pid_batch
