@@ -12,13 +12,13 @@ from collections import defaultdict
 import time
 
 import utils
-import pickle
+import cPickle as pickle
 
 
 
 def tf_mhd2pkl(pid):
 
-    mhd_path = pathfinder.LUNA_DATA_PATH + '/' + pid + '.mhd'
+    mhd_path = '/data/dsb3/luna/dataset/' + pid + '.mhd'
     lock_file = '/home/eavsteen/._SimpleITK_lock'
     while os.path.exists(lock_file):
         time.sleep(0.05)
@@ -35,8 +35,8 @@ def tf_mhd2pkl(pid):
         pass
 
     d = {'pixel_data':pixel_data, 'origin':origin, 'spacing':spacing}
-    pkl_path = pathfinder.LUNA_DATA_PATH + '/' + pid + '.pkl'
-    pickle.dump( d, open( pkl_path, "wb" ) )
+    pkl_path = '/data/dsb3/luna/dataset_pkl/' + pid + '.pkl'
+    pickle.dump( d, open( pkl_path, "wb" ),protocol=2)
 
 
 
@@ -45,13 +45,12 @@ train_valid_ids = utils.load_pkl(pathfinder.LUNA_VALIDATION_SPLIT_PATH)
 train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['valid']
 patient_ids = train_pids + valid_pids
 
-patient_paths = [pathfinder.LUNA_DATA_PATH + '/' + p + '.mhd' for p in patient_ids]
+patient_paths = ['/data/dsb3/luna/dataset/' + p + '.mhd' for p in patient_ids]
 
 
 for idx, p in enumerate(patient_ids):
     print 'patient', idx, '/', len(patient_paths), p
     tf_mhd2pkl(p)
-print pathfinder.LUNA_DATA_PATH
 
 
 
