@@ -23,6 +23,7 @@ class BasePreprocessor(object):
 class NormalizeInput(BasePreprocessor):
 
     def __init__(self, num_samples = 100):
+        #raise NotImplementedError("Don't use NormalizeInput. It does not reload parameters properly")
         self.std = dict()
         self.bias = dict()
         self.num_samples = num_samples
@@ -44,6 +45,9 @@ class NormalizeInput(BasePreprocessor):
             self.std[input_key] = np.std(np.array(d[input_key]))
             self.bias[input_key] = np.mean(np.array(d[input_key]))
 
+        print "std:", self.std
+        print "bias:", self.bias
+
     def process(self, sample):
         from interfaces.data_loader import INPUT
         for input_key, value in sample[INPUT].iteritems():
@@ -63,3 +67,19 @@ class RescaleInput(BasePreprocessor):
         for input_key, value in sample[INPUT].iteritems():
             image = sample[INPUT][input_key]
             sample[INPUT][input_key] = (image - self.bias) / self.coef
+
+
+class ZMUV(BasePreprocessor):
+    def __init__(self, tag, bias, std):
+        self.tag = tag
+        self.bias = bias
+        self.std = std
+
+    def process(self, sample):
+        from interfaces.data_loader import INPUT, OUTPUT
+        if self.tag in sample[INPUT]:
+            image = sample[INPUT][self.tag]
+            sample[INPUT][self.tag] = (image - self.bias) / self.std
+        elif self.tag in sample[OUTPUT]:
+            image = sample[OUTPUT][self.tag]
+            sample[OUTPUT][self.tag] = (image - self.bias) / self.std

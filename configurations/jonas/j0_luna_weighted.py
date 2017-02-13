@@ -2,7 +2,7 @@ from functools import partial
 from lasagne.layers import dnn
 from application.luna import LunaDataLoader, OnlyPositiveLunaDataLoader
 from application.preprocessors.in_the_middle import PutInTheMiddle
-from application.preprocessors.lio_augmentation import LioAugment
+from application.preprocessors.lio_augmentation import LioAugment, LioAugmentOnlyPositive
 from configurations.default import *
 
 import lasagne
@@ -19,13 +19,13 @@ from deep_learning.deep_learning_layers import ConvolutionLayer, PoolLayer
 #####################
 #   running speed   #
 #####################
-from interfaces.preprocess import NormalizeInput
+from interfaces.preprocess import NormalizeInput, ZMUV
 
 "This is the number of samples in each batch"
 batch_size = 1
 "This is the number of batches in each chunk. Computation speeds up if this is as big as possible." \
 "However, when too big, the GPU will run out of memory"
-batches_per_chunk = 4
+batches_per_chunk = 16
 "Reload the parameters from last time and continue, or start anew when you run this config file again"
 restart_from_save = False
 "After how many chunks should you save parameters. Keep this number high for better performance. It will always store at end anyway"
@@ -41,19 +41,19 @@ AUGMENTATION_PARAMETERS = {
     "scale": [1, 1, 1],  # factor
     "rotation": [180, 180, 180],  # degrees (from -180 to 180)
     "shear": [0, 0, 0],  # degrees
-    "translation": [128, 128, 128],  # mms (from -128 to 128)
+    "translation": [64, 64, 64],  # mms (from -128 to 128)
     "reflection": [0, 0, 0] #Bernoulli p
 }
 
 "Put in here the preprocessors for your data." \
 "They will be run consequently on the datadict of the dataloader in the order of your list."
 preprocessors = [
-    LioAugment(tags=["luna:3d", "luna:segmentation"],
+    LioAugmentOnlyPositive(tags=["luna:3d", "luna:segmentation"],
                output_shape=(128,128,128),  # in pixels
                norm_patch_size=(128,128,128),  # in mms
                augmentation_params=AUGMENTATION_PARAMETERS
                ),
-    NormalizeInput(num_samples=1),
+    ZMUV("luna:3d", bias =  -648.59027, std = 679.21021),
 ]
 
 #####################
@@ -90,14 +90,14 @@ validation_data = {
                                         epochs=1,
                                         preprocessors=preprocessors,
                                         process_last_chunk=True,
-                                 multiprocess=False,
+                                 multiprocess=True,
                                  crash_on_exception=True,
                                         ),
     "training set":  OnlyPositiveLunaDataLoader(sets=TRAINING,
                                         epochs=0.01,
                                         preprocessors=preprocessors,
                                         process_last_chunk=True,
-                                 multiprocess=False,
+                                 multiprocess=True,
                                  crash_on_exception=True,
                                         ),
     }
@@ -125,41 +125,41 @@ def build_objectives(interface_layers):
     )
 
     obj_jaccard = JaccardIndexObjective(
-        smooth=1.,
+        smooth=1e-5,
         input_layers=interface_layers["outputs"],
         target_name="luna",
     )
 
     obj_dice = SoerensonDiceCoefficientObjective(
-        smooth=1.,
+        smooth=1e-5,
         input_layers=interface_layers["outputs"],
         target_name="luna",
     )
 
     obj_precision = PrecisionObjective(
-        smooth=1.,
+        smooth=1e-5,
         input_layers=interface_layers["outputs"],
         target_name="luna",
     )
 
     obj_recall = RecallObjective(
-        smooth=1.,
+        smooth=1e-5,
         input_layers=interface_layers["outputs"],
         target_name="luna",
     )
 
     return {
         "train":{
-            "objective": obj_dice,
+            "objective": obj_weighted,
             "Jaccard": obj_jaccard,
-            "weighted": obj_weighted,
+            "Dice": obj_dice,
             "precision": obj_precision,
             "recall": obj_recall,
         },
         "validate":{
-            "objective": obj_dice,
+            "objective": obj_weighted,
             "Jaccard": obj_jaccard,
-            "weighted": obj_weighted,
+            "Dice": obj_dice,
             "precision": obj_precision,
             "recall": obj_recall,
         }
@@ -184,7 +184,7 @@ max_pool3d = partial(dnn.MaxPool3DDNNLayer,
 "Here we build a model. The model returns a dict with the requested inputs for each layer:" \
 "And with the outputs it generates. You may generate multiple outputs (for analysis or for some other objectives, etc)" \
 "Unused outputs don't cost in performance"
-def build_model_old():
+def build_model():
     l_in = lasagne.layers.InputLayer(shape=(None,128,128,128))
 
     l0 = lasagne.layers.DimshuffleLayer(l_in, pattern=[0,'x',1,2,3])
@@ -242,7 +242,6 @@ def build_model_old():
 
     l_out = lasagne.layers.SliceLayer(net['output_segmentation'], indices=0, axis=1)
 
-     
     return {
         "inputs":{
             "luna:3d": l_in,
@@ -251,62 +250,3 @@ def build_model_old():
             "predicted_segmentation": l_out
         },
     }
-    
-
-def build_model():
-    #l_in = lasagne.layers.InputLayer((None, 1,) + p_transform['patch_size'])
-#    l_target = lasagne.layers.InputLayer((None, 1,) + p_transform['patch_size'])
-
-    l_in = lasagne.layers.InputLayer(shape=(None,128,128,128))
-
-    l0 = lasagne.layers.DimshuffleLayer(l_in, pattern=[0,'x',1,2,3])
-
-    
-    
-    net = {}
-    base_n_filters = 64
-    net['contr_1_1'] = conv3d(l0, base_n_filters)
-    net['contr_1_1'] = lasagne.layers.ParametricRectifierLayer(net['contr_1_1'])
-    net['contr_1_2'] = conv3d(net['contr_1_1'], base_n_filters)
-    net['contr_1_2'] = lasagne.layers.ParametricRectifierLayer(net['contr_1_2'])
-    net['contr_1_3'] = conv3d(net['contr_1_2'], base_n_filters)
-    net['contr_1_3'] = lasagne.layers.ParametricRectifierLayer(net['contr_1_3'])
-    net['pool1'] = max_pool3d(net['contr_1_3'])
-
-    net['encode_1'] = conv3d(net['pool1'], base_n_filters)
-    net['encode_1'] = lasagne.layers.ParametricRectifierLayer(net['encode_1'])
-    net['encode_2'] = conv3d(net['encode_1'], base_n_filters)
-    net['encode_2'] = lasagne.layers.ParametricRectifierLayer(net['encode_2'])
-    net['encode_3'] = conv3d(net['encode_2'], base_n_filters)
-    net['encode_3'] = lasagne.layers.ParametricRectifierLayer(net['encode_3'])
-    net['upscale1'] = lasagne.layers.Upscale3DLayer(net['encode_2'], 2)
-
-    net['concat1'] = lasagne.layers.ConcatLayer([net['upscale1'], net['contr_1_3']],
-                                           cropping=(None, None, "center", "center", "center"))
-    net['expand_1_1'] = conv3d(net['concat1'], 2 * base_n_filters)
-    net['expand_1_1'] = lasagne.layers.ParametricRectifierLayer(net['expand_1_1'])
-    net['expand_1_2'] = conv3d(net['expand_1_1'], 2 * base_n_filters)
-    net['expand_1_2'] = lasagne.layers.ParametricRectifierLayer(net['expand_1_2'])
-    net['expand_1_3'] = conv3d(net['expand_1_2'], base_n_filters)
-    net['expand_1_3'] = lasagne.layers.ParametricRectifierLayer(net['expand_1_3'])
-
-    net['output_segmentation'] = dnn.Conv3DDNNLayer(net['expand_1_3'], num_filters=1,
-                               filter_size=1,
-                               nonlinearity=lasagne.nonlinearities.sigmoid)
-
-    l_out = lasagne.layers.SliceLayer(net['output_segmentation'], indices=0, axis=1)
-    
-    #return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
-    
-     
-    return {
-        "inputs":{
-            "luna:3d": l_in,
-        },
-        "outputs": {
-            "predicted_segmentation": l_out
-        },
-    }
-    
-
-   

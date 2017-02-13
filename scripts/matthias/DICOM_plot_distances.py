@@ -1,8 +1,17 @@
-import numpy as np
+import matplotlib as mpl
+mpl.use('Agg')
+
+import matplotlib.pyplot as plt
+
+
+
 import dicom
 import os
-import matplotlib.pyplot as plt
+
+
 from utils import paths
+
+import numpy as np
 
 
 from glob import glob
@@ -139,6 +148,8 @@ if __name__ == '__main__':
         distances.append(patient_distances)
         unaligned_occurences.append(unaligned_counter)
 
+    np.save('slice_distances.npy',distances)
+        
     mean_distances=[np.mean(patient_dist_lst) for patient_dist_lst in distances]
     std_distances=[np.std(patient_dist_lst) for patient_dist_lst in distances]
     max_distances=[np.max(patient_dist_lst) for patient_dist_lst in distances]
@@ -178,4 +189,4 @@ if __name__ == '__main__':
     plt.savefig('./slice_distances.png')
 
     plt.show()
-    np.save('slice_distances.npy',distances)
+
