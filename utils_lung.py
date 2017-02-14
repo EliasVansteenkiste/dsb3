@@ -31,6 +31,9 @@ def read_mhd(path):
 
 
 
+
+
+
 def read_pkl(path):
     lock_file = '/home/eavsteen/._SimpleITK_lock'
     d = pickle.load(open(path, "rb" ))
@@ -222,6 +225,35 @@ def read_luna_candidates(file_path):
         else:
             id2xyzd_no_nodules[id].append([float(z), float(y), float(x)])
     return id2xyzd_no_nodules, id2xyzd_nodules
+
+
+def read_luna_annotations(file_path):
+    id2xyzd = defaultdict(list)
+    train_csv = open(file_path)
+    lines = train_csv.readlines()
+    i = 0
+    for item in lines:
+        if i == 0:
+            i = 1
+            continue
+        id, x, y, z, d = item.replace('\n', '').split(',')
+        id2xyzd[id].append([float(z), float(y), float(x), float(d)])
+    return id2xyzd
+
+
+def read_luna_negative_candidates(file_path):
+    id2xyzd = defaultdict(list)
+    train_csv = open(file_path)
+    lines = train_csv.readlines()
+    i = 0
+    for item in lines:
+        if i == 0:
+            i = 1
+            continue
+        id, x, y, z, d = item.replace('\n', '').split(',')
+        if float(d) == 0:
+            id2xyzd[id].append([float(z), float(y), float(x), float(d)])
+    return id2xyzd
 
 
 def write_submission(patient_predictions, submission_path):

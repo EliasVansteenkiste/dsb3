@@ -64,8 +64,8 @@ y_shared = nn.utils.shared_empty(dim=len(model.l_target.shape))
 
 idx = T.lscalar('idx')
 givens_train = {}
-# givens_train[model.l_in.input_var] = x_shared[idx * config().batch_size:(idx + 1) * config().batch_size]
-# givens_train[model.l_target.input_var] = y_shared[idx * config().batch_size:(idx + 1) * config().batch_size]
+givens_train[model.l_in.input_var] = x_shared[idx * config().batch_size:(idx + 1) * config().batch_size]
+givens_train[model.l_target.input_var] = y_shared[idx * config().batch_size:(idx + 1) * config().batch_size]
 givens_train[model.l_in.input_var] = x_shared
 givens_train[model.l_target.input_var] = y_shared
 
@@ -76,19 +76,19 @@ givens_valid[model.l_target.input_var] = y_shared
 
 # theano functions
 
-iter_get_targets = theano.function([], nn.layers.get_output(model.l_target), givens=givens_train,
-                                   on_unused_input='ignore')
-
-iter_validate = theano.function([], valid_loss, givens=givens_valid)
 
 iter_train = theano.function([idx], train_loss, givens=givens_train, updates=updates, on_unused_input='warn')
-
 
 iter_get_predictions = theano.function([idx], nn.layers.get_output(model.l_out), givens=givens_train,
                                        on_unused_input='ignore')
 
+iter_get_targets = theano.function([idx], nn.layers.get_output(model.l_target), givens=givens_train,
+                                   on_unused_input='ignore')
+
 iter_get_inputs = theano.function([idx], nn.layers.get_output(model.l_in), givens=givens_train,
                                   on_unused_input='ignore')
+
+iter_validate = theano.function([], valid_loss, givens=givens_valid)
 
 
 if config().restart_from_save:
@@ -161,7 +161,7 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
             x_shared.set_value(x_chunk_valid)
             y_shared.set_value(y_chunk_valid)
             l_valid = iter_validate()
-            print l_valid, ids_batch
+            print l_valid, ids_batch, y_chunk_valid
             tmp_losses_valid.append(l_valid)
 
         # calculate validation loss across validation set
