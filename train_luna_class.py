@@ -14,13 +14,13 @@ import buffering
 from configuration import config, set_configuration
 import pathfinder
 
-theano.config.warn_float64 = 'raise'
+# theano.config.warn_float64 = 'raise'
 
 if len(sys.argv) < 2:
     sys.exit("Usage: train.py <configuration_name>")
 
 config_name = sys.argv[1]
-set_configuration('configs_luna_patch_class', config_name)
+set_configuration('configs_luna_patch', config_name)
 expid = utils.generate_expid(config_name)
 print
 print "Experiment ID: %s" % expid
@@ -130,11 +130,9 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
     for b in xrange(config().nbatches_chunk):
         loss = iter_train(b)
         print chunk_idx, loss
-        # p = iter_get_predictions(b)
-        # t = iter_get_targets(b)
-        # for pp, tt, id in zip(p, t, id_train):
-        #     print pp, tt, id
         tmp_losses_train.append(loss)
+
+
 
     if ((chunk_idx + 1) % config().validate_every) == 0:
         print
@@ -147,12 +145,13 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
 
         # load validation data to GPU
         tmp_losses_valid = []
-        for x_chunk_valid, y_chunk_valid, ids_batch in buffering.buffered_gen_threaded(valid_data_iterator.generate(),
-                                                                                       buffer_size=2):
+        for i, (x_chunk_valid, y_chunk_valid, ids_batch) in enumerate(
+                buffering.buffered_gen_threaded(valid_data_iterator.generate(),
+                                                buffer_size=2)):
             x_shared.set_value(x_chunk_valid)
             y_shared.set_value(y_chunk_valid)
             l_valid = iter_validate()
-            print l_valid, x_chunk_valid.shape
+            print i, l_valid
             tmp_losses_valid.append(l_valid)
 
         # calculate validation loss across validation set
