@@ -222,7 +222,6 @@ class CandidatesLunaDataGenerator(object):
         self.rng = rng
         self.full_batch = full_batch
         self.random = random
-        self.batch_size = batch_size
         self.infinite = infinite
         self.data_prep_fun = data_prep_fun
         self.transform_params = transform_params

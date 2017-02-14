@@ -69,7 +69,6 @@ train_data_iterator = data_iterators.CandidatesLunaDataGenerator(data_path=pathf
                                                                     full_batch=True, random=True, infinite=True, positive_proportion=0.5)
 
 valid_data_iterator = data_iterators.CandidatesLunaValidDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
-                                                                    batch_size=1,
                                                                     transform_params=p_transform,
                                                                     data_prep_fun=data_prep_function_valid,
                                                                     patient_ids=train_valid_ids['valid'])
