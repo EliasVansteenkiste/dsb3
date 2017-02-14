@@ -1,0 +1,15 @@
+{
+  "ALL_DATA_PATH":"/data/dsb3/stage1+luna_bcolz/",
+  "INTERMEDIATE_DATA_PATH":"/data/dsb3/compressed/",
+  "DATA_PATH":"/data/dsb3/stage1/",
+  "LUNA_DATA_PATH":"/data/dsb3/luna/dataset/",
+  "LABELS_PATH":"/data/dsb3/stage1_labels.csv",
+  "LUNA_LABELS_PATH":"/data/dsb3/luna/annotations.csv",
+  "MODEL_PATH":"/mnt/storage/metadata/dsb3/models/",
+  "MODEL_PREDICTIONS_PATH":"/mnt/storage/metadata/dsb3/model-predictions/",
+  "ANALYSIS_PATH":"/mnt/storage/metadata/dsb3/analysis/",
+  "SUBMISSION_PATH":"/mnt/storage/metadata/dsb3/submissions/",
+  "LOGS_PATH":"/mnt/storage/metadata/dsb3/logs/",
+  "PREDICTIONS_PATH":"/mnt/storage/metadata/dsb3/predictions/",
+  "ENSEMBLE_WEIGHTS_PATH":"/mnt/storage/metadata/dsb3/ensemble-weights/"
+}
