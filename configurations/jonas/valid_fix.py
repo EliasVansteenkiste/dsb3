@@ -17,10 +17,10 @@ from deep_learning.deep_learning_layers import ConvolutionLayer, PoolLayer
 from interfaces.preprocess import NormalizeInput, ZMUV
 
 "This is the number of samples in each batch"
-batch_size = 4
+batch_size = 1
 "This is the number of batches in each chunk. Computation speeds up if this is as big as possible." \
 "However, when too big, the GPU will run out of memory"
-batches_per_chunk = 8
+batches_per_chunk = 4
 "Reload the parameters from last time and continue, or start anew when you run this config file again"
 restart_from_save = True
 "After how many chunks should you save parameters. Keep this number high for better performance. It will always store at end anyway"
@@ -36,7 +36,7 @@ AUGMENTATION_PARAMETERS = {
     "scale": [1, 1, 1],  # factor
     "rotation": [180, 180, 180],  # degrees (from -180 to 180)
     "shear": [0, 0, 0],  # degrees
-    "translation": [16, 16, 16],  # mms (from -128 to 128)
+    "translation": [27, 27, 27],  # mms (from -128 to 128)
     "reflection": [0, 0, 0] #Bernoulli p
 }
 
@@ -68,11 +68,15 @@ training_data = LunaDataLoader(
 )
 
 "Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate."
+nchunks_per_epoch = 483 / batches_per_chunk
+max_nchunks = nchunks_per_epoch * 30
 learning_rate_schedule = {
-    0.0: 0.00001,
-    10.0: 0.000005,
-    16.0: 0.000002,
-    18.0: 0.000001,
+    0: 1e-5,
+    int(max_nchunks * 0.4): 5e-6,
+    int(max_nchunks * 0.5): 3e-6,
+    int(max_nchunks * 0.6): 2e-6,
+    int(max_nchunks * 0.85): 1e-6,
+    int(max_nchunks * 0.95): 5e-7
 }
 "The function to build updates."
 build_updates = lasagne.updates.adam

@@ -1,4 +1,5 @@
 {
+
   "ALL_DATA_PATH":"/data/dsb3/stage1+luna_bcolz/",
   "INTERMEDIATE_DATA_PATH":"/data/dsb3/compressed/",
   "DATA_PATH":"/data/dsb3/stage1/",
@@ -12,4 +13,5 @@
   "LOGS_PATH":"/mnt/storage/metadata/dsb3/logs/",
   "PREDICTIONS_PATH":"/mnt/storage/metadata/dsb3/predictions/",
   "ENSEMBLE_WEIGHTS_PATH":"/mnt/storage/metadata/dsb3/ensemble-weights/"
+
 }
