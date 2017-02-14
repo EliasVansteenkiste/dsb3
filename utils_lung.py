@@ -10,7 +10,7 @@ import os
 from PIL import Image
 from collections import defaultdict
 import time
-import pickle
+import cPickle as pickle
 
 def read_mhd(path):
     lock_file = '/home/eavsteen/._SimpleITK_lock'
@@ -35,7 +35,6 @@ def read_mhd(path):
 
 
 def read_pkl(path):
-    lock_file = '/home/eavsteen/._SimpleITK_lock'
     d = pickle.load(open(path, "rb" ))
     return d['pixel_data'], d['origin'], d['spacing']
 
