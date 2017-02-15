@@ -11,8 +11,8 @@ import theano.tensor as T
 import utils
 import nn_lung
 
-restart_from_save = True
-restart_from_file = '/home/eavsteen/dsb3/storage/metadata/dsb3//models/eavsteen/luna_direct_x8-20170215-004343.pkl'
+restart_from_save = False
+restart_from_file = ''
 rng = np.random.RandomState(33)
 
 # transformations
@@ -129,6 +129,9 @@ def inception_v4(lin):
     l = conv3d(l, lin.output_shape[1], filter_size=1)
 
     l = lasagne.layers.ElemwiseSumLayer([l,lin])
+
+    l = lasagne.layers.NonlinearityLayer(l, nonlinearity=lasagne.nonlinearities.very_leaky_rectify)
+
     return l
 
 def build_model():
@@ -138,8 +141,6 @@ def build_model():
     net = {}
 
     l = conv3d(l_in, 64)
-    l = max_pool3d(l)
-    l = inception_v4(l)
     l = max_pool3d(l)
     l = inception_v4(l)
     l = max_pool3d(l)

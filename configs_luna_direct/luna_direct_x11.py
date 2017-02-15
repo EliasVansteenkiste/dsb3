@@ -11,8 +11,8 @@ import theano.tensor as T
 import utils
 import nn_lung
 
-restart_from_save = True
-restart_from_file = '/home/eavsteen/dsb3/storage/metadata/dsb3//models/eavsteen/luna_direct_x8-20170215-004343.pkl'
+restart_from_save = False
+restart_from_file = ''
 rng = np.random.RandomState(33)
 
 # transformations
@@ -111,9 +111,9 @@ dense = partial(lasagne.layers.DenseLayer,
     nonlinearity=lasagne.nonlinearities.rectify)
 
 
-def inception_v4(lin):
+def inrn_v2(lin):
 
-    n_base_filter = 16
+    n_base_filter = 32
 
     l1 = conv3d(lin, n_base_filter, filter_size=1)
 
@@ -129,6 +129,34 @@ def inception_v4(lin):
     l = conv3d(l, lin.output_shape[1], filter_size=1)
 
     l = lasagne.layers.ElemwiseSumLayer([l,lin])
+
+    l = lasagne.layers.NonlinearityLayer(l, nonlinearity=lasagne.nonlinearities.rectify)
+
+    return l
+
+def inrn_v2_red(lin):
+    #We want to reduce our total volume /4
+
+    den = 16
+    nom2 = 4
+    nom3 = 5
+    nom4 = 7
+
+    ins = lin.output_shape[1]
+
+    l1 = max_pool3d(lin)
+
+    l2 = conv3d(lin, ins//den*nom2, filter_size=3, stride=2)
+
+    l3 = conv3d(lin, ins//den*nom2, filter_size=1)
+    l3 = conv3d(l3, ins//den*nom3, filter_size=3, stride=2)
+
+    l4 = conv3d(lin, ins//den*nom2, filter_size=1)
+    l4 = conv3d(l4, ins//den*nom3, filter_size=3)
+    l4 = conv3d(l4, ins//den*nom4, filter_size=3, stride=2)
+
+    l = lasagne.layers.ConcatLayer([l1, l2, l3, l4])
+
     return l
 
 def build_model():
@@ -138,12 +166,11 @@ def build_model():
     net = {}
 
     l = conv3d(l_in, 64)
-    l = max_pool3d(l)
-    l = inception_v4(l)
-    l = max_pool3d(l)
-    l = inception_v4(l)
-    l = max_pool3d(l)
-    l = inception_v4(l)
+    l = inrn_v2_red(l)
+    l = inrn_v2(l)
+
+    l = inrn_v2_red(l)
+    l = inrn_v2(l)
     l = dense(drop(l), 128)
 
     l_out = nn.layers.DenseLayer(l, num_units=2,

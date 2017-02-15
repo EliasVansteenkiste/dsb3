@@ -1,3 +1,5 @@
+#similar to configs_luna_direct/luna_direct_x5.py, only a different number of epochs 
+
 import numpy as np
 import data_transforms
 import data_iterators
@@ -11,8 +13,8 @@ import theano.tensor as T
 import utils
 import nn_lung
 
-restart_from_save = True
-restart_from_file = '/home/eavsteen/dsb3/storage/metadata/dsb3//models/eavsteen/luna_direct_x8-20170215-004343.pkl'
+restart_from_save = False
+restart_from_file = ''
 rng = np.random.RandomState(33)
 
 # transformations
@@ -76,7 +78,7 @@ valid_data_iterator = data_iterators.CandidatesLunaValidDataGenerator(data_path=
 
 
 nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
-max_nchunks = nchunks_per_epoch * 30
+max_nchunks = nchunks_per_epoch * 100
 
 validate_every = int(5. * nchunks_per_epoch)
 save_every = int(1. * nchunks_per_epoch)
@@ -138,8 +140,6 @@ def build_model():
     net = {}
 
     l = conv3d(l_in, 64)
-    l = max_pool3d(l)
-    l = inception_v4(l)
     l = max_pool3d(l)
     l = inception_v4(l)
     l = max_pool3d(l)

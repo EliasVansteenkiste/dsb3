@@ -1,3 +1,5 @@
+#similar to luna_direct_x5.py but different learning rates
+
 import numpy as np
 import data_transforms
 import data_iterators
@@ -11,8 +13,8 @@ import theano.tensor as T
 import utils
 import nn_lung
 
-restart_from_save = True
-restart_from_file = '/home/eavsteen/dsb3/storage/metadata/dsb3//models/eavsteen/luna_direct_x8-20170215-004343.pkl'
+restart_from_save = False
+restart_from_file = ''
 rng = np.random.RandomState(33)
 
 # transformations
@@ -82,10 +84,10 @@ validate_every = int(5. * nchunks_per_epoch)
 save_every = int(1. * nchunks_per_epoch)
 
 learning_rate_schedule = {
-    0: 5e-4,
-    int(max_nchunks * 0.5): 1e-4,
-    int(max_nchunks * 0.6): 5e-5,
-    int(max_nchunks * 0.7): 2e-5,
+    0:1e-3,
+    int(max_nchunks * 0.4): 5e-4,
+    int(max_nchunks * 0.6): 1e-4,
+    int(max_nchunks * 0.7): 5e-5,
     int(max_nchunks * 0.8): 1e-5,
     int(max_nchunks * 0.9): 5e-6
 }
@@ -138,8 +140,6 @@ def build_model():
     net = {}
 
     l = conv3d(l_in, 64)
-    l = max_pool3d(l)
-    l = inception_v4(l)
     l = max_pool3d(l)
     l = inception_v4(l)
     l = max_pool3d(l)
