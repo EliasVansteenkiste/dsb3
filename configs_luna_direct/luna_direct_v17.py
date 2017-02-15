@@ -12,9 +12,8 @@ import utils
 import nn_lung
 
 restart_from_save = True
-restart_from_file = '/data/metadata/dsb3//models/eavsteen/luna_direct_v12-20170211-224412.pkl'
+restart_from_file = '/data/metadata/dsb3//models/eavsteen/luna_direct_v17-20170213-120458.pkl'
 rng = np.random.RandomState(33)
-
 
 # transformations
 p_transform = {'patch_size': (64, 64, 64),
@@ -51,8 +50,8 @@ data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
                                    mask_shape='sphere')
 
 # data iterators
-batch_size = 5
-nbatches_chunk = 5
+batch_size = 4
+nbatches_chunk = 4
 chunk_size = batch_size * nbatches_chunk
 
 train_valid_ids = utils.load_pkl(pathfinder.LUNA_VALIDATION_SPLIT_PATH)
@@ -93,7 +92,7 @@ learning_rate_schedule = {
 conv3d = partial(dnn.Conv3DDNNLayer,
                  filter_size=3,
                  pad='same',
-                 W=nn.init.HeNormal('relu'),
+                 W=nn.init.Orthogonal(),
                  b=nn.init.Constant(0.01),
                  nonlinearity=nn.nonlinearities.very_leaky_rectify)
 
@@ -116,17 +115,17 @@ def build_model():
 
     net = {}
 
-    n = 16
+    n = 64
     l = conv3d(l_in, n)
     l = conv3d(l, n)
     l = max_pool3d(l)
 
-    n *= 2
+    n = 64
     l = conv3d(l, n)
     l = conv3d(l, n)
     l = max_pool3d(l)
 
-    n *= 2
+    n = 64
     l = conv3d(l, n)
     l = conv3d(l, n)
     l = max_pool3d(l)

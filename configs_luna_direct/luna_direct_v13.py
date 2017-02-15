@@ -12,7 +12,7 @@ import utils
 import nn_lung
 
 restart_from_save = True
-restart_from_file = '/data/metadata/dsb3//models/eavsteen/luna_direct_v13-20170211-110312.pkl' 
+restart_from_file = '/data/metadata/dsb3//models/eavsteen/luna_direct_v13-20170213-114845.pkl'
 rng = np.random.RandomState(33)
 
 # transformations

@@ -10,11 +10,11 @@ import lasagne
 import theano.tensor as T
 import utils
 import nn_lung
+import scipy.linalg.blas
 
 restart_from_save = True
-restart_from_file = '/data/metadata/dsb3//models/eavsteen/luna_direct_v12-20170211-224412.pkl'
+restart_from_file = '/data/metadata/dsb3//models/eavsteen/luna_direct_v4-20170210-000843.pkl'
 rng = np.random.RandomState(33)
-
 
 # transformations
 p_transform = {'patch_size': (64, 64, 64),
@@ -51,8 +51,8 @@ data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
                                    mask_shape='sphere')
 
 # data iterators
-batch_size = 5
-nbatches_chunk = 5
+batch_size = 16
+nbatches_chunk = 8
 chunk_size = batch_size * nbatches_chunk
 
 train_valid_ids = utils.load_pkl(pathfinder.LUNA_VALIDATION_SPLIT_PATH)
@@ -93,7 +93,7 @@ learning_rate_schedule = {
 conv3d = partial(dnn.Conv3DDNNLayer,
                  filter_size=3,
                  pad='same',
-                 W=nn.init.HeNormal('relu'),
+                 W=nn.init.Orthogonal(),
                  b=nn.init.Constant(0.01),
                  nonlinearity=nn.nonlinearities.very_leaky_rectify)
 
@@ -154,20 +154,17 @@ def build_model():
 
 
 def build_objective(model, deterministic=False, epsilon=1e-12):
+    customized_rate = 1/0.2
     predictions = nn.layers.get_output(model.l_out)
-    targets = T.cast(T.flatten(nn.layers.get_output(model.l_target)), 'int32')
-    p = predictions[T.arange(predictions.shape[0]), targets]
-    p = T.clip(p,epsilon,1.)
+    predictions = predictions[:,1]
+    predictions = T.clip(predictions,epsilon,1.-epsilon)
+   
+    targets = nn.layers.get_output(model.l_target)
 
-    loss = T.mean(T.log(p))
-    return -loss
+    loss = -(customized_rate * targets * T.log(predictions) + (1.0 - targets) * T.log(1.0 - predictions))
+    loss = loss.mean()
 
-#todo
-def sparse_categorical_crossentropy(output, target, from_logits=False):
-    target = T.cast(T.flatten(target), 'int32')
-    target = T.extra_ops.to_one_hot(target, nb_class=output.shape[-1])
-    target = reshape(target, shape(output))
-    return categorical_crossentropy(output, target, from_logits)
+    return loss
 
 
 

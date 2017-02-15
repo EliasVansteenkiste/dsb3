@@ -11,17 +11,19 @@ import theano.tensor as T
 import utils
 import nn_lung
 
-restart_from_save = True
-restart_from_file = '/data/metadata/dsb3//models/eavsteen/luna_direct_v12-20170211-224412.pkl'
+restart_from_save = False
+restart_from_file = ''
 rng = np.random.RandomState(33)
 
-
 # transformations
-p_transform = {'patch_size': (64, 64, 64),
-               'mm_patch_size': (64, 64, 64),
-               'pixel_spacing': (1., 0.7, 0.7)
+p_transform = {'patch_size': (32, 32, 32),
+               'mm_patch_size': (32, 32, 32),
+               'pixel_spacing': (1., 1., 1.)
                }
 p_transform_augment = {
+    'translation_range_z': [-3, 3],
+    'translation_range_y': [-3, 3],
+    'translation_range_x': [-3, 3],
     'rotation_range_z': [-180, 180],
     'rotation_range_y': [-180, 180],
     'rotation_range_x': [-180, 180]
@@ -51,49 +53,48 @@ data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
                                    mask_shape='sphere')
 
 # data iterators
-batch_size = 5
-nbatches_chunk = 5
+batch_size = 32
+nbatches_chunk = 1
 chunk_size = batch_size * nbatches_chunk
 
 train_valid_ids = utils.load_pkl(pathfinder.LUNA_VALIDATION_SPLIT_PATH)
 train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['valid']
 
-train_data_iterator = data_iterators.Luna_DG_Elias(data_path=pathfinder.LUNA_DATA_PATH,
+train_data_iterator = data_iterators.CandidatesLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                     batch_size=chunk_size,
                                                                     transform_params=p_transform,
                                                                     data_prep_fun=data_prep_function_train,
                                                                     rng=rng,
                                                                     patient_ids=train_valid_ids['train'],
-                                                                    full_batch=True, random=True, infinite=True)
+                                                                    full_batch=True, random=True, infinite=True, positive_proportion=0.5)
 
-valid_data_iterator = data_iterators.Luna_DG_Elias(data_path=pathfinder.LUNA_DATA_PATH,
-                                                                    batch_size=1,
+valid_data_iterator = data_iterators.CandidatesLunaValidDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                     transform_params=p_transform,
                                                                     data_prep_fun=data_prep_function_valid,
-                                                                    rng=rng,
-                                                                    patient_ids=train_valid_ids['valid'],
-                                                                    full_batch=False, random=False, infinite=False)
+                                                                    patient_ids=train_valid_ids['valid'])
+
+
 
 nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
 max_nchunks = nchunks_per_epoch * 30
 
-validate_every = int(1. * nchunks_per_epoch)
-save_every = int(0.5 * nchunks_per_epoch)
+validate_every = int(5. * nchunks_per_epoch)
+save_every = int(1. * nchunks_per_epoch)
 
 learning_rate_schedule = {
-    0: 1e-4,
-    int(max_nchunks * 0.5): 5e-5,
-    int(max_nchunks * 0.6): 4e-5,
-    int(max_nchunks * 0.7): 3e-5,
-    int(max_nchunks * 0.8): 2e-5,
-    int(max_nchunks * 0.9): 1e-6
+    0: 5e-4,
+    int(max_nchunks * 0.5): 1e-4,
+    int(max_nchunks * 0.6): 5e-5,
+    int(max_nchunks * 0.7): 2e-5,
+    int(max_nchunks * 0.8): 1e-5,
+    int(max_nchunks * 0.9): 5e-6
 }
 
 # model
 conv3d = partial(dnn.Conv3DDNNLayer,
                  filter_size=3,
                  pad='same',
-                 W=nn.init.HeNormal('relu'),
+                 W=nn.init.Orthogonal(),
                  b=nn.init.Constant(0.01),
                  nonlinearity=nn.nonlinearities.very_leaky_rectify)
 
@@ -110,40 +111,40 @@ dense = partial(lasagne.layers.DenseLayer,
     nonlinearity=lasagne.nonlinearities.rectify)
 
 
+def inception_v4(lin):
+
+    n_base_filter = 16
+
+    l1 = conv3d(lin, n_base_filter, filter_size=1)
+
+    l2 = conv3d(lin, n_base_filter, filter_size=1)
+    l2 = conv3d(l2, n_base_filter, filter_size=3)
+
+    l3 = conv3d(lin, n_base_filter, filter_size=1)
+    l3 = conv3d(l3, n_base_filter, filter_size=3)
+    l3 = conv3d(l3, n_base_filter, filter_size=3)
+
+    l = lasagne.layers.ConcatLayer([l1, l2, l3])
+
+    l = conv3d(l, lin.output_shape[1], filter_size=1)
+
+    l = lasagne.layers.ElemwiseSumLayer([l,lin])
+    return l
+
 def build_model():
     l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
     l_target = nn.layers.InputLayer((None, 1))
 
     net = {}
 
-    n = 16
-    l = conv3d(l_in, n)
-    l = conv3d(l, n)
+    l = conv3d(l_in, 64)
     l = max_pool3d(l)
-
-    n *= 2
-    l = conv3d(l, n)
-    l = conv3d(l, n)
+    l = inception_v4(l)
     l = max_pool3d(l)
-
-    n *= 2
-    l = conv3d(l, n)
-    l = conv3d(l, n)
+    l = inception_v4(l)
     l = max_pool3d(l)
-
-    n *= 2
-    l = conv3d(l, n)
-    l = conv3d(l, n)
-    l = max_pool3d(l)
-
-    n *= 2
-    l = conv3d(l, n)
-    l = conv3d(l, n)
-    l = max_pool3d(l)
-    
-    n *= 2
-    l = dense(drop(l), n)
-    l = dense(drop(l), n)
+    l = inception_v4(l)
+    l = dense(drop(l), 128)
 
     l_out = nn.layers.DenseLayer(l, num_units=2,
                                  W=nn.init.Constant(0.),

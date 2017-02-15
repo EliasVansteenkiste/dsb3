@@ -12,9 +12,8 @@ import utils
 import nn_lung
 
 restart_from_save = True
-restart_from_file = '/data/metadata/dsb3//models/eavsteen/luna_direct_v12-20170211-224412.pkl'
+restart_from_file = '/data/metadata/dsb3//models/eavsteen/luna_direct_v13-20170211-223209.pkl'
 rng = np.random.RandomState(33)
-
 
 # transformations
 p_transform = {'patch_size': (64, 64, 64),
@@ -22,6 +21,11 @@ p_transform = {'patch_size': (64, 64, 64),
                'pixel_spacing': (1., 0.7, 0.7)
                }
 p_transform_augment = {
+
+    'translation_range_z': [-5, 5],
+    'translation_range_y': [-5, 5],
+    'translation_range_x': [-5, 5],
+
     'rotation_range_z': [-180, 180],
     'rotation_range_y': [-180, 180],
     'rotation_range_x': [-180, 180]
@@ -93,7 +97,7 @@ learning_rate_schedule = {
 conv3d = partial(dnn.Conv3DDNNLayer,
                  filter_size=3,
                  pad='same',
-                 W=nn.init.HeNormal('relu'),
+                 W=nn.init.Orthogonal(),
                  b=nn.init.Constant(0.01),
                  nonlinearity=nn.nonlinearities.very_leaky_rectify)
 
@@ -116,7 +120,7 @@ def build_model():
 
     net = {}
 
-    n = 16
+    n = 32
     l = conv3d(l_in, n)
     l = conv3d(l, n)
     l = max_pool3d(l)
@@ -130,11 +134,13 @@ def build_model():
     l = conv3d(l, n)
     l = conv3d(l, n)
     l = max_pool3d(l)
+    l = drop(l)
 
     n *= 2
     l = conv3d(l, n)
     l = conv3d(l, n)
     l = max_pool3d(l)
+    l = drop(l)
 
     n *= 2
     l = conv3d(l, n)
