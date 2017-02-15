@@ -53,7 +53,8 @@ def sample_augmentation_parameters(transformation):
 def transform_scan3d(data, pixel_spacing, p_transform,
                      luna_annotations=None,
                      luna_origin=None,
-                     p_transform_augment=None):
+                     p_transform_augment=None,
+                     world_coord_system=True):
     mm_patch_size = np.asarray(p_transform['mm_patch_size'], dtype='float32')
     out_pixel_spacing = np.asarray(p_transform['pixel_spacing'])
 
@@ -85,7 +86,7 @@ def transform_scan3d(data, pixel_spacing, p_transform,
         annotatations_out = []
         for zyxd in luna_annotations:
             zyx = np.array(zyxd[:3])
-            voxel_coords = utils_lung.world2voxel(zyx, luna_origin, pixel_spacing)
+            voxel_coords = utils_lung.world2voxel(zyx, luna_origin, pixel_spacing) if world_coord_system else zyx
             voxel_coords = np.append(voxel_coords, [1])
             voxel_coords_out = np.linalg.inv(tf_total).dot(voxel_coords)[:3]
             diameter_mm = zyxd[-1]
@@ -102,7 +103,8 @@ def transform_patch3d(data, pixel_spacing, p_transform,
                       patch_center,
                       luna_origin,
                       luna_annotations=None,
-                      p_transform_augment=None):
+                      p_transform_augment=None,
+                      world_coord_system=True):
     mm_patch_size = np.asarray(p_transform['mm_patch_size'], dtype='float32')
     out_pixel_spacing = np.asarray(p_transform['pixel_spacing'])
 
@@ -111,7 +113,7 @@ def transform_patch3d(data, pixel_spacing, p_transform,
     output_shape = p_transform['patch_size']
 
     zyx = np.array(patch_center[:3])
-    voxel_coords = utils_lung.world2voxel(zyx, luna_origin, pixel_spacing)
+    voxel_coords = utils_lung.world2voxel(zyx, luna_origin, pixel_spacing) if world_coord_system else zyx
     voxel_coords_mm = voxel_coords * mm_shape / input_shape
 
     # here we give parameters to affine transform as if it's T in
@@ -145,7 +147,7 @@ def transform_patch3d(data, pixel_spacing, p_transform,
         annotatations_out = []
         for zyxd in luna_annotations:
             zyx = np.array(zyxd[:3])
-            voxel_coords = utils_lung.world2voxel(zyx, luna_origin, pixel_spacing)
+            voxel_coords = utils_lung.world2voxel(zyx, luna_origin, pixel_spacing) if world_coord_system else zyx
             voxel_coords = np.append(voxel_coords, [1])
             voxel_coords_out = np.linalg.inv(tf_total).dot(voxel_coords)[:3]
             diameter_mm = zyxd[-1]

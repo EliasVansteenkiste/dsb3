@@ -17,7 +17,7 @@ if len(sys.argv) < 2:
     sys.exit("Usage: train.py <configuration_name>")
 
 config_name = sys.argv[1]
-set_configuration('configs_luna_patch_class', config_name)
+set_configuration('configs_luna_class', config_name)
 
 # metadata
 metadata_dir = utils.get_dir_path('models', pathfinder.METADATA_PATH)

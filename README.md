@@ -1,8 +1,6 @@
 # TODO
 
-- scan segmentation, blob detection in one go
-- luna evalution metrics
-- zmuv
+- save scan segmentations together with pixel_spacing and origin 0 in .npz files?
 - pixelshuffle layer 
 - ordering of slices for kaggle data (Jonas)
 
