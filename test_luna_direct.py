@@ -10,6 +10,10 @@ from configuration import config, set_configuration
 from utils_plots import plot_slice_3d_3
 import utils_lung
 
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
 theano.config.warn_float64 = 'raise'
 
 if len(sys.argv) < 2:
@@ -63,17 +67,23 @@ print 'Data'
 print 'n validation: %d' % valid_data_iterator.nsamples
 
 valid_losses_ce = []
+all_preds  = []
+all_targets = []
+
 for n, (x_chunk, y_chunk, id_chunk) in enumerate(buffering.buffered_gen_threaded(valid_data_iterator.generate())):
     # load chunk to GPU
     x_shared.set_value(x_chunk)
-    print 'loaded chunk'
+    print 'loaded chunk', n
     predictions = iter_get_predictions()
     targets = y_chunk
     inputs = x_chunk
 
     ce = utils_lung.cross_entropy(predictions, targets)
-    print 'CE', ce
+    print 'CE', ce, 'predictions', predictions, 'targets', targets 
     valid_losses_ce.append(ce)
+    all_preds.append(predictions[0,1])
+    all_targets.append(targets[0,0])
+
 
     # for k in xrange(predictions.shape[0]):
     #     plot_slice_3d_3(input=inputs[k, 0], mask=targets[k, 0], prediction=predictions[k, 0],
@@ -81,3 +91,48 @@ for n, (x_chunk, y_chunk, id_chunk) in enumerate(buffering.buffered_gen_threaded
     #                     img_dir=outputs_path)
 
 print 'CE validation loss', np.mean(valid_losses_ce)
+
+
+all_preds = np.array(all_preds)
+all_targets = np.array(all_targets)
+n_preds = len(all_preds)
+print 'n_preds', n_preds
+
+recalls = []
+precisions = []
+
+cutoffs = np.linspace(0.001, 0.999, 100)
+for p in cutoffs:
+    print '=====  ', p, ' ====='
+    qpreds = all_preds > p
+
+    tp  = np.sum(qpreds * all_targets)
+    all_pos = np.sum(all_targets)
+    print 'tp', tp
+    print 'all_pos', np.sum(all_pos)
+    recall = tp/all_pos
+    print 'recall', recall
+    recalls.append(recall)
+
+    n_true_preds = np.sum(qpreds)
+    print 'n_true_preds', n_true_preds
+    precision  = tp/n_true_preds
+    print 'precision', precision
+    precisions.append(precision)
+
+
+fig = plt.figure()
+plt.suptitle('Accuracy and Precision for FPR network')
+plt.plot(cutoffs, recalls, 'b', label="recall")
+plt.plot(cutoffs, precisions, 'g', label="precision")
+plt.legend(loc=2, borderaxespad=0.)
+plt.xlabel('cutoff probabilities')
+plt.ylabel('Accuracy/Precision')
+fig.savefig(config_name+'_'+expid+'.jpg')
+
+print recalls
+print precisions
+
+
+
+
