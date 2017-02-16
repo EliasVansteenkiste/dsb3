@@ -26,6 +26,7 @@ restart_from_save = True
 "After how many chunks should you save parameters. Keep this number high for better performance. It will always store at end anyway"
 save_every_chunks = 50
 
+num_epochs=30
 
 #####################
 #   preprocessing   #
@@ -61,19 +62,35 @@ preprocessors = [
 training_data = LunaDataLoader(
     only_positive=True,
     sets=TRAINING,
-    epochs=20,
+    epochs=30,
     preprocessors=preprocessors,
     multiprocess=True,
     crash_on_exception=True,
 )
 
 "Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate."
+# learning_rate_schedule = {
+#     0.0: 0.00001,
+#     10.0: 0.000005,
+#     16.0: 0.000002,
+#     18.0: 0.000001,
+# }
+
+#FIXXXME: that's not exactly the same which ira does, for that we would need to convert the epochs to
+# chunks, but let's try if it works like this anyway :-)
+
 learning_rate_schedule = {
-    0.0: 0.00001,
-    10.0: 0.000005,
-    16.0: 0.000002,
-    18.0: 0.000001,
-}
+    0.0: 1e-5,
+    num_epochs* 0.4: 5e-6,
+    num_epochs * 0.5: 3e-6,
+    num_epochs* 0.6: 2e-6,
+    num_epochs* 0.85: 1e-6,
+    num_epochs* 0.95: 5e-7
+    }
+
+
+
+
 "The function to build updates."
 build_updates = lasagne.updates.adam
 
@@ -195,10 +212,11 @@ max_pool3d = partial(dnn.MaxPool3DDNNLayer,
 "Here we build a model. The model returns a dict with the requested inputs for each layer:" \
 "And with the outputs it generates. You may generate multiple outputs (for analysis or for some other objectives, etc)" \
 "Unused outputs don't cost in performance"
-def build_model(image_size=(IMAGE_SIZE,IMAGE_SIZE,IMAGE_SIZE)):
-    l_in = lasagne.layers.InputLayer(shape=(None,)+image_size)
+def build_model():
+    l_in = lasagne.layers.InputLayer(shape=(None,IMAGE_SIZE,IMAGE_SIZE,IMAGE_SIZE))
 
     l0 = lasagne.layers.DimshuffleLayer(l_in, pattern=[0,'x',1,2,3])
+    
 
     net = {}
     base_n_filters = 64
@@ -216,23 +234,25 @@ def build_model(image_size=(IMAGE_SIZE,IMAGE_SIZE,IMAGE_SIZE)):
     net['encode_2'] = lasagne.layers.ParametricRectifierLayer(net['encode_2'])
     net['encode_3'] = conv3d(net['encode_2'], base_n_filters)
     net['encode_3'] = lasagne.layers.ParametricRectifierLayer(net['encode_3'])
-    net['upscale1'] = Upscale3DLayer(net['encode_2'], 2)
+    net['upscale1'] = lasagne.layers.Upscale3DLayer(net['encode_2'], 2)
 
-    net['concat1'] = lasagne.layers.ConcatLayer([l0, net['upscale1'], net['contr_1_3']],
+    net['concat1'] = lasagne.layers.ConcatLayer([net['upscale1'], net['contr_1_3']],
                                            cropping=(None, None, "center", "center", "center"))
     net['expand_1_1'] = conv3d(net['concat1'], 2 * base_n_filters)
     net['expand_1_1'] = lasagne.layers.ParametricRectifierLayer(net['expand_1_1'])
-    net['expand_1_2'] = conv3d(net['expand_1_1'], base_n_filters)
+    net['expand_1_2'] = conv3d(net['expand_1_1'], 2 * base_n_filters)
     net['expand_1_2'] = lasagne.layers.ParametricRectifierLayer(net['expand_1_2'])
     net['expand_1_3'] = conv3d(net['expand_1_2'], base_n_filters)
     net['expand_1_3'] = lasagne.layers.ParametricRectifierLayer(net['expand_1_3'])
 
-    l_out = dnn.Conv3DDNNLayer(net['expand_1_3'], num_filters=1,
+    net['output_segmentation'] = dnn.Conv3DDNNLayer(net['expand_1_3'], num_filters=1,
                                filter_size=1,
                                nonlinearity=lasagne.nonlinearities.sigmoid)
 
-    l_out = lasagne.layers.SliceLayer(l_out, indices=0, axis=1)
-
+    l_out = lasagne.layers.SliceLayer(net['output_segmentation'], indices=0, axis=1)
+    
+    
+    
     return {
         "inputs":{
             "luna:3d": l_in,

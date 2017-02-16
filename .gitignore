@@ -1,4 +1,6 @@
-SETTINGS.json
+*.sublime-project
+*.sublime-workspace
+lsyncd.lua
 # Created by https://www.gitignore.io/api/pycharm,python,linux,macos
 
 ### PyCharm ###
@@ -191,6 +193,6 @@ Temporary Items
 
 # End of https://www.gitignore.io/api/pycharm,python,linux,macos
 
-.jpg
-.jpeg
-.pdf
+*.jpg
+*.jpeg
+*.pdf
