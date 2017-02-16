@@ -22,7 +22,7 @@ batch_size = 4
 "However, when too big, the GPU will run out of memory"
 batches_per_chunk = 8
 "Reload the parameters from last time and continue, or start anew when you run this config file again"
-restart_from_save = True
+restart_from_save = False
 "After how many chunks should you save parameters. Keep this number high for better performance. It will always store at end anyway"
 save_every_chunks = 50
 
@@ -41,6 +41,7 @@ AUGMENTATION_PARAMETERS = {
 }
 
 IMAGE_SIZE = 64
+num_epochs=30
 
 "Put in here the preprocessors for your data." \
 "They will be run consequently on the datadict of the dataloader in the order of your list."
@@ -61,20 +62,27 @@ preprocessors = [
 training_data = LunaDataLoader(
     only_positive=True,
     sets=TRAINING,
-    epochs=30,
+    epochs=num_epochs,
     preprocessors=preprocessors,
     multiprocess=True,
     crash_on_exception=True,
 )
 
 "Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate."
+
+
 learning_rate_schedule = {
-    0.0: 0.00001,
-    10.0: 0.000005,
-    16.0: 0.000002,
-    18.0: 0.000001,
+    0: 1e-5,
+    int(num_epochs * 0.4): 5e-6,
+    int(num_epochs * 0.5): 3e-6,
+    int(num_epochs * 0.6): 2e-6,
+    int(num_epochs * 0.85): 1e-6,
+    int(num_epochs * 0.95): 5e-7
 }
+
+
 "The function to build updates."
+
 build_updates = lasagne.updates.adam
 
 

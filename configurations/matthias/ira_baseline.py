@@ -15,6 +15,7 @@ from deep_learning.deep_learning_layers import ConvolutionLayer, PoolLayer
 #   running speed   #
 #####################
 from interfaces.preprocess import NormalizeInput, ZMUV
+from application.preprocessors.normalize_scales import HUNormalizer
 
 "This is the number of samples in each batch"
 batch_size = 4
@@ -22,11 +23,10 @@ batch_size = 4
 "However, when too big, the GPU will run out of memory"
 batches_per_chunk = 8
 "Reload the parameters from last time and continue, or start anew when you run this config file again"
-restart_from_save = True
+restart_from_save = False
 "After how many chunks should you save parameters. Keep this number high for better performance. It will always store at end anyway"
 save_every_chunks = 50
 
-num_epochs=30
 
 #####################
 #   preprocessing   #
@@ -42,7 +42,7 @@ AUGMENTATION_PARAMETERS = {
 }
 
 IMAGE_SIZE = 64
-
+num_epochs=30
 "Put in here the preprocessors for your data." \
 "They will be run consequently on the datadict of the dataloader in the order of your list."
 preprocessors = [
@@ -51,7 +51,7 @@ preprocessors = [
                norm_patch_size=(IMAGE_SIZE,IMAGE_SIZE,IMAGE_SIZE),  # in mms
                augmentation_params=AUGMENTATION_PARAMETERS
                ),
-    ZMUV("luna:3d", bias =  -648.59027, std = 679.21021),
+    HUNormalizer("luna:3d"),
 ]
 
 #####################
@@ -62,32 +62,21 @@ preprocessors = [
 training_data = LunaDataLoader(
     only_positive=True,
     sets=TRAINING,
-    epochs=30,
+    epochs=num_epochs,
     preprocessors=preprocessors,
     multiprocess=True,
     crash_on_exception=True,
 )
 
-"Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate."
-# learning_rate_schedule = {
-#     0.0: 0.00001,
-#     10.0: 0.000005,
-#     16.0: 0.000002,
-#     18.0: 0.000001,
-# }
-
-#FIXXXME: that's not exactly the same which ira does, for that we would need to convert the epochs to
-# chunks, but let's try if it works like this anyway :-)
-
+"Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate."        
 learning_rate_schedule = {
-    0.0: 1e-5,
-    num_epochs* 0.4: 5e-6,
-    num_epochs * 0.5: 3e-6,
-    num_epochs* 0.6: 2e-6,
-    num_epochs* 0.85: 1e-6,
-    num_epochs* 0.95: 5e-7
+        0: 1e-5,
+        int(num_epochs * 0.4): 5e-6,
+        int(num_epochs * 0.5): 3e-6,
+        int(num_epochs * 0.6): 2e-6,
+        int(num_epochs * 0.85): 1e-6,
+        int(num_epochs * 0.95): 5e-7
     }
-
 
 
 
@@ -212,11 +201,11 @@ max_pool3d = partial(dnn.MaxPool3DDNNLayer,
 "Here we build a model. The model returns a dict with the requested inputs for each layer:" \
 "And with the outputs it generates. You may generate multiple outputs (for analysis or for some other objectives, etc)" \
 "Unused outputs don't cost in performance"
-def build_model():
-    l_in = lasagne.layers.InputLayer(shape=(None,IMAGE_SIZE,IMAGE_SIZE,IMAGE_SIZE))
+def build_model(image_size=(IMAGE_SIZE,IMAGE_SIZE,IMAGE_SIZE)):
+
+    l_in = lasagne.layers.InputLayer(shape=(None,)+image_size)
 
     l0 = lasagne.layers.DimshuffleLayer(l_in, pattern=[0,'x',1,2,3])
-    
 
     net = {}
     base_n_filters = 64
