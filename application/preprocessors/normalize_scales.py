@@ -25,3 +25,35 @@ class DefaultNormalizer(BasePreprocessor):
                 sample[OUTPUT][tag] = volume*self.scale+self.offset
 #            else:
  #               raise Exception("Did not find tag which I had to augment: %s"%tag)
+
+# this is the exact way ira does it in her framework
+class HUNormalizer(BasePreprocessor):
+
+    def __init__(self, tags, min_hu=MIN_HU, max_hu=MAX_HU):
+        self.tags = tags
+        self.min_hu = min_hu
+        self.max_hu = max_hu
+       
+    def process(self, sample):
+        
+        for tag in self.tags:
+            if tag in sample[INPUT]:
+            
+                image = sample[INPUT][self.tag]
+                image = (image - self.min_hu) / (self.max_hu - self.min_hu)
+                image[image < 0.]=0.
+                image[image > 0.]=1.
+                sample[INPUT][self.tag] = image 
+            
+            elif tag in sample[OUTPUT]:
+            
+                image = sample[OUTPUT][self.tag]
+                image = (image - self.min_hu) / (self.max_hu - self.min_hu)
+                image[image < 0.]=0.
+                image[image > 0.]=1.
+                sample[OUTPUT][self.tag] = image
+
+
+
+
+       
