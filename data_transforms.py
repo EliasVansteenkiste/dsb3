@@ -19,7 +19,7 @@ def ct2normHU(x, metadata):
     x[x < 0.] = 0.
     x = metadata['RescaleSlope'] * x + metadata['RescaleIntercept']
     x = (x - MIN_HU) / (MAX_HU - MIN_HU)
-    x = np.clip(x, 0., 1.)
+    x = np.clip(x, 0., 1., out=x)
     return x
 
 
@@ -30,7 +30,7 @@ def hu2normHU(x):
     :return:
     """
     x = (x - MIN_HU) / (MAX_HU - MIN_HU)
-    x = np.clip(x, 0., 1.)
+    x = np.clip(x, 0., 1., out=x)
     return x
 
 
@@ -126,6 +126,7 @@ def transform_patch3d(data, pixel_spacing, p_transform,
 
     if p_transform_augment:
         augment_params_sample = sample_augmentation_parameters(p_transform_augment)
+        # print 'augmentation parameters', augment_params_sample
         tf_augment = affine_transform(translation=augment_params_sample.translation,
                                       rotation=augment_params_sample.rotation)
         tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_augment).dot(tf_shift_uncenter).dot(tf_output_scale)
@@ -140,6 +141,7 @@ def transform_patch3d(data, pixel_spacing, p_transform,
     voxel_coords = np.append(voxel_coords, [1])
     voxel_coords_out = np.linalg.inv(tf_total).dot(voxel_coords)[:3]
     patch_annotation_out = np.rint(np.append(voxel_coords_out, diameter_out))
+    # print 'pathch_center_after_transform', patch_annotation_out
 
     if luna_annotations is not None:
         annotatations_out = []
@@ -249,9 +251,7 @@ def affine_transform(scale=None, rotation=None, translation=None):
         mx[1, 0] = -sin[2]
         mx[1, 1] = cos[2]
 
-        # matrix = mx.dot(my).dot(mz).dot(matrix)
-        matrix = matrix.dot(mx).dot(my).dot(mz)  # wrong
-
+        matrix = mx.dot(my).dot(mz).dot(matrix)
     return matrix
 
 
