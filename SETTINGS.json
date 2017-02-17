@@ -6,7 +6,7 @@
   "VALIDATION_SPLIT_PATH": "/home/eavsteen/dsb3/storage/data/dsb3/validation_split.pkl",
   "LUNA_DATA_PATH": "/data/dsb3/luna/dataset_pkl/",
   "LUNA_LABELS_PATH": "/home/eavsteen/dsb3/storage/data/dsb3/luna/annotations.csv",
-  "LUNA_CANDIDATES_PATH": "/home/eavsteen/dsb3/storage/data/dsb3/luna/candidates_V2.csv",
+  "LUNA_CANDIDATES_PATH": "/home/eavsteen/dsb3_ira_elias/candidates_V2.csv",
   "LUNA_VALIDATION_SPLIT_PATH": "/home/eavsteen/dsb3/storage/data/dsb3/luna/validation_split.pkl"
 }
 
