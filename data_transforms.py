@@ -19,8 +19,7 @@ def ct2normHU(x, metadata):
     x[x < 0.] = 0.
     x = metadata['RescaleSlope'] * x + metadata['RescaleIntercept']
     x = (x - MIN_HU) / (MAX_HU - MIN_HU)
-    x[x < 0.] = 0.
-    x[x > 1.] = 1.
+    x = np.clip(x, 0., 1.)
     return x
 
 
@@ -31,8 +30,7 @@ def hu2normHU(x):
     :return:
     """
     x = (x - MIN_HU) / (MAX_HU - MIN_HU)
-    x[x < 0.] = 0.
-    x[x > 1.] = 1.
+    x = np.clip(x, 0., 1.)
     return x
 
 
@@ -251,7 +249,8 @@ def affine_transform(scale=None, rotation=None, translation=None):
         mx[1, 0] = -sin[2]
         mx[1, 1] = cos[2]
 
-        matrix = mx.dot(my).dot(mz).dot(matrix)
+        # matrix = mx.dot(my).dot(mz).dot(matrix)
+        matrix = matrix.dot(mx).dot(my).dot(mz)  # wrong
 
     return matrix
 

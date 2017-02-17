@@ -31,13 +31,13 @@ zmuv_mean, zmuv_std = None, None
 
 def data_prep_function(data, patch_center, pixel_spacing, luna_origin, p_transform,
                        p_transform_augment, **kwargs):
-    x = data_transforms.hu2normHU(data)
-    x, patch_annotation_tf = data_transforms.transform_patch3d(data=x,
+    x, patch_annotation_tf = data_transforms.transform_patch3d(data=data,
                                                                patch_center=patch_center,
                                                                p_transform=p_transform,
                                                                p_transform_augment=p_transform_augment,
                                                                pixel_spacing=pixel_spacing,
                                                                luna_origin=luna_origin)
+    x = data_transforms.hu2normHU(x)
     x = data_transforms.zmuv(x, zmuv_mean, zmuv_std)
     return x
 
