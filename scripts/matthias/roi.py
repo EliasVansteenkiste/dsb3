@@ -10,6 +10,19 @@ python scripts/lio/roi.py configurations/lio/roi_stage1.py
 
 import matplotlib
 matplotlib.use('Agg')
+
+import utils
+import utils.plt
+from utils import LOGS_PATH, MODEL_PATH, MODEL_PREDICTIONS_PATH, paths
+from utils.log import print_to_file
+from utils.configuration import set_configuration, config, get_configuration_name
+from interfaces.data_loader import TRAIN, VALIDATION, TEST, INPUT
+from utils.transformation_3d import affine_transform, apply_affine_transform
+
+
+
+
+
 import argparse
 import theano
 import numpy as np
@@ -24,14 +37,6 @@ from itertools import product
 
 sys.path.append(".")
 from theano_utils import theano_printer
-import utils
-import utils.plt
-from utils import LOGS_PATH, MODEL_PATH, MODEL_PREDICTIONS_PATH, paths
-from utils.log import print_to_file
-from utils.configuration import set_configuration, config, get_configuration_name
-from interfaces.data_loader import TRAIN, VALIDATION, TEST, INPUT
-from utils.transformation_3d import affine_transform, apply_affine_transform
-
 
 def extract_rois(expid):
     metadata_path = MODEL_PATH + "%s.pkl" % config.model.__name__
@@ -58,6 +63,8 @@ def extract_rois(expid):
     top_layer = lasagne.layers.MergeLayer(
         incomings=output_layers.values()
     )
+
+
 
     # get all the trainable parameters from the model
     all_layers = lasagne.layers.get_all_layers(top_layer)
@@ -170,6 +177,7 @@ def extract_rois(expid):
                 print "patient", patient_id, len(rois), "nodules"
                 num_candidates[idx]+=len(rois)
 
+            print "candidates per patient: {}".format(len(rois))
 
             now = time.time()
             time_since_start = now - start_time
@@ -228,8 +236,11 @@ def patch_generator(sample, segmentation_shape, tag):
 
     for prep in config.preprocessors: prep.process(sample)
 
-    data = sample[INPUT][tag+"3d"]
-    spacing = sample[INPUT][tag+"pixelspacing"]
+    data = sample[INPUT][tag + "3d"]
+    spacing = sample[INPUT][tag + "pixelspacing"]
+    labels=sample[INPUT][tag + "labels"]
+    print "XXXXX Printing out labels XXXXX:"
+    print labels
 
     input_shape = np.asarray(data.shape, np.float)
     pixel_spacing = np.asarray(spacing, np.float)
