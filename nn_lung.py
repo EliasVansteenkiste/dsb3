@@ -256,3 +256,18 @@ class Upscale3DLayer(nn.layers.Layer):
                 upscaled = T.set_subtensor(
                     upscaled[:, :, ::a, ::b, ::c], input)
         return upscaled
+
+class Hu2normHULayer(nn.layers.Layer):
+    def __init__(self, incoming, min_hu=-1000,max_hu=400,
+                 **kwargs):
+        super(Hu2normHULayer, self).__init__(incoming, **kwargs)
+        self.min_hu = min_hu
+        self.max_hu = max_hu
+
+    def get_output_shape_for(self, input_shape):
+        return input_shape
+
+    def get_output_for(self, input, **kwargs):
+        x = (input - self.min_hu) / (self.max_hu - self.min_hu)
+        x = T.clip(x,0.,1.)
+        return x
