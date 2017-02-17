@@ -369,7 +369,7 @@ class FasterCandidatesLunaDataGenerator(object):
         self.n_pos_samples = len(self.pos_patient_paths)
         self.n_neg_samples = len(self.neg_patient_paths)
 
-        print 'n patients', self.nsamples
+        print 'n patients w pos samples', self.n_pos_samples
         self.data_path = data_path
         self.batch_size = batch_size
         self.rng = rng
@@ -378,6 +378,9 @@ class FasterCandidatesLunaDataGenerator(object):
         self.infinite = infinite
         self.data_prep_fun = data_prep_fun
         self.transform_params = transform_params
+
+        #somehting specific to the faster data generator
+        self.nsamples = 2*self.n_pos_samples
 
     def generate(self):
         while True:
@@ -388,7 +391,7 @@ class FasterCandidatesLunaDataGenerator(object):
 
             for pos in xrange(0, len(rand_idxs), self.batch_size//2):
                 idxs_batch = rand_idxs[pos:pos + self.batch_size//2]
-                nb = len(idxs_batch)
+                nb = 2 * len(idxs_batch)
                 # allocate batches
                 x_batch = np.zeros((nb, 1) + self.transform_params['patch_size'], dtype='float32')
                 y_batch = np.zeros((nb, 1), dtype='float32')
@@ -403,8 +406,8 @@ class FasterCandidatesLunaDataGenerator(object):
                     patient_pos_annotations = self.id2positive_annotations[id]
                     patient_neg_annotations = self.id2negative_annotations[id]
 
-                    patch_center_pos = patient_annotations[self.rng.randint(len(patient_pos_annotations))]
-                    patch_center_neg = patient_annotations[self.rng.randint(len(patient_neg_annotations))]
+                    patch_center_pos = patient_pos_annotations[self.rng.randint(len(patient_pos_annotations))]
+                    patch_center_neg = patient_neg_annotations[self.rng.randint(len(patient_neg_annotations))]
 
                     y_batch[2*i] = float(patch_center_pos[-1] > 0)
                     x_batch[2*i, 0, :, :, :] = self.data_prep_fun(data=img,
