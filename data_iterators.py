@@ -1,13 +1,6 @@
-import data_transforms
-import glob
-import re
-import itertools
-from collections import defaultdict
 import numpy as np
-import utils
 import utils_lung
 import pathfinder
-import os
 
 
 class LunaDataGenerator(object):
@@ -21,7 +14,7 @@ class LunaDataGenerator(object):
             patient_paths = utils_lung.get_patient_data_paths(data_path)
             self.patient_paths = [p for p in patient_paths if '.pkl' in p]
 
-        self.id2annotations = utils_lung.read_luna_labels(pathfinder.LUNA_LABELS_PATH)
+        self.id2annotations = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
         self.nsamples = len(self.patient_paths)
         self.data_path = data_path
         self.batch_size = batch_size
@@ -132,6 +125,7 @@ class PatchPositiveLunaDataGenerator(LunaDataGenerator):
             if not self.infinite:
                 break
 
+<<<<<<< HEAD
 class Luna_DG_Elias(LunaDataGenerator):
     def __init__(self, data_path, batch_size, transform_params, data_prep_fun, rng,
                  full_batch, random, infinite, patient_ids=None, positive_proportion=0.5, **kwargs):
@@ -145,6 +139,20 @@ class Luna_DG_Elias(LunaDataGenerator):
         self.nsamples = len(self.patient_paths)
         self.id2_no_nodules, self.id2_nodules  = utils_lung.read_luna_candidates('candidates_V2.csv')
         self.positive_proportion = positive_proportion
+=======
+
+class PatchCentersPositiveLunaDataGenerator(LunaDataGenerator):
+    def __init__(self, data_path, batch_size, transform_params, data_prep_fun, rng,
+                 full_batch, random, infinite, patient_ids=None, **kwargs):
+        super(PatchCentersPositiveLunaDataGenerator, self).__init__(data_path, batch_size, transform_params,
+                                                                    data_prep_fun,
+                                                                    rng,
+                                                                    full_batch, random, infinite, patient_ids, **kwargs)
+        patient_ids_all = [utils_lung.luna_extract_pid(p) for p in self.patient_paths]
+        patient_ids_pos = [pid for pid in patient_ids_all if pid in self.id2annotations.keys()]
+        self.patient_paths = [data_path + '/' + p + '.mhd' for p in patient_ids_pos]
+        self.nsamples = len(self.patient_paths)
+>>>>>>> d919d4f1d243fdb276d5f3810fa01ac3fafd6158
 
     def generate(self):
         while True:
@@ -155,12 +163,18 @@ class Luna_DG_Elias(LunaDataGenerator):
                 idxs_batch = rand_idxs[pos:pos + self.batch_size]
                 nb = len(idxs_batch)
                 # allocate batches
+<<<<<<< HEAD
                 x_batch = np.zeros((nb,1,) + self.transform_params['patch_size'], dtype='float32')
                 y_batch = np.zeros((nb,1), dtype='float32')
+=======
+                x_batch = np.zeros((nb, 1) + self.transform_params['patch_size'], dtype='float32')
+                y_batch = np.zeros((nb, 3), dtype='float32')
+>>>>>>> d919d4f1d243fdb276d5f3810fa01ac3fafd6158
                 patients_ids = []
 
                 for i, idx in enumerate(idxs_batch):
                     patient_path = self.patient_paths[idx]
+<<<<<<< HEAD
                     id = utils_lung.luna_extract_pid(patient_path,'.pkl')
                     patients_ids.append(id)
 
@@ -180,6 +194,21 @@ class Luna_DG_Elias(LunaDataGenerator):
                     x_batch[i, :, :, :] = self.data_prep_fun(data=img, patch_center=candidate,
                                                                           pixel_spacing=pixel_spacing,
                                                                           luna_origin=origin)
+=======
+                    id = utils_lung.luna_extract_pid(patient_path)
+                    patients_ids.append(id)
+
+                    img, origin, pixel_spacing = utils_lung.read_mhd(patient_path)
+
+                    patient_annotations = self.id2annotations[id]
+                    patch_center = patient_annotations[self.rng.randint(len(patient_annotations))]
+                    x_batch[i, 0, :, :, :], zyxd = self.data_prep_fun(data=img,
+                                                                      patch_center=patch_center,
+                                                                      pixel_spacing=pixel_spacing,
+                                                                      luna_annotations=patient_annotations,
+                                                                      luna_origin=origin)
+                    y_batch[i] = zyxd[:3]
+>>>>>>> d919d4f1d243fdb276d5f3810fa01ac3fafd6158
 
                 if self.full_batch:
                     if nb == self.batch_size:
@@ -191,7 +220,10 @@ class Luna_DG_Elias(LunaDataGenerator):
                 break
 
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> d919d4f1d243fdb276d5f3810fa01ac3fafd6158
 class CandidatesLunaDataGenerator(object):
     def __init__(self, data_path, batch_size, transform_params, patient_ids, data_prep_fun, rng,
                  full_batch, random, infinite, positive_proportion, **kwargs):
@@ -242,6 +274,7 @@ class CandidatesLunaDataGenerator(object):
 
                 for i, idx in enumerate(idxs_batch):
                     patient_path = self.patient_paths[idx]
+
                     id = utils_lung.luna_extract_pid(patient_path,'.pkl')
                     patients_ids.append(id)
 
@@ -293,6 +326,7 @@ class CandidatesLunaValidDataGenerator(object):
                 self.id2negative_annotations[pid] = negative_annotations_selected
 
                 self.id2patient_path[pid] = data_path + '/' + pid + '.pkl'
+
                 n_positive += n_pos
                 n_negative += n_pos
 
@@ -312,17 +346,18 @@ class CandidatesLunaValidDataGenerator(object):
         for pid in self.id2positive_annotations.iterkeys():
             for patch_center in self.id2positive_annotations[pid]:
                 patient_path = self.id2patient_path[pid]
+
                 print 'patch_center', patch_center
 
                 img, origin, pixel_spacing = utils_lung.read_pkl(patient_path)
+
                 y_batch[0] = 1.
                 x_batch[0, 0, :, :, :] = self.data_prep_fun(data=img,
                                                             patch_center=patch_center,
                                                             pixel_spacing=pixel_spacing,
                                                             luna_origin=origin)
 
-                #print y_batch, patch_center, 'a'
-                #print 'np.sum(x_batch)', np.sum(x_batch)
+
                 yield x_batch, y_batch, [pid]
 
             for patch_center in self.id2negative_annotations[pid]:
@@ -330,11 +365,13 @@ class CandidatesLunaValidDataGenerator(object):
                 print 'patch_center', patch_center
 
                 img, origin, pixel_spacing = utils_lung.read_pkl(patient_path)
+-
                 y_batch[0] = 0.
                 x_batch[0, 0, :, :, :] = self.data_prep_fun(data=img,
                                                             patch_center=patch_center,
                                                             pixel_spacing=pixel_spacing,
                                                             luna_origin=origin)
+
 
                 #print y_batch, patch_center, 'b'
                 #print 'np.sum(x_batch)', np.sum(x_batch)
@@ -417,100 +454,3 @@ class AllCandidatesLunaValidDataGenerator(object):
 
                 yield x_batch, y_batch, [pid]
 
-
-
-class FasterCandidatesLunaDataGenerator(object):
-    def __init__(self, data_path, batch_size, transform_params, patient_ids, data_prep_fun, rng,
-                 full_batch, random, infinite, **kwargs):
-
-        id2positive_annotations = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
-        id2negative_annotations = utils_lung.read_luna_negative_candidates(pathfinder.LUNA_CANDIDATES_PATH)
-
-        self.id2positive_annotations = {}
-        self.id2negative_annotations = {}
-        self.pos_patient_paths = []
-        self.neg_patient_paths = []
-
-        n_positive, n_negative, n_only_negative, n_negative_pos = 0, 0, 0, 0
-
-        for pid in patient_ids:
-            if pid in id2positive_annotations:
-                self.id2positive_annotations[pid] = id2positive_annotations[pid]
-                self.id2negative_annotations[pid] = id2negative_annotations[pid]
-                self.pos_patient_paths.append(data_path + '/' + pid + '.pkl')
-                n_positive += len(id2positive_annotations[pid])
-                n_negative += len(id2negative_annotations[pid])
-                n_negative_pos += len(id2negative_annotations[pid])
-            else:
-                self.id2negative_annotations[pid] = id2negative_annotations[pid]
-                self.neg_patient_paths.append(data_path + '/' + pid + '.pkl')
-                n_negative += len(id2negative_annotations[pid])
-                n_only_negative += len(id2negative_annotations[pid])
-
-        print 'n positive', n_positive
-        print 'n negative', n_negative
-        print 'n only negative', n_only_negative
-
-        self.n_pos_samples = len(self.pos_patient_paths)
-        self.n_neg_samples = len(self.neg_patient_paths)
-
-        print 'n patients w pos samples', self.n_pos_samples
-        self.data_path = data_path
-        self.batch_size = batch_size
-        self.rng = rng
-        self.full_batch = full_batch
-        self.random = random
-        self.infinite = infinite
-        self.data_prep_fun = data_prep_fun
-        self.transform_params = transform_params
-
-        #somehting specific to the faster data generator
-        self.nsamples = 2*self.n_pos_samples
-
-    def generate(self):
-        while True:
-            rand_idxs = np.arange(self.n_pos_samples)
-            if self.random:
-                self.rng.shuffle(rand_idxs)
-
-
-            for pos in xrange(0, len(rand_idxs), self.batch_size//2):
-                idxs_batch = rand_idxs[pos:pos + self.batch_size//2]
-                nb = 2 * len(idxs_batch)
-                # allocate batches
-                x_batch = np.zeros((nb, 1) + self.transform_params['patch_size'], dtype='float32')
-                y_batch = np.zeros((nb, 1), dtype='float32')
-                patients_ids = []
-
-                for i, idx in enumerate(idxs_batch):
-                    patient_path = self.pos_patient_paths[idx]
-                    id = utils_lung.luna_extract_pid(patient_path,'.pkl')
-                    patients_ids.append(id)
-
-                    img, origin, pixel_spacing = utils_lung.read_pkl(patient_path)
-                    patient_pos_annotations = self.id2positive_annotations[id]
-                    patient_neg_annotations = self.id2negative_annotations[id]
-
-                    patch_center_pos = patient_pos_annotations[self.rng.randint(len(patient_pos_annotations))]
-                    patch_center_neg = patient_neg_annotations[self.rng.randint(len(patient_neg_annotations))]
-
-                    y_batch[2*i] = float(patch_center_pos[-1] > 0)
-                    x_batch[2*i, 0, :, :, :] = self.data_prep_fun(data=img,
-                                                                patch_center=patch_center_pos,
-                                                                pixel_spacing=pixel_spacing,
-                                                                luna_origin=origin)
-
-                    y_batch[2*i+1] = float(patch_center_neg[-1] > 0)
-                    x_batch[2*i+1, 0, :, :, :] = self.data_prep_fun(data=img,
-                                                                patch_center=patch_center_pos,
-                                                                pixel_spacing=pixel_spacing,
-                                                                luna_origin=origin)
-
-                if self.full_batch:
-                    if nb == self.batch_size:
-                        yield x_batch, y_batch, patients_ids
-                else:
-                    yield x_batch, y_batch, patients_ids
-
-            if not self.infinite:
-                break
