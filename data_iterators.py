@@ -288,19 +288,17 @@ class CandidatesLunaValidDataGenerator(object):
         self.transform_params = transform_params
 
     def generate(self):
-        x_batch = np.zeros((1, 1) + self.transform_params['patch_size'], dtype='float32')
-        y_batch = np.zeros((1, 1), dtype='float32')
 
         for pid in self.id2positive_annotations.iterkeys():
             for patch_center in self.id2positive_annotations[pid]:
                 patient_path = self.id2patient_path[pid]
 
                 img, origin, pixel_spacing = utils_lung.read_mhd(patient_path)
-                y_batch[0] = 1.
-                x_batch[0, 0, :, :, :] = self.data_prep_fun(data=img,
-                                                            patch_center=patch_center,
-                                                            pixel_spacing=pixel_spacing,
-                                                            luna_origin=origin)
+                y_batch = np.array([[1.]], dtype='float32')
+                x_batch = np.float32(self.data_prep_fun(data=img,
+                                                        patch_center=patch_center,
+                                                        pixel_spacing=pixel_spacing,
+                                                        luna_origin=origin))[None, None, :, :, :]
 
                 yield x_batch, y_batch, [pid]
 
@@ -308,10 +306,10 @@ class CandidatesLunaValidDataGenerator(object):
                 patient_path = self.id2patient_path[pid]
 
                 img, origin, pixel_spacing = utils_lung.read_mhd(patient_path)
-                y_batch[0] = 0.
-                x_batch[0, 0, :, :, :] = self.data_prep_fun(data=img,
-                                                            patch_center=patch_center,
-                                                            pixel_spacing=pixel_spacing,
-                                                            luna_origin=origin)
+                y_batch = np.array([[0.]], dtype='float32')
+                x_batch = np.float32(self.data_prep_fun(data=img,
+                                                        patch_center=patch_center,
+                                                        pixel_spacing=pixel_spacing,
+                                                        luna_origin=origin))[None, None, :, :, :]
 
                 yield x_batch, y_batch, [pid]
