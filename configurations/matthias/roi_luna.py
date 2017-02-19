@@ -1,4 +1,4 @@
-from configurations.jonas import valid
+from configurations.matthias import segnet_hond
 from scripts.elias.blob import blob_dog
 from application.luna import LunaDataLoader
 from interfaces.data_loader import VALIDATION, TRAINING, TEST, TRAIN, INPUT
@@ -21,7 +21,7 @@ multiprocess = True
 # the tag for the new data
 tag = "luna:"
 # put in the pixelspacing tag to be able to make patches
-extra_tags=[tag+"pixelspacing"]
+extra_tags=[tag+"pixelspacing",tag+"labels"]
 
 # for building the segmentation model, the input tag should be replaced
 replace_input_tags = {"luna:3d": tag+"3d"} #{old:new}
@@ -32,8 +32,9 @@ preprocessors = []
 postpreprocessors = [ZMUV(tag+"3d", bias =  -648.59027, std = 679.21021)]
 
 data_loader= LunaDataLoader(
-    sets=[TRAINING, VALIDATION],
+    sets=[VALIDATION],
     preprocessors=preprocessors,
+    only_positive=True,
     epochs=1,
     multiprocess=False,
     crash_on_exception=True)

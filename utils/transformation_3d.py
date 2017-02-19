@@ -14,6 +14,13 @@ def affine_transform(scale=None, rotation=None, translation=None, shear=None, re
     """
     rotation and shear in degrees
     """
+    # print "***************************************************".format(scale)
+    # print "scale: {}".format(scale)
+    # print "rotation: {}".format(rotation)
+    # print "translation: {}".format(translation)
+    # print "shear: {}".format(shear)
+    # print "reflection: {}".format(reflection)
+    
     matrix = np.eye(4)
 
     if not translation is None:
@@ -70,7 +77,11 @@ def affine_transform(scale=None, rotation=None, translation=None, shear=None, re
     mz[0, 1] = -sin[2]
     mz[1, 1] = cos[2]
 
-    return matrix.dot(mx).dot(my).dot(mz)
+#    print "matrix: {}".format(matrix)
+    
+    #return matrix.dot(mx).dot(my).dot(mz)
+    return mx.dot(my).dot(mz).dot(matrix)
+    #return mz.dot(my).dot(mx).dot(matrix)
 
 def test_transformation_3d():
     import numpy as np

@@ -39,7 +39,39 @@ NORMOFFSET = - MIN_HU*NORMSCALE - PIXEL_MEAN
 def normalize_and_center(x): return x*NORMSCALE + NORMOFFSET
 
 
+def lio_augment_positive_only(volume, pixel_spacing, output_shape, norm_patch_shape, augment_p,additional_translation, interp_order=1, cval=MIN_HU):
+
+    
+    input_shape = np.asarray(volume.shape, np.float)
+    pixel_spacing = np.asarray(pixel_spacing, np.float)
+    output_shape = np.asarray(output_shape, np.float)
+    norm_patch_shape = np.asarray(norm_patch_shape, np.float)
+
+    norm_shape = input_shape * pixel_spacing
+    # this will stretch in some dimensions, but the stretch is consistent across samples
+    patch_shape = norm_shape * output_shape / norm_patch_shape
+    # else, use this: patch_shape = norm_shape * np.min(output_shape / norm_patch_shape)
+
+    shift_center = affine_transform(translation=-input_shape / 2. - 0.5)
+    normscale = affine_transform(scale=norm_shape / input_shape)
+    patch_centered = affine_transform(translation=additional_translation)
+    augment = affine_transform(**augment_p)
+    patchscale = affine_transform(scale=patch_shape / norm_shape)
+    unshift_center = affine_transform(translation=output_shape / 2. - 0.5)
+
+    matrix = shift_center.dot(normscale).dot(patch_centered).dot(augment).dot(patchscale).dot(unshift_center)
+
+    output = apply_affine_transform(volume, matrix,
+                                    order=interp_order,
+                                    output_shape=output_shape.astype("int"),
+                                    cval=cval)
+    return output
+
+
+
 def lio_augment(volume, pixel_spacing, output_shape, norm_patch_shape, augment_p, interp_order=1, cval=MIN_HU):
+
+    
     input_shape = np.asarray(volume.shape, np.float)
     pixel_spacing = np.asarray(pixel_spacing, np.float)
     output_shape = np.asarray(output_shape, np.float)
@@ -66,12 +98,15 @@ def lio_augment(volume, pixel_spacing, output_shape, norm_patch_shape, augment_p
 
 
 def sample_augmentation_parameters(augm_param):
+
     augm = dict(augm_param)
+    
     augm["scale"] = [log_uniform(v) for v in augm_param["scale"]]
     augm["rotation"] = [uniform(v) for v in augm_param["rotation"]]
     augm["shear"] = [uniform(v) for v in augm_param["shear"]]
     augm["translation"] = [uniform(v) for v in augm_param["translation"]]
     augm["reflection"] = [bernoulli(v) for v in augm_param["reflection"]]
+    
     return augm
 
 
@@ -175,27 +210,31 @@ class AugmentOnlyPositive(LioAugment):
                 volume = sample[INPUT][tag]
 
                 augment_p = dict(orig_augment)
-                augment_p["translation"] = augment_p["translation"] + (0.5*np.array(volume.shape)-labelloc)*spacing
+                #augment_p["translation"] = augment_p["translation"] + (0.5*np.array(volume.shape)-labelloc)*spacing
 
-                sample[INPUT][tag] = lio_augment(
-                    volume=volume,
-                    pixel_spacing=spacing,
-                    output_shape=self.output_shape,
-                    norm_patch_shape=self.norm_patch_size,
-                    augment_p=augment_p
-                )
-            elif tag in sample[OUTPUT]:
-                volume = sample[OUTPUT][tag]
-
-                augment_p = dict(orig_augment)
-                augment_p["translation"] = augment_p["translation"] + (0.5*np.array(volume.shape)-labelloc)*spacing
-
-                sample[OUTPUT][tag] = lio_augment(
+                sample[INPUT][tag] = lio_augment_positive_only(
                     volume=volume,
                     pixel_spacing=spacing,
                     output_shape=self.output_shape,
                     norm_patch_shape=self.norm_patch_size,
                     augment_p=augment_p,
+                    additional_translation=(0.5*np.array(volume.shape)-labelloc)*spacing                    
+                )
+            elif tag in sample[OUTPUT]:
+                volume = sample[OUTPUT][tag]
+
+                augment_p = dict(orig_augment)
+                #augment_p["translation"] = augment_p["translation"] + (0.5*np.array(volume.shape)-labelloc)*spacing
+
+                
+                
+                sample[OUTPUT][tag] = lio_augment_positive_only(
+                    volume=volume,
+                    pixel_spacing=spacing,
+                    output_shape=self.output_shape,
+                    norm_patch_shape=self.norm_patch_size,
+                    augment_p=augment_p,
+                    additional_translation=(0.5*np.array(volume.shape)-labelloc)*spacing,                    
                     cval=0.0
                 )
             else:
