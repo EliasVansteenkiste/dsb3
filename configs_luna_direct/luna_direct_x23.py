@@ -55,7 +55,7 @@ data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
 
 
 # data iterators
-batch_size = 32
+batch_size = 16
 nbatches_chunk = 1
 chunk_size = batch_size * nbatches_chunk
 

@@ -158,13 +158,38 @@ def inrn_v2_red(lin):
 
     return l
 
+
+def red(lin):
+    #We want to reduce our total volume /4
+
+    den = 16
+    nom2 = 4
+    nom3 = 5
+    nom4 = 7
+
+    ins = lin.output_shape[1]
+
+    l1 = max_pool3d(lin)
+
+    l2 = bn(conv3d(lin, ins//den*nom2, filter_size=3, stride=2))
+
+    l3 = bn(conv3d(lin, ins//den*nom2, filter_size=1))
+    l3 = bn(conv3d(l3, ins//den*nom3, filter_size=3, stride=2))
+
+    l4 = bn(conv3d(lin, ins//den*nom2, filter_size=1))
+    l4 = bn(conv3d(l4, ins//den*nom3, filter_size=3))
+    l4 = bn(conv3d(l4, ins//den*nom4, filter_size=3, stride=2))
+
+    l = lasagne.layers.ConcatLayer([l1, l2, l3, l4])
+
+    return l
+
 def build_model():
     l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
     l_target = nn.layers.InputLayer((None, 1))
 
     net = {}
 
-    l = bn(conv3d(l_in, 64))
     l = inrn_v2_red(l)
     l = inrn_v2(l)
     l = inrn_v2(l)
@@ -187,8 +212,8 @@ def build_model():
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 
 
-def build_objective(model, deterministic=False, epsilon=1e-12):
-    predictions = nn.layers.get_output(model.l_out)
+def build_objective(model, deterministic=True, epsilon=1e-12):
+    predictions = nn.layers.get_output(model.l_out, deterministic=deterministic)
     targets = T.cast(T.flatten(nn.layers.get_output(model.l_target)), 'int32')
     p = predictions[T.arange(predictions.shape[0]), targets]
     p = T.clip(p,epsilon,1.)

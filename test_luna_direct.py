@@ -28,6 +28,7 @@ metadata_path = utils.find_model_metadata(metadata_dir, config_name)
 
 metadata = utils.load_pkl(metadata_path)
 expid = metadata['experiment_id']
+print 'experiment_id', expid
 
 # predictions path
 predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
@@ -59,28 +60,30 @@ givens_valid = {}
 givens_valid[model.l_in.input_var] = x_shared
 
 # theano functions
-iter_get_predictions = theano.function([], nn.layers.get_output(model.l_out), givens=givens_valid)
+iter_get_predictions = theano.function([], nn.layers.get_output(model.l_out, deterministic=True), givens=givens_valid)
 valid_data_iterator = config().valid_data_iterator
 
 print
 print 'Data'
 print 'n validation: %d' % valid_data_iterator.nsamples
 
-valid_losses_ce = []
+valid_losses_bce = []
 all_preds  = []
 all_targets = []
 
-for n, (x_chunk, y_chunk, id_chunk) in enumerate(buffering.buffered_gen_threaded(valid_data_iterator.generate())):
+#for n, (x_chunk, y_chunk, id_chunk) in enumerate(buffering.buffered_gen_threaded(valid_data_iterator.generate())):
+for n, (x_chunk, y_chunk, id_chunk) in enumerate(valid_data_iterator.generate()):
     # load chunk to GPU
     x_shared.set_value(x_chunk)
-    print 'loaded chunk', n
+    print 'loaded chunk', n , 'id', id_chunk
     predictions = iter_get_predictions()
     targets = y_chunk
     inputs = x_chunk
 
-    ce = utils_lung.cross_entropy(predictions, targets)
-    print 'CE', ce, 'predictions', predictions, 'targets', targets 
-    valid_losses_ce.append(ce)
+    print 'predictions', predictions, 'targets', targets
+    bce = utils_lung.bce_2dpreds_1dtarget(predictions, targets)
+    print 'BCE', bce
+    valid_losses_bce.append(bce)
     all_preds.append(predictions[0,1])
     all_targets.append(targets[0,0])
 
@@ -90,7 +93,7 @@ for n, (x_chunk, y_chunk, id_chunk) in enumerate(buffering.buffered_gen_threaded
     #                     axis=0, pid='-'.join([str(n), str(k), str(id_chunk[k])]),
     #                     img_dir=outputs_path)
 
-print 'CE validation loss', np.mean(valid_losses_ce)
+print 'Mean BCE validation loss', np.mean(valid_losses_bce)
 
 
 all_preds = np.array(all_preds)

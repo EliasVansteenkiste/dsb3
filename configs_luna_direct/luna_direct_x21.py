@@ -186,21 +186,14 @@ def build_model():
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 
 
-def build_objective(model, deterministic=False, epsilon=1e-12):
-    predictions = nn.layers.get_output(model.l_out)
+def build_objective(model, deterministic=True, epsilon=1e-12):
+    predictions = nn.layers.get_output(model.l_out, deterministic=deterministic)
     targets = T.cast(T.flatten(nn.layers.get_output(model.l_target)), 'int32')
     p = predictions[T.arange(predictions.shape[0]), targets]
     p = T.clip(p,epsilon,1.)
 
     loss = T.mean(T.log(p))
     return -loss
-
-#todo
-def sparse_categorical_crossentropy(output, target, from_logits=False):
-    target = T.cast(T.flatten(target), 'int32')
-    target = T.extra_ops.to_one_hot(target, nb_class=output.shape[-1])
-    target = reshape(target, shape(output))
-    return categorical_crossentropy(output, target, from_logits)
 
 
 

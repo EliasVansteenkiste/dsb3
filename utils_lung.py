@@ -287,6 +287,13 @@ def cross_entropy(predictions, targets, epsilon=1e-12):
     ce = np.mean(np.log(predictions) * targets + np.log(1 - predictions) * (1. - targets))
     return ce
 
+def bce_2dpreds_1dtarget(predictions, targets, epsilon=1e-12):
+    targets = np.asarray(targets).flatten().astype('int')
+    p = predictions[np.arange(predictions.shape[0]), targets]
+    p = np.clip(p,epsilon,1.)
+    loss = np.mean(np.log(p))
+    return -loss
+
 
 if __name__ == "__main__":
     pid2label = read_labels(pathfinder.SAMPLE_SUBMISSION_PATH)
