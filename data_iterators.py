@@ -122,6 +122,44 @@ class PatchPositiveLunaDataGenerator(LunaDataGenerator):
                 break
 
 
+class ValidPatchPositiveLunaDataGenerator(object):
+    def __init__(self, data_path, transform_params, patient_ids, data_prep_fun, **kwargs):
+
+        id2positive_annotations = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
+
+        self.id2positive_annotations = {}
+        self.id2patient_path = {}
+        n_positive = 0
+        for pid in patient_ids:
+            if pid in id2positive_annotations:
+                self.id2positive_annotations[pid] = id2positive_annotations[pid]
+                n_pos = len(id2positive_annotations[pid])
+                self.id2patient_path[pid] = data_path + '/' + pid + '.mhd'
+                n_positive += n_pos
+
+        self.nsamples = n_positive
+        self.data_path = data_path
+        self.data_prep_fun = data_prep_fun
+        self.transform_params = transform_params
+
+    def generate(self):
+
+        for pid in self.id2positive_annotations.iterkeys():
+            for patch_center in self.id2positive_annotations[pid]:
+                patient_path = self.id2patient_path[pid]
+                img, origin, pixel_spacing = utils_lung.read_mhd(patient_path)
+
+                patient_annotations = self.id2positive_annotations[pid]
+                x_batch, y_batch = self.data_prep_fun(data=img,
+                                                      patch_center=patch_center,
+                                                      pixel_spacing=pixel_spacing,
+                                                      luna_annotations=patient_annotations,
+                                                      luna_origin=origin)
+                x_batch = np.float32(x_batch)[None, None, :, :, :]
+                y_batch = np.float32(y_batch)[None, None, :, :, :]
+                yield x_batch, y_batch, [pid]
+
+
 class PatchCentersPositiveLunaDataGenerator(LunaDataGenerator):
     def __init__(self, data_path, batch_size, transform_params, data_prep_fun, rng,
                  full_batch, random, infinite, patient_ids=None, **kwargs):

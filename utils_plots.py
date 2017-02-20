@@ -81,7 +81,7 @@ def plot_slice_3d_3(input, mask, prediction, axis, pid, img_dir=None, idx=None):
         ax[1, 0].imshow(input[:, :, idx[2]], cmap=plt.cm.gray)
         ax[0, 1].imshow(mask[:, :, idx[2]], cmap=plt.cm.gray)
     if img_dir is not None:
-        fig.savefig(img_dir + '/%s%s.png' % (pid, axis), bbox_inches='tight')
+        fig.savefig(img_dir + '/%s-%s.png' % (pid, axis), bbox_inches='tight')
     else:
         plt.show()
     fig.clf()
