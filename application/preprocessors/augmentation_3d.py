@@ -50,7 +50,15 @@ def sample_augmentation_parameters(augm):
     return new_augm
 
 
-def augment_3d(volume, pixel_spacing, output_shape, norm_patch_shape, augment_p, **kwargs):
+def augment_3d(volume, pixel_spacing, output_shape, norm_patch_shape, augment_p,center_to_shift=None, **kwargs):
+
+
+    
+    if center_to_shift is None:
+        #if no explicit center has been given, just center the image at the origin
+        center_to_shift=-(input_shape / 2. - 0.5)
+
+    
     input_shape = np.asarray(volume.shape, np.float)
     pixel_spacing = np.asarray(pixel_spacing, np.float)
     output_shape = np.asarray(output_shape, np.float)
@@ -61,7 +69,7 @@ def augment_3d(volume, pixel_spacing, output_shape, norm_patch_shape, augment_p,
     patch_shape = norm_shape * output_shape / norm_patch_shape
     # else, use this: patch_shape = norm_shape * np.min(output_shape / norm_patch_shape)
 
-    shift_center = affine_transform(translation=- (input_shape / 2. - 0.5))
+    shift_center = affine_transform(translation=center_to_shift)
     normscale = affine_transform(scale=norm_shape / input_shape)
     augments = affine_transform(**augment_p)
     patchscale = affine_transform(scale=patch_shape / norm_shape)
