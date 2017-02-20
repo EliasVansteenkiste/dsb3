@@ -8,20 +8,19 @@ from functools import partial
 import lasagne.layers.dnn as dnn
 import theano.tensor as T
 import utils
-import nn_lung
 
 restart_from_save = None
 rng = np.random.RandomState(42)
 
 # transformations
-p_transform = {'patch_size': (40, 40, 40),
-               'mm_patch_size': (40, 40, 40),
+p_transform = {'patch_size': (64, 64, 64),
+               'mm_patch_size': (64, 64, 64),
                'pixel_spacing': (1., 1., 1.)
                }
 p_transform_augment = {
-    'translation_range_z': [-17, 17],
-    'translation_range_y': [-17, 17],
-    'translation_range_x': [-17, 17],
+    'translation_range_z': [-16, 16],
+    'translation_range_y': [-16, 16],
+    'translation_range_x': [-16, 16],
     'rotation_range_z': [-180, 180],
     'rotation_range_y': [-180, 180],
     'rotation_range_x': [-180, 180]
@@ -50,8 +49,8 @@ data_prep_function_train = partial(data_prep_function, p_transform_augment=p_tra
 data_prep_function_valid = partial(data_prep_function, p_transform_augment=None, p_transform=p_transform)
 
 # data iterators
-batch_size = 1
-nbatches_chunk = 4
+batch_size = 4
+nbatches_chunk = 8
 chunk_size = batch_size * nbatches_chunk
 
 train_valid_ids = utils.load_pkl(pathfinder.LUNA_VALIDATION_SPLIT_PATH)
@@ -79,6 +78,8 @@ for i, (x, _, _) in zip(xrange(4), train_data_iterator.generate()):
     x_big = x if x_big is None else np.concatenate((x_big, x), axis=0)
 zmuv_mean = x_big.mean()
 zmuv_std = x_big.std()
+# assert abs(zmuv_mean - 0.35) < 0.01
+# assert abs(zmuv_std - 0.30) < 0.01
 print 'mean:', zmuv_mean
 print 'std:', zmuv_std
 
@@ -100,51 +101,66 @@ learning_rate_schedule = {
 # model
 conv3d = partial(dnn.Conv3DDNNLayer,
                  filter_size=3,
-                 pad='same',
-                 W=nn.init.Orthogonal(),
-                 b=nn.init.Constant(0.01),
-                 nonlinearity=nn.nonlinearities.very_leaky_rectify)
+                 pad='valid',
+                 W=nn.init.Orthogonal('relu'),
+                 b=nn.init.Constant(0.0),
+                 nonlinearity=nn.nonlinearities.identity)
 
-pool3d = partial(dnn.Pool3DDNNLayer,
-                 pool_size=2, mode='average_exc_pad')
+max_pool3d = partial(dnn.MaxPool3DDNNLayer,
+                     pool_size=2)
 
 
 def build_model():
     l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
     l_target = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
 
-    n_filters = 64
+    net = {}
+    base_n_filters = 64
+    net['contr_1_1'] = conv3d(l_in, base_n_filters)
+    net['contr_1_1'] = nn.layers.ParametricRectifierLayer(net['contr_1_1'])
+    net['contr_1_2'] = conv3d(net['contr_1_1'], base_n_filters)
+    net['contr_1_2'] = nn.layers.ParametricRectifierLayer(net['contr_1_2'])
+    net['contr_1_3'] = conv3d(net['contr_1_2'], base_n_filters)
+    net['contr_1_3'] = nn.layers.ParametricRectifierLayer(net['contr_1_3'])
+    net['pool1'] = max_pool3d(net['contr_1_3'])
 
-    l1 = pool3d(l_in)
-    l1 = conv3d(l1, filter_size=1, num_filters=n_filters)
-    l1 = conv3d(l1, filter_size=3, num_filters=n_filters)
-    l1 = conv3d(l1, filter_size=3, num_filters=n_filters)
-    l1 = nn_lung.Upscale3DLayer(l1, 2)
+    net['encode_1'] = conv3d(net['pool1'], base_n_filters)
+    net['encode_1'] = nn.layers.ParametricRectifierLayer(net['encode_1'])
+    net['encode_2'] = conv3d(net['encode_1'], base_n_filters)
+    net['encode_2'] = nn.layers.ParametricRectifierLayer(net['encode_2'])
+    net['encode_3'] = conv3d(net['encode_2'], base_n_filters)
+    net['encode_3'] = nn.layers.ParametricRectifierLayer(net['encode_3'])
+    net['encode_4'] = conv3d(net['encode_3'], base_n_filters)
+    net['encode_4'] = nn.layers.ParametricRectifierLayer(net['encode_4'])
 
-    l3 = conv3d(l_in, filter_size=1, num_filters=n_filters)
-    l3 = conv3d(l3, filter_size=5, num_filters=n_filters)
+    net['upscale1'] = nn.layers.Upscale3DLayer(net['encode_4'], 2)
 
-    l4 = conv3d(l_in, filter_size=1, num_filters=n_filters)
-    l4 = conv3d(l4, filter_size=3, num_filters=n_filters)
-    l4 = conv3d(l4, filter_size=3, num_filters=n_filters)
-
-    lc = nn.layers.ConcatLayer([l1, l3, l4])
-
-    l1 = conv3d(lc, filter_size=1, num_filters=n_filters)
-    l2 = conv3d(l1, n_filters)
-    l_out = dnn.Conv3DDNNLayer(l2, num_filters=1,
+    net['concat1'] = nn.layers.ConcatLayer([net['upscale1'], net['contr_1_3']],
+                                           cropping=(None, None, "center", "center", "center"))
+    net['expand_1_1'] = conv3d(net['concat1'], 2 * base_n_filters)
+    net['expand_1_1'] = nn.layers.ParametricRectifierLayer(net['expand_1_1'])
+    net['expand_1_2'] = conv3d(net['expand_1_1'], 2 * base_n_filters)
+    net['expand_1_2'] = nn.layers.ParametricRectifierLayer(net['expand_1_2'])
+    net['expand_1_3'] = conv3d(net['expand_1_2'], base_n_filters)
+    net['expand_1_3'] = nn.layers.ParametricRectifierLayer(net['expand_1_3'])
+    l_out = dnn.Conv3DDNNLayer(net['expand_1_3'], num_filters=1,
                                filter_size=1,
-                               W=nn.init.Constant(0.),
                                nonlinearity=nn.nonlinearities.sigmoid)
 
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 
 
 def build_objective(model, deterministic=False, epsilon=1e-12):
-    predictions = T.flatten(nn.layers.get_output(model.l_out))
-    targets = T.flatten(nn.layers.get_output(model.l_target))
-    dice = (2. * T.sum(targets * predictions) + epsilon) / (T.sum(predictions) + T.sum(targets) + epsilon)
-    return -1. * dice
+    network_predictions = nn.layers.get_output(model.l_out)
+    target_values = nn.layers.get_output(model.l_target)
+    target_values = T.clip(target_values, 1e-6, 1.)
+    network_predictions, target_values = nn.layers.merge.autocrop([network_predictions, target_values],
+                                                                  [None, None, 'center', 'center', 'center'])
+    y_true_f = target_values
+    y_pred_f = network_predictions
+
+    intersection = T.sum(y_true_f * y_pred_f)
+    return -1. * (2 * intersection + epsilon) / (T.sum(y_true_f) + T.sum(y_pred_f) + epsilon)
 
 
 def build_updates(train_loss, model, learning_rate):
