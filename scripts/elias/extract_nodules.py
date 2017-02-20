@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 
 from scipy.ndimage.filters import convolve
 from tf_convolution import conv3d
+from segmentation_kernel import get_segmentation_mask
 
 
 def sample_fits_inside_volume(s):
@@ -139,14 +140,14 @@ def extract_nodules_conv_filter(segmentation_volume, ct_scan, no_rois=5, dim=8, 
 		if dbg_target is not None:
 			print 'center in target?', dbg_target[center[0],center[1],center[2]]
 		if nodules is not None:
-			center_in_target = 0
+			nodule_in_patch = 0
 			#is center in the neigborhoud of nodule?
 			for idx, nodule in enumerate(nodules):
 				if not nodule_found[idx]:
 					if (abs(center[0]-nodule[0])<dim) and (abs(center[1]-nodule[1])<dim) and (abs(center[2]-nodule[2])<dim):
-						center_in_target += 1
+						nodule_in_patch += 1
 						nodule_found[idx]=1
-			print 'center in target?', center_in_target
+			print 'center in target?', nodule_in_patch
 
 		roi = ct_scan[selection]	
 		rois.append(roi)
@@ -183,10 +184,36 @@ def check_nodule_fits(center,nodule,dim):
 	return (abs(center[0]-nodule[0])<dim) and (abs(center[1]-nodule[1])<dim) and (abs(center[2]-nodule[2])<dim)
 
 
+def check_in_mask(segmentation_mask, spherical_mask, r_mask, l_x, h_x, l_y, h_y):
+	max_x = segmentation_mask.shape[0]
+	max_y = segmentation_mask.shape[1]
+
+	if l_x < 0:
+		spherical_mask = spherical_mask[-l_x:,:]
+		l_x = 0
+	if h_x > max_x:
+		spherical_mask = spherical_mask[:max_x-h_x,:]
+		h_x = max_x
+	if l_y < 0:
+		spherical_mask = spherical_mask[:,-l_y:]
+		l_y = 0
+	if h_y > max_y:
+		spherical_mask = spherical_mask[:,:max_y-h_y]
+		h_y = max_y
+
+	print 'spherical_mask.shape', spherical_mask.shape
+
+	return np.sum(spherical_mask*segmentation_mask[l_x:h_x,l_y:h_y]) > 0
+
+
+
+
+
 def extract_nodules_blob_detection(segmentation_volume, ct_scan, patient_id=None, dim=8, plot=False, dbg_target=None, nodules=None):
 	print segmentation_volume.shape
 	print ct_scan.shape
 	ct_scan = ct_scan[16:336,16:336,16:336]
+	print np.histogram(ct_scan)
 
 	#assert(segmentation_volume.shape==ct_scan.shape)
 
@@ -194,21 +221,67 @@ def extract_nodules_blob_detection(segmentation_volume, ct_scan, patient_id=None
 
 	#Extract a given number of regions
 	rois = []
+	centers_in_mask = []
 	if nodules is not None:
 		print nodules
-		nodule_found = np.zeros((len(nodules)))
-		nodule_found_2 = np.zeros((len(nodules)))
+		nodule_found_in_patch = np.zeros((len(nodules)))
+		nodule_found_center = np.zeros((len(nodules)))
+		nodule_found_in_patch_in_mask = np.zeros((len(nodules)))
+		nodule_found_center_in_mask = np.zeros((len(nodules)))
 	for i in range(len(results)):
 		center = np.round(results[i]).astype(int)
 		print 'region', i, center
 
+		#check if the candidate is in the lungs
+		d0_segmentation_mask = get_segmentation_mask(ct_scan[center[0],:,:],z=patient_id+'_'+str(i)+'_d0')
+		d1_segmentation_mask = get_segmentation_mask(ct_scan[:,center[1],:],z=patient_id+'_'+str(i)+'_d1')
+		d2_segmentation_mask = get_segmentation_mask(ct_scan[:,:,center[2]],z=patient_id+'_'+str(i)+'_d2')
+
+		#Construct 2D spherical mask
+		r_mask=3
+		dim_mask = 2*r_mask+1
+		spherical_mask = np.zeros((dim_mask,dim_mask))
+		for x in range(dim_mask):
+			for y in range(dim_mask):
+				dist = (x-r_mask)**2 + (y-r_mask)**2
+				if dist <= (r_mask**2):
+					spherical_mask[x,y] = 1
+
+
+		in_mask_d0 = check_in_mask(d0_segmentation_mask, spherical_mask, r_mask, \
+			center[1]-r_mask, center[1]+r_mask+1, center[2]-r_mask, center[2]+r_mask+1)
+
+		in_mask_d1 = check_in_mask(d1_segmentation_mask, spherical_mask, r_mask, \
+			center[0]-r_mask, center[0]+r_mask+1, center[2]-r_mask, center[2]+r_mask+1)
+
+		in_mask_d2 = check_in_mask(d2_segmentation_mask, spherical_mask, r_mask, \
+			center[0]-r_mask, center[0]+r_mask+1, center[1]-r_mask, center[1]+r_mask+1)
+
+		"""
+		majority implementation: A shitty method to bypass the fact that lung segmentation 
+		doesn't work when the lung touches the border of the image
+		"""
+		# in_mask =  (in_mask_d0 and in_mask_d1) or \
+		# 		   (in_mask_d1 and in_mask_d2) or \
+		# 		   (in_mask_d0 and in_mask_d2) 
+
+		in_mask =  (in_mask_d0 or in_mask_d1 or in_mask_d2)
+
 		#cut out patch		
 		selection = (slice(center[0]-dim/2,center[0]+dim/2), slice(center[1]-dim/2,center[1]+dim/2), slice(center[2]-dim/2,center[2]+dim/2))
+		
+		if in_mask:
+			centers_in_mask.append(center)
+			roi = ct_scan[selection]	
+			rois.append(roi)
+		#only for v3
 		if dbg_target is not None:
 			print 'center in target?', dbg_target[center[0],center[1],center[2]]
+		
+		#for v4 and onwards
+		nodule_in_patch = 0
+		center_in_nodule = 0
 		if nodules is not None:
-			center_in_target = 0
-			center_in_nodule = 0
 			nearest_nodule = None
 			d2_nearest_nodule = 999999999.
 			nodules_in_patch = []
@@ -217,9 +290,12 @@ def extract_nodules_blob_detection(segmentation_volume, ct_scan, patient_id=None
 			for idx, nodule in enumerate(nodules):
 
 				if check_nodule_fits(center,nodule,dim):
-					center_in_target += 1
-					nodule_found[idx]=1
+					nodule_in_patch += 1
+					nodule_found_in_patch[idx]=1
 					nodules_in_patch.append(nodule)
+					if in_mask:
+						nodule_found_in_patch_in_mask[idx]=1
+
 				d2_nodule = ((center[0]-nodule[0])**2 + (center[1]-nodule[1])**2 + (center[2]-nodule[2])**2)
 				print 'center', center
 				print 'nodule', nodule
@@ -233,20 +309,94 @@ def extract_nodules_blob_detection(segmentation_volume, ct_scan, patient_id=None
 				print 'nodule[3]**2/4', (nodule[3]**2)/4
 				if d2_nodule < (nodule[3]**2)/4:
 					center_in_nodule += 1
-					nodule_found_2[idx]=1
-			print 'center in target?', center_in_target
+					nodule_found_center[idx]=1
+					if in_mask:
+						nodule_found_center_in_mask[idx]=1
+					else:
+						#plot at the center of the nearest nodule
+						nn_visible_in_d0_slice = (abs(nearest_nodule[0]-center[0]) < nearest_nodule[3]) and nodule_in_patch
+						nn_visible_in_d1_slice = (abs(nearest_nodule[1]-center[1]) < nearest_nodule[3]) and nodule_in_patch
+						nn_visible_in_d2_slice = (abs(nearest_nodule[2]-center[2]) < nearest_nodule[3]) and nodule_in_patch
+
+						fig = plt.figure()
+						nn_rel_coos = (nearest_nodule[0:3]-center[0:3]+[dim,dim,dim]).astype(int)
+						title_str = 'Center '+str(center) \
+							+'\nNearest nodule at '+str(d2_nearest_nodule**(1./2))+' '+str(nearest_nodule) \
+							+'\nnodule in cubic patch? '+str(nodule_in_patch) \
+							+'\ncenter blob in nodule? '+str(center_in_nodule) \
+							+'\nnn_visible_in_d0_slice '+str(nn_visible_in_d0_slice) \
+							+'\nnn_visible_in_d1_slice '+str(nn_visible_in_d1_slice) \
+							+'\nnn_visible_in_d2_slice '+str(nn_visible_in_d2_slice) 
+						fig.suptitle(title_str, color="green")
+						#plot at the center of the blob
+						ax1 = fig.add_subplot(3,3,1, adjustable='box', aspect=1.0)
+						ax1.set_title('dim0 slice')
+						ax1.imshow(ct_scan[center[0],center[1]-dim:center[1]+dim,center[2]-dim:center[2]+dim].transpose(),interpolation='none',cmap=plt.cm.gray)
+						if nn_visible_in_d0_slice:
+							circ1 = plt.Circle((nn_rel_coos[1],nn_rel_coos[2]), nearest_nodule[3], color='y', fill=False)
+							ax1.add_patch(circ1)
+						ax2 = fig.add_subplot(3,3,2, adjustable='box', aspect=1.0)
+						ax2.set_title('dim1 slice')
+						ax2.imshow(ct_scan[center[0]-dim:center[0]+dim,center[1],center[2]-dim:center[2]+dim].transpose(),interpolation='none',cmap=plt.cm.gray)
+						if nn_visible_in_d1_slice:	
+							circ2 = plt.Circle((nn_rel_coos[0],nn_rel_coos[2]), nearest_nodule[3], color='y', fill=False)
+							ax2.add_patch(circ2)
+						ax3 = fig.add_subplot(3,3,3, adjustable='box', aspect=1.0)
+						ax3.set_title('dim2 slice')
+						ax3.imshow(ct_scan[center[0]-dim:center[0]+dim,center[1]-dim:center[1]+dim,center[2]].transpose(),interpolation='none',cmap=plt.cm.gray)
+						if nn_visible_in_d2_slice:	
+							circ3 = plt.Circle((nn_rel_coos[0],nn_rel_coos[1]), nearest_nodule[3], color='y', fill=False)
+							ax3.add_patch(circ3)
+						
+						ax4 = fig.add_subplot(3,3,4, adjustable='box', aspect=1.0)
+						ax4.set_title('dim0 slice')
+						ax4.imshow(d0_segmentation_mask.transpose(),interpolation='none',cmap=plt.cm.gray)
+						circ4 = plt.Circle((nearest_nodule[1],nearest_nodule[2]), nearest_nodule[3], color='y', fill=False)
+						ax4.add_patch(circ4)
+						ax5 = fig.add_subplot(3,3,5, adjustable='box', aspect=1.0)
+						ax5.set_title('dim1 slice')
+						ax5.imshow(d1_segmentation_mask.transpose(),interpolation='none',cmap=plt.cm.gray)
+						circ5 = plt.Circle((nearest_nodule[0],nearest_nodule[2]), nearest_nodule[3], color='y', fill=False)
+						ax5.add_patch(circ5)
+						ax6 = fig.add_subplot(3,3,6, adjustable='box', aspect=1.0)
+						ax6.set_title('dim2 slice')
+						ax6.imshow(d2_segmentation_mask.transpose(),interpolation='none',cmap=plt.cm.gray)
+						circ6 = plt.Circle((nearest_nodule[0],nearest_nodule[1]), nearest_nodule[3], color='y', fill=False)
+						ax6.add_patch(circ6)
+
+						ax7 = fig.add_subplot(3,3,7, adjustable='box', aspect=1.0)
+						ax7.set_title('dim0 slice')
+						ax7.imshow(ct_scan[center[0],:,:].transpose(),interpolation='none',cmap=plt.cm.gray)
+						circ7 = plt.Circle((nearest_nodule[1],nearest_nodule[2]), nearest_nodule[3], color='y', fill=False)
+						ax7.add_patch(circ7)
+						ax8 = fig.add_subplot(3,3,8, adjustable='box', aspect=1.0)
+						ax8.set_title('dim1 slice')
+						ax8.imshow(ct_scan[:,center[1],:].transpose(),interpolation='none',cmap=plt.cm.gray)
+						circ8 = plt.Circle((nearest_nodule[0],nearest_nodule[2]), nearest_nodule[3], color='y', fill=False)
+						ax8.add_patch(circ8)
+						ax9 = fig.add_subplot(3,3,9, adjustable='box', aspect=1.0)
+						ax9.set_title('dim2 slice')
+						ax9.imshow(ct_scan[:,:,center[2]].transpose(),interpolation='none',cmap=plt.cm.gray)
+						circ9 = plt.Circle((nearest_nodule[0],nearest_nodule[1]), nearest_nodule[3], color='y', fill=False)
+						ax9.add_patch(circ9)
+
+						plt.tight_layout()
+
+						fig.savefig('debug/'+patient_id+'_candidate_'+str(i)+'.jpg', dpi=300)
+
+			print 'center in target?', nodule_in_patch
 			print 'center in nodule?', center_in_nodule
 
 			if plot:
-				nn_visible_in_d0_slice = (abs(nearest_nodule[0]-center[0]) < nearest_nodule[3]) and center_in_target
-				nn_visible_in_d1_slice = (abs(nearest_nodule[1]-center[1]) < nearest_nodule[3]) and center_in_target
-				nn_visible_in_d2_slice = (abs(nearest_nodule[2]-center[2]) < nearest_nodule[3]) and center_in_target
+				nn_visible_in_d0_slice = (abs(nearest_nodule[0]-center[0]) < nearest_nodule[3]) and nodule_in_patch
+				nn_visible_in_d1_slice = (abs(nearest_nodule[1]-center[1]) < nearest_nodule[3]) and nodule_in_patch
+				nn_visible_in_d2_slice = (abs(nearest_nodule[2]-center[2]) < nearest_nodule[3]) and nodule_in_patch
 
 				fig = plt.figure()
 				nn_rel_coos = (nearest_nodule[0:3]-center[0:3]+[dim,dim,dim]).astype(int)
 				title_str = 'Center '+str(center) \
 					+'\nNearest nodule at '+str(d2_nearest_nodule**(1./2))+' '+str(nearest_nodule) \
-					+'\nnodule in cubic patch? '+str(center_in_target) \
+					+'\nnodule in cubic patch? '+str(nodule_in_patch) \
 					+'\ncenter blob in nodule? '+str(center_in_nodule) \
 					+'\nnn_visible_in_d0_slice '+str(nn_visible_in_d0_slice) \
 					+'\nnn_visible_in_d1_slice '+str(nn_visible_in_d1_slice) \
@@ -279,11 +429,46 @@ def extract_nodules_blob_detection(segmentation_volume, ct_scan, patient_id=None
 
 				fig.savefig('plots/'+patient_id+'_candidate_'+str(i)+'.jpg')
 
+
+				fig = plt.figure()
+				nn_rel_coos = (nearest_nodule[0:3]-center[0:3]+[dim,dim,dim]).astype(int)
+				title_str = 'Center '+str(center) \
+					+'\nNearest nodule at '+str(d2_nearest_nodule**(1./2))+' '+str(nearest_nodule) \
+					+'\nnodule in cubic patch? '+str(nodule_in_patch) \
+					+'\ncenter blob in nodule? '+str(center_in_nodule) \
+					+'\nnn_visible_in_d0_slice '+str(nn_visible_in_d0_slice) \
+					+'\nnn_visible_in_d1_slice '+str(nn_visible_in_d1_slice) \
+					+'\nnn_visible_in_d2_slice '+str(nn_visible_in_d2_slice) 
+				fig.suptitle(title_str)
+				#plot the segementation volume at the center of the blob
+				ax1 = fig.add_subplot(1,3,1, adjustable='box', aspect=1.0)
+				ax1.set_title('dim0 slice')
+				ax1.imshow(segmentation_volume[center[0],:,:].transpose(),interpolation='none',cmap=plt.cm.gray)
+				if nn_visible_in_d0_slice:
+					circ1 = plt.Circle((nearest_nodule[1],nearest_nodule[2]), nearest_nodule[3], color='y', fill=False)
+					ax1.add_patch(circ1)
+				ax2 = fig.add_subplot(1,3,2, adjustable='box', aspect=1.0)
+				ax2.set_title('dim1 slice')
+				ax2.imshow(segmentation_volume[:,center[1],:].transpose(),interpolation='none',cmap=plt.cm.gray)
+				if nn_visible_in_d1_slice:	
+					circ2 = plt.Circle((nearest_nodule[0],nearest_nodule[2]), nearest_nodule[3], color='y', fill=False)
+					ax2.add_patch(circ2)
+				ax3 = fig.add_subplot(1,3,3, adjustable='box', aspect=1.0)
+				ax3.set_title('dim2 slice')
+				ax3.imshow(segmentation_volume[:,:,center[2]].transpose(),interpolation='none',cmap=plt.cm.gray)
+				if nn_visible_in_d2_slice:	
+					circ3 = plt.Circle((nearest_nodule[0],nearest_nodule[1]), nearest_nodule[3], color='y', fill=False)
+					ax3.add_patch(circ3)
+
+				plt.tight_layout()
+
+				fig.savefig('segmentation_volumes/'+patient_id+'_at_candidate_'+str(i)+'.jpg')
+
 				#plot at the center of the nearest nodule
 				fig = plt.figure()
 				title_str = 'Nodule '+str(nearest_nodule) \
 					+'\nCenter at '+str(d2_nearest_nodule**(1./2))+' '+str(center) \
-					+'\nnodule in cubic patch? '+str(center_in_target) \
+					+'\nnodule in cubic patch? '+str(nodule_in_patch) \
 					+'\ncenter blob in nodule? '+str(center_in_nodule)
 				fig.suptitle(title_str)
 				nearest_nodule = nearest_nodule.astype(int)
@@ -304,39 +489,39 @@ def extract_nodules_blob_detection(segmentation_volume, ct_scan, patient_id=None
 
 				fig.savefig('plots/'+patient_id+'_candidate_'+str(i)+'_nn.jpg')
 
-		roi = ct_scan[selection]	
-		rois.append(roi)
+	if plot:
+		for idx, nodule in enumerate(nodules):
+			if not nodule_found[idx] or not nodule_found_2[idx]:
+				#plot nodule in not_found folder
+				fig = plt.figure()
+				title_str = 'Nodule '+str(nodule) \
+					+'\nnodule in cubic patch? '+str(nodule_found[idx]) \
+					+'\ncenter blob in nodule? '+str(nodule_found_2[idx])
+				fig.suptitle(title_str)
+				nodule = nodule.astype(int)
 
-	for idx, nodule in enumerate(nodules):
-		if not nodule_found[idx] or not nodule_found_2[idx]:
-			#plot nodule in not_found folder
-			fig = plt.figure()
-			title_str = 'Nodule '+str(nodule) \
-				+'\nnodule in cubic patch? '+str(nodule_found[idx]) \
-				+'\ncenter blob in nodule? '+str(nodule_found_2[idx])
-			fig.suptitle(title_str)
-			nodule = nodule.astype(int)
+				ax1 = fig.add_subplot(1,3,1, adjustable='box', aspect=1.0)
+				ax1.set_title('dim0 slice')
+				ax1.imshow(ct_scan[nodule[0], nodule[1]-dim:nodule[1]+dim, nodule[2]-dim:nodule[2]+dim].transpose(),interpolation='none',cmap=plt.cm.gray)
 
-			ax1 = fig.add_subplot(1,3,1, adjustable='box', aspect=1.0)
-			ax1.set_title('dim0 slice')
-			ax1.imshow(ct_scan[nodule[0], nodule[1]-dim:nodule[1]+dim, nodule[2]-dim:nodule[2]+dim].transpose(),interpolation='none',cmap=plt.cm.gray)
+				ax2 = fig.add_subplot(1,3,2, adjustable='box', aspect=1.0)
+				ax2.set_title('dim1 slice')
+				ax2.imshow(ct_scan[nodule[0]-dim:nodule[0]+dim,nodule[1],nodule[2]-dim:nodule[2]+dim].transpose(),interpolation='none',cmap=plt.cm.gray)
 
-			ax2 = fig.add_subplot(1,3,2, adjustable='box', aspect=1.0)
-			ax2.set_title('dim1 slice')
-			ax2.imshow(ct_scan[nodule[0]-dim:nodule[0]+dim,nodule[1],nodule[2]-dim:nodule[2]+dim].transpose(),interpolation='none',cmap=plt.cm.gray)
+				ax3 = fig.add_subplot(1,3,3, adjustable='box', aspect=1.0)
+				ax3.set_title('dim2 slice')
+				ax3.imshow(ct_scan[nodule[0]-dim:nodule[0]+dim,nodule[1]-dim:nodule[1]+dim,nearest_nodule[2]].transpose(),interpolation='none',cmap=plt.cm.gray)
 
-			ax3 = fig.add_subplot(1,3,3, adjustable='box', aspect=1.0)
-			ax3.set_title('dim2 slice')
-			ax3.imshow(ct_scan[nodule[0]-dim:nodule[0]+dim,nodule[1]-dim:nodule[1]+dim,nearest_nodule[2]].transpose(),interpolation='none',cmap=plt.cm.gray)
+				plt.tight_layout()
 
-			plt.tight_layout()
+				fig.savefig('not_found/'+patient_id+'_candidate_'+str(idx)+'.jpg')
 
-			fig.savefig('not_found/'+patient_id+'_candidate_'+str(idx)+'.jpg')
-
-	print "stats-nodule_found_2:", np.sum(nodule_found_2), "/", len(nodules)
-	print "stats-nodule_found:", np.sum(nodule_found), "/", len(nodules)  
-
-
+	print "stats-nodule_found_in_patch:", int(np.sum(nodule_found_in_patch)), "/", len(nodules)
+	print "stats-nodule_found_center:", int(np.sum(nodule_found_center)), "/", len(nodules)
+	print "stats-nodule_found_in_patch_in_mask:", int(np.sum(nodule_found_in_patch_in_mask)), "/", len(nodules)
+	print "stats-nodule_found_center_in_mask:", int(np.sum(nodule_found_center_in_mask)), "/", len(nodules)
+	print "stats-no-candidates:", len(results)  
+	print "stats-no-candidates-mask:", len(rois) 
 
 	return rois, results
 

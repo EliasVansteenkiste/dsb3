@@ -52,6 +52,17 @@ def check_nodules_found_v3(patient_id, folder, no_rois=5, plot=False):
 
 
 
+MAX_HU = 400.
+MIN_HU = -1000.
+def normHU2HU(x):
+    """
+    Modifies input data
+    :param x:
+    :return:
+    """
+    x = x * (MAX_HU - MIN_HU) + MIN_HU
+    return x
+
 def check_nodules_found_v4(patient_id, folder_in, folder_out, no_rois=10, plot=False):
 	# load in predicted segmentation
 	pred = np.load(folder_in+'pred_'+patient_id+'.npy',)
@@ -86,7 +97,7 @@ def check_nodules_found_v4(patient_id, folder_in, folder_out, no_rois=10, plot=F
 
 	
 	#extract_nodules_conv_filter(pred, original, no_rois=no_rois, dim=32, plot=False, dbg_target=None, nodules=target)
-	rois, centers = extract_nodules_blob_detection(pred, original, patient_id, dim=32, plot=True, dbg_target=None, nodules=target)
+	rois, centers = extract_nodules_blob_detection(pred, normHU2HU(original), patient_id, dim=32, plot=False, dbg_target=None, nodules=target)
 	
 	with open(folder_out+'prednodules_'+patient_id+'.npy', 'w') as outfile:
 		pred = np.save(outfile, centers)
@@ -116,7 +127,9 @@ def check_ira_v4(folder_in, folder_out):
 	p_find = subprocess.Popen('find '+folder_in+' -name "pred_*.npy"', shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 	lines = p_find.stdout.readlines()
 	total_patients = len(lines)
-	for idx, line in enumerate(lines):
+#	for idx, line in enumerate(lines):
+        for idx in range(63,119):
+		line = lines[idx]
 		patient_id = line.rstrip().split('/')[-1].strip('pred_').rstrip('.npy')
 		print 'patient', idx, '/', total_patients, 'patient_id', patient_id
 		n_nodules_ground_truth = check_nodules_found_v4(patient_id, folder_in, folder_out)
