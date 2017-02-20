@@ -11,14 +11,6 @@ python scripts/lio/roi.py configurations/lio/roi_stage1.py
 import matplotlib
 matplotlib.use('Agg')
 
-import utils
-import utils.plt
-from utils import LOGS_PATH, MODEL_PATH, MODEL_PREDICTIONS_PATH, paths
-from utils.log import print_to_file
-from utils.configuration import set_configuration, config, get_configuration_name
-from interfaces.data_loader import TRAIN, VALIDATION, TEST, INPUT
-from utils.transformation_3d import affine_transform, apply_affine_transform
-
 
 
 
@@ -35,8 +27,23 @@ import lasagne
 import time
 from itertools import product
 
+
+
 sys.path.append(".")
 from theano_utils import theano_printer
+
+
+import utils
+import utils.plt
+from utils import LOGS_PATH, MODEL_PATH, MODEL_PREDICTIONS_PATH, paths
+from utils.log import print_to_file
+from utils.configuration import set_configuration, config, get_configuration_name
+from interfaces.data_loader import TRAIN, VALIDATION, TEST, INPUT
+from utils.transformation_3d import affine_transform, apply_affine_transform
+
+
+
+
 
 def extract_rois(expid):
     metadata_path = MODEL_PATH + "%s.pkl" % config.model.__name__
@@ -126,7 +133,7 @@ def extract_rois(expid):
     num_candidates=[]
     for set in [VALIDATION, TRAIN, TEST]:
         set_indices = config.data_loader.indices[set]
-        num_candidates[idx]=0
+        num_candidates.append(0)
         for _i, sample_id in enumerate(set_indices):
 
             if start_time is None:
@@ -238,7 +245,12 @@ def patch_generator(sample, segmentation_shape, tag):
 
     data = sample[INPUT][tag + "3d"]
     spacing = sample[INPUT][tag + "pixelspacing"]
+    print "XXXXX Printing out dict keys XXXXX: {}".format(sample[INPUT].keys())
+
+
+
     labels=sample[INPUT][tag + "labels"]
+    
     print "XXXXX Printing out labels XXXXX:"
     print labels
 

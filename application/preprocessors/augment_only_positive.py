@@ -23,7 +23,7 @@ class AugmentOnlyPositive(Augment3D):
 
 
     def process(self, sample):
-        orig_augment = sample_augmentation_parameters(self.augmentation_params)
+        augment_p = sample_augmentation_parameters(self.augmentation_params)
 
         for tag in self.tags:
 
@@ -46,22 +46,17 @@ class AugmentOnlyPositive(Augment3D):
 
             if tag in sample[INPUT]:
                 volume = sample[INPUT][tag]
-
-                augment_p = dict(orig_augment)
-                augment_p["translation"] = augment_p["translation"] + (0.5*np.array(volume.shape)-labelloc)*spacing
-
+                
                 sample[INPUT][tag] = augment_3d(
                     volume=volume,
                     pixel_spacing=spacing,
                     output_shape=self.output_shape,
                     norm_patch_shape=self.norm_patch_shape,
-                    augment_p=augment_p
+                    augment_p = augment_p,
+                    center_to_shift= - labelloc
                 )
             elif tag in sample[OUTPUT]:
                 volume = sample[OUTPUT][tag]
-
-                augment_p = dict(orig_augment)
-                augment_p["translation"] = augment_p["translation"] + (0.5*np.array(volume.shape)-labelloc)*spacing
 
                 sample[OUTPUT][tag] = augment_3d(
                     volume=volume,
@@ -69,6 +64,7 @@ class AugmentOnlyPositive(Augment3D):
                     output_shape=self.output_shape,
                     norm_patch_shape=self.norm_patch_shape,
                     augment_p=augment_p,
+                    center_to_shift= - labelloc,                     
                     cval=0.0
                 )
             else:
