@@ -1,15 +1,15 @@
 from application.luna import LunaDataLoader
 from application.preprocessors.in_the_middle import PutInTheMiddle
-from application.preprocessors.lio_augmentation import LioAugment
+from application.preprocessors.augmentation_3d import Augment3D
 from interfaces.data_loader import INPUT, OUTPUT, TRAINING
 #from interfaces.preprocess import AugmentInput, RescaleInput
 
 "Put in here the preprocessors for your data." \
 "They will be run consequently on the datadict of the dataloader in the order of your list."
 preprocessors = [
-    LioAugment(tags=["luna:segmentation"],
+    Augment3D(tags=["luna:segmentation"],
                output_shape=(256,256,256),
-               norm_patch_size=(256,256,256)
+               norm_patch_shape=(256,256,256)
                ),
 ]
 

@@ -2,7 +2,7 @@ from functools import partial
 from lasagne.layers import dnn
 from application.luna import LunaDataLoader, OnlyPositiveLunaDataLoader
 from application.preprocessors.in_the_middle import PutInTheMiddle
-from application.preprocessors.lio_augmentation import LioAugment
+from application.preprocessors.lio_augmentation import LioAugment, LioAugmentOnlyPositive
 from configurations.default import *
 
 import lasagne
@@ -11,7 +11,7 @@ import numpy as np
 
 from application.objectives import CrossEntropyObjective, WeightedSegmentationCrossEntropyObjective, \
     JaccardIndexObjective, SoerensonDiceCoefficientObjective, RecallObjective, PrecisionObjective
-from application.data import PatientDataLoader
+from application.stage1 import PatientDataLoader
 from deep_learning.upscale import Upscale3DLayer
 from interfaces.data_loader import VALIDATION, TRAINING, TEST, TRAIN
 from deep_learning.deep_learning_layers import ConvolutionLayer, PoolLayer
@@ -19,7 +19,7 @@ from deep_learning.deep_learning_layers import ConvolutionLayer, PoolLayer
 #####################
 #   running speed   #
 #####################
-from interfaces.preprocess import NormalizeInput
+from interfaces.preprocess import NormalizeInput, ZMUV
 
 "This is the number of samples in each batch"
 batch_size = 1
@@ -41,19 +41,19 @@ AUGMENTATION_PARAMETERS = {
     "scale": [1, 1, 1],  # factor
     "rotation": [180, 180, 180],  # degrees (from -180 to 180)
     "shear": [0, 0, 0],  # degrees
-    "translation": [128, 128, 128],  # mms (from -128 to 128)
+    "translation": [64, 64, 64],  # mms (from -128 to 128)
     "reflection": [0, 0, 0] #Bernoulli p
 }
 
 "Put in here the preprocessors for your data." \
 "They will be run consequently on the datadict of the dataloader in the order of your list."
 preprocessors = [
-    LioAugment(tags=["luna:3d", "luna:segmentation"],
+    LioAugmentOnlyPositive(tags=["luna:3d", "luna:segmentation"],
                output_shape=(128,128,128),  # in pixels
-               norm_patch_size=(128,128,128),  # in mms
+               norm_patch_shape=(128,128,128),  # in mms
                augmentation_params=AUGMENTATION_PARAMETERS
                ),
-    NormalizeInput(num_samples=1),
+    ZMUV("luna:3d", bias =  -648.59027, std = 679.21021),
 ]
 
 #####################
@@ -90,14 +90,14 @@ validation_data = {
                                         epochs=1,
                                         preprocessors=preprocessors,
                                         process_last_chunk=True,
-                                 multiprocess=False,
+                                 multiprocess=True,
                                  crash_on_exception=True,
                                         ),
     "training set":  OnlyPositiveLunaDataLoader(sets=TRAINING,
                                         epochs=0.01,
                                         preprocessors=preprocessors,
                                         process_last_chunk=True,
-                                 multiprocess=False,
+                                 multiprocess=True,
                                  crash_on_exception=True,
                                         ),
     }
@@ -125,7 +125,7 @@ def build_objectives(interface_layers):
     )
 
     obj_jaccard = JaccardIndexObjective(
-        smooth=1.,
+        smooth=1e-5,
         input_layers=interface_layers["outputs"],
         target_name="luna",
     )
@@ -150,15 +150,15 @@ def build_objectives(interface_layers):
 
     return {
         "train":{
-            "objective": obj_weighted,
-            "Jaccard": obj_jaccard,
+            "objective": obj_jaccard,
+            "weighted": obj_weighted,
             "Dice": obj_dice,
             "precision": obj_precision,
             "recall": obj_recall,
         },
         "validate":{
-            "objective": obj_weighted,
-            "Jaccard": obj_jaccard,
+            "objective": obj_jaccard,
+            "weighted": obj_weighted,
             "Dice": obj_dice,
             "precision": obj_precision,
             "recall": obj_recall,

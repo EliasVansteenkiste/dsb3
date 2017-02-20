@@ -1,6 +1,8 @@
 import numpy as np
 import random
 import math
+from application import luna
+from application.luna import LunaDataLoader
 
 from interfaces.preprocess import BasePreprocessor
 from utils.transformation_3d import affine_transform, apply_affine_transform
@@ -37,7 +39,44 @@ NORMOFFSET = - MIN_HU*NORMSCALE - PIXEL_MEAN
 def normalize_and_center(x): return x*NORMSCALE + NORMOFFSET
 
 
-def lio_augment(volume, pixel_spacing, output_shape, norm_patch_shape, augment_p, interp_order=1, cval=MIN_HU):
+# def lio_augment_positive_only(volume, pixel_spacing, output_shape, norm_patch_shape, augment_p,additional_translation, interp_order=1, cval=MIN_HU):
+
+    
+#     input_shape = np.asarray(volume.shape, np.float)
+#     pixel_spacing = np.asarray(pixel_spacing, np.float)
+#     output_shape = np.asarray(output_shape, np.float)
+#     norm_patch_shape = np.asarray(norm_patch_shape, np.float)
+
+#     norm_shape = input_shape * pixel_spacing
+#     # this will stretch in some dimensions, but the stretch is consistent across samples
+#     patch_shape = norm_shape * output_shape / norm_patch_shape
+#     # else, use this: patch_shape = norm_shape * np.min(output_shape / norm_patch_shape)
+
+#     shift_center = affine_transform(translation=-input_shape / 2. - 0.5)
+#     normscale = affine_transform(scale=norm_shape / input_shape)
+#     patch_centered = affine_transform(translation=additional_translation)
+#     augment = affine_transform(**augment_p)
+#     patchscale = affine_transform(scale=patch_shape / norm_shape)
+#     unshift_center = affine_transform(translation=output_shape / 2. - 0.5)
+
+#     matrix = shift_center.dot(normscale).dot(patch_centered).dot(augment).dot(patchscale).dot(unshift_center)
+
+#     output = apply_affine_transform(volume, matrix,
+#                                     order=interp_order,
+#                                     output_shape=output_shape.astype("int"),
+#                                     cval=cval)
+#     return output
+
+
+
+def lio_augment(volume, pixel_spacing, output_shape, norm_patch_shape, augment_p, interp_order=1,center_to_shift=None, cval=MIN_HU):
+
+
+    if center_to_shift is None:
+        #if no explicit center has been given, just center the image at the origin
+        center_to_shift=-input_shape / 2. - 0.5
+    
+    
     input_shape = np.asarray(volume.shape, np.float)
     pixel_spacing = np.asarray(pixel_spacing, np.float)
     output_shape = np.asarray(output_shape, np.float)
@@ -48,7 +87,7 @@ def lio_augment(volume, pixel_spacing, output_shape, norm_patch_shape, augment_p
     patch_shape = norm_shape * output_shape / norm_patch_shape
     # else, use this: patch_shape = norm_shape * np.min(output_shape / norm_patch_shape)
 
-    shift_center = affine_transform(translation=-input_shape / 2. - 0.5)
+    shift_center = affine_transform(translation=center_to_shift)
     normscale = affine_transform(scale=norm_shape / input_shape)
     augment = affine_transform(**augment_p)
     patchscale = affine_transform(scale=patch_shape / norm_shape)
@@ -64,12 +103,15 @@ def lio_augment(volume, pixel_spacing, output_shape, norm_patch_shape, augment_p
 
 
 def sample_augmentation_parameters(augm_param):
+
     augm = dict(augm_param)
+    
     augm["scale"] = [log_uniform(v) for v in augm_param["scale"]]
     augm["rotation"] = [uniform(v) for v in augm_param["rotation"]]
     augm["shear"] = [uniform(v) for v in augm_param["shear"]]
     augm["translation"] = [uniform(v) for v in augm_param["translation"]]
     augm["reflection"] = [bernoulli(v) for v in augm_param["reflection"]]
+    
     return augm
 
 
@@ -128,4 +170,78 @@ class LioAugment(BasePreprocessor):
                 )
             else:
                 pass
-                # raise Exception("Did not find tag which I had to augment: %s"%tag)
+                #raise Exception("Did not find tag which I had to augment: %s"%tag)
+
+
+class AugmentOnlyPositive(LioAugment):
+    @property
+    def extra_input_tags_required(self):
+        """
+        We need some extra parameters to be loaded!
+        :return:
+        """
+        datasetnames = set()
+        for tag in self.tags:
+            datasetnames.add(tag.split(':')[0])
+
+        input_tags_extra = [dsn+":pixelspacing" for dsn in datasetnames]
+        input_tags_extra += [dsn+":labels" for dsn in datasetnames]
+        input_tags_extra += [dsn+":origin" for dsn in datasetnames]
+        return input_tags_extra
+
+
+    def process(self, sample):
+        orig_augment = sample_augmentation_parameters(self.augmentation_params)
+
+        for tag in self.tags:
+
+            pixelspacingtag = tag.split(':')[0]+":pixelspacing"
+            labelstag = tag.split(':')[0]+":labels"
+            origintag = tag.split(':')[0]+":origin"
+
+            assert pixelspacingtag in sample[INPUT], "tag %s not found"%pixelspacingtag
+            assert labelstag in sample[INPUT], "tag %s not found"%labelstag
+            assert origintag in sample[INPUT], "tag %s not found"%origintag
+
+            spacing = sample[INPUT][pixelspacingtag]
+            labels = sample[INPUT][labelstag]
+            origin = sample[INPUT][origintag]
+
+            label = random.choice(labels)
+
+            labelloc = LunaDataLoader.world_to_voxel_coordinates(label[:3],origin=origin, spacing=spacing)
+
+            if tag in sample[INPUT]:
+                volume = sample[INPUT][tag]
+
+                augment_p = dict(orig_augment)
+                #augment_p["translation"] = augment_p["translation"] + (0.5*np.array(volume.shape)-labelloc)*spacing
+
+                sample[INPUT][tag] = lio_augment(
+                    volume=volume,
+                    pixel_spacing=spacing,
+                    output_shape=self.output_shape,
+                    norm_patch_shape=self.norm_patch_size,
+                    augment_p=augment_p,
+                    center_to_shift= - labelloc                     
+                )
+            elif tag in sample[OUTPUT]:
+                volume = sample[OUTPUT][tag]
+
+                augment_p = dict(orig_augment)
+                #augment_p["translation"] = augment_p["translation"] + (0.5*np.array(volume.shape)-labelloc)*spacing
+
+                
+                
+                sample[OUTPUT][tag] = lio_augment(
+                    volume=volume,
+                    pixel_spacing=spacing,
+                    output_shape=self.output_shape,
+                    norm_patch_shape=self.norm_patch_size,
+                    augment_p=augment_p,
+                    center_to_shift= - labelloc,                    
+                    cval=0.0
+                )
+            else:
+                pass
+                #raise Exception("Did not find tag which I had to augment: %s"%tag)

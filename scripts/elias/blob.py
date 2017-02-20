@@ -244,10 +244,12 @@ def blob_dog(image, min_sigma=1, max_sigma=50, sigma_ratio=1.6, threshold=2.0,
     sigma_list = np.array([min_sigma * (sigma_ratio ** i)
                            for i in range(k + 1)])
 
+    # print "gaussian_images"
     gaussian_images = [gaussian_filter(image, s) for s in sigma_list]
 
     # computing difference between two successive Gaussian blurred images
     # multiplying with standard deviation provides scale invariance
+    # print "dog_images"
     dog_images = [(gaussian_images[i] - gaussian_images[i + 1])
                   * sigma_list[i] for i in range(k)]
 
@@ -258,11 +260,17 @@ def blob_dog(image, min_sigma=1, max_sigma=50, sigma_ratio=1.6, threshold=2.0,
     extended_arrays = [arr[sl] for arr in arrays]
     image_cube = np.concatenate(extended_arrays, axis=-1)
 
+    # print "peak_local_max"
     # local_maxima = get_local_maxima(image_cube, threshold)
     local_maxima = peak_local_max(image_cube, threshold_abs=threshold,
                                   footprint=np.ones((3,) * (image.ndim + 1)),
                                   threshold_rel=0.0,
+                                  num_peaks=3000,
                                   exclude_border=False)
+    # print "peak_local_max done", len(local_maxima)
+    # Catch no peaks
+    if local_maxima.size == 0:
+        return np.zeros((0,4))
     # Convert local_maxima to float64
     lm = local_maxima.astype(np.float64)
     # Convert the last index to its corresponding scale value

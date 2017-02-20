@@ -3,12 +3,12 @@ import math
 import scipy.ndimage
 
 
-def apply_affine_transform(_input, matrix, order=1, output_shape=None, cval=0):
+def apply_affine_transform(_input, matrix, order=1, output_shape=None, mode="constant", cval=0):
     # output.dot(T) + s = input
     T = matrix[:3, :3]
     s = matrix[:3, 3]
     return scipy.ndimage.interpolation.affine_transform(
-        _input, T, offset=s, order=order, output_shape=output_shape, cval=cval)
+        _input, T, offset=s, order=order, output_shape=output_shape, mode=mode, cval=cval)
 
 def affine_transform(scale=None, rotation=None, translation=None, shear=None, reflection=None):
     """
@@ -70,7 +70,7 @@ def affine_transform(scale=None, rotation=None, translation=None, shear=None, re
     mz[0, 1] = -sin[2]
     mz[1, 1] = cos[2]
 
-    return matrix.dot(mx).dot(my).dot(mz)
+    return mx.dot(my).dot(mz).dot(matrix)
 
 
 def test_transformation_3d():

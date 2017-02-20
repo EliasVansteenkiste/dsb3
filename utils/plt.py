@@ -1,5 +1,26 @@
 import matplotlib.pyplot as plt
+from matplotlib import cm
 import numpy as np
+
+from utils import paths
+
+
+def cross_sections(volumes, show=False, save="", normalize=True):
+    plt.close('all')
+    n = len(volumes)
+    fig, ax = plt.subplots(n, 3, figsize=(14, 4*n))
+
+    _ax = lambda i, j: ax[j] if n == 1 else ax[i, j]
+    if normalize: norm = cm.colors.Normalize()
+    else: norm = cm.colors.NoNorm()
+
+    for i, vol in enumerate(volumes):
+        _ax(i, 0).imshow(vol[vol.shape[0] // 2], cmap="gray", interpolation='nearest', norm=norm)
+        _ax(i, 1).imshow(vol[:, vol.shape[1] // 2], cmap="gray", interpolation='nearest', norm=norm)
+        _ax(i, 2).imshow(vol[:, :, vol.shape[2] // 2], cmap="gray", interpolation='nearest', norm=norm)
+    if show: plt.show()
+    if len(save)>0: fig.savefig(save, bbox_inches='tight')
+
 
 def show_compare(volume1, volume2):
     plt.close('all')
@@ -13,13 +34,11 @@ def show_compare(volume1, volume2):
     plt.show()
 
 
-
-
-
-def show_animate(data, interval=200):
+def show_animate(data, interval=200, normalize=True):
     import matplotlib.animation as animation
-    mini = data.min()
-    data = (data.astype("float32")-mini)/(data.max()-mini)
+    if normalize:
+        mini = data.min()
+        data = (data.astype("float32")-mini)/(data.max()-mini)
 
     def get_data_step(step):
         return np.concatenate([data[:,:,step,None], data[:,:,step,None], data[:,:,step,None]], axis=-1)
