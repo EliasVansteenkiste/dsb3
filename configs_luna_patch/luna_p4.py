@@ -26,7 +26,7 @@ p_transform_augment = {
     'rotation_range_x': [-180, 180]
 }
 
-zmuv_mean, zmuv_std = None, None
+zmuv_mean, zmuv_std = 0.361438, 0.308647
 
 
 # data preparation function
@@ -68,15 +68,16 @@ valid_data_iterator = data_iterators.ValidPatchPositiveLunaDataGenerator(data_pa
                                                                          transform_params=p_transform,
                                                                          data_prep_fun=data_prep_function_valid,
                                                                          patient_ids=valid_pids)
-
-print 'estimating ZMUV parameters'
-x_big = None
-for i, (x, _, _) in zip(xrange(4), train_data_iterator.generate()):
-    x_big = x if x_big is None else np.concatenate((x_big, x), axis=0)
-zmuv_mean = x_big.mean()
-zmuv_std = x_big.std()
-print 'mean:', zmuv_mean
-print 'std:', zmuv_std
+if zmuv_mean is None or zmuv_std is None:
+    print 'estimating ZMUV parameters'
+    x_big = None
+    for i, (x, _, _) in zip(xrange(4), train_data_iterator.generate()):
+        print i
+        x_big = x if x_big is None else np.concatenate((x_big, x), axis=0)
+    zmuv_mean = x_big.mean()
+    zmuv_std = x_big.std()
+    print 'mean:', zmuv_mean
+    print 'std:', zmuv_std
 
 nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
 max_nchunks = nchunks_per_epoch * 30

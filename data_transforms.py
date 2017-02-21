@@ -34,6 +34,12 @@ def hu2normHU(x):
     return x
 
 
+def pixelnormHU(x):
+    x = (x - MIN_HU) / (MAX_HU - MIN_HU)
+    x = np.clip(x, 0., 1., out=x)
+    return (x - 0.5) / 0.5
+
+
 def sample_augmentation_parameters(transformation):
     shift_z = rng.uniform(*transformation.get('translation_range_z', [0., 0.]))
     shift_y = rng.uniform(*transformation.get('translation_range_y', [0., 0.]))

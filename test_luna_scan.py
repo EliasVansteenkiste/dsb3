@@ -41,6 +41,7 @@ idx_x = T.lscalar('idx_x')
 fs = config().filter_size
 stride = config().stride
 pad = config().pad
+pad_value = config().pad_value
 n_windows = (config().p_transform['patch_size'][0] - fs + 2 * pad) / stride + 1
 
 givens_valid = {}
@@ -77,9 +78,10 @@ for n, (x, y, id, annotations) in enumerate(valid_data_iterator.generate()):
     print 'saved inputs'
 
     if pad > 0:
-        x = np.pad(x[0, 0], pad_width=pad, mode='constant', constant_values=0)
+        x = np.pad(x[0, 0], pad_width=pad, mode='constant', constant_values=pad_value)
         x = x[None, None, :, :, :]
 
+    print x.shape
     x_shared.set_value(x)
 
     for iz in xrange(n_windows):
@@ -93,7 +95,8 @@ for n, (x, y, id, annotations) in enumerate(valid_data_iterator.generate()):
                 ix * stride:(ix + 1) * stride] = predictions_patch[0, 0,
                                                  stride / 2:stride * 3 / 2,
                                                  stride / 2:stride * 3 / 2,
-                                                 stride / 2:stride * 3 / 2, ]
+                                                 stride / 2:stride * 3 / 2, ] \
+                    if config().extract_middle else predictions_patch[0, 0, :, :, :]
 
     predictions_scan = np.clip(predictions_scan, 0, 1)
 

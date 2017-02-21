@@ -26,8 +26,6 @@ p_transform_augment = {
     'rotation_range_x': [-180, 180]
 }
 
-zmuv_mean, zmuv_std = None, None
-
 
 # data preparation function
 def data_prep_function(data, patch_center, luna_annotations, pixel_spacing, luna_origin, p_transform,
@@ -39,8 +37,7 @@ def data_prep_function(data, patch_center, luna_annotations, pixel_spacing, luna
                                                                                p_transform_augment=p_transform_augment,
                                                                                pixel_spacing=pixel_spacing,
                                                                                luna_origin=luna_origin)
-    x = data_transforms.hu2normHU(x)
-    x = data_transforms.zmuv(x, zmuv_mean, zmuv_std)
+    x = data_transforms.pixelnormHU(x)
     y = data_transforms.make_3d_mask_from_annotations(img_shape=x.shape, annotations=annotations_tf, shape='sphere')
     return x, y
 
@@ -69,11 +66,10 @@ valid_data_iterator = data_iterators.ValidPatchPositiveLunaDataGenerator(data_pa
                                                                          data_prep_fun=data_prep_function_valid,
                                                                          patient_ids=valid_pids)
 
-
 nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
 max_nchunks = nchunks_per_epoch * 30
 
-validate_every = 2
+validate_every = int(2. * nchunks_per_epoch)
 save_every = int(0.5 * nchunks_per_epoch)
 
 learning_rate_schedule = {

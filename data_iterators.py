@@ -101,7 +101,6 @@ class PatchPositiveLunaDataGenerator(LunaDataGenerator):
                     patient_path = self.patient_paths[idx]
                     id = utils_lung.luna_extract_pid(patient_path)
                     patients_ids.append(id)
-
                     img, origin, pixel_spacing = utils_lung.read_mhd(patient_path)
 
                     patient_annotations = self.id2annotations[id]
@@ -111,7 +110,6 @@ class PatchPositiveLunaDataGenerator(LunaDataGenerator):
                                                                                         pixel_spacing=pixel_spacing,
                                                                                         luna_annotations=patient_annotations,
                                                                                         luna_origin=origin)
-
                 if self.full_batch:
                     if nb == self.batch_size:
                         yield x_batch, y_batch, patients_ids

@@ -13,11 +13,12 @@ if len(sys.argv) < 2:
     sys.exit("Usage: evaluate_luna_scan.py <configuration_name>")
 
 config_name = sys.argv[1]
-set_configuration('configs_luna_scan', config_name)
+# set_configuration('configs_luna_scan', config_name)
 
 # predictions path
 predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
-blobs_dir = '/mnt/storage/metadata/dsb3/model-predictions/eavsteen/s2_luna_patch_v4_dice'
+# blobs_dir = '/mnt/storage/metadata/dsb3/model-predictions/eavsteen/s2_luna_patch_v4_dice'
+blobs_dir = '/mnt/storage/metadata/dsb3/model-predictions/ikorshun/luna_s_p4'
 # blobs_dir = '/mnt/storage/metadata/dsb3/model-predictions/eavsteen/s_luna_patch_v4_dice'
 outputs_path = predictions_dir + '/%s/' % config_name
 
@@ -25,7 +26,7 @@ files = os.listdir(outputs_path)
 x_files = sorted(glob.glob(outputs_path + '/in_*.npy'))
 y_files = sorted(glob.glob(outputs_path + '/tgt_*.npy'))
 pred_files = sorted(glob.glob(outputs_path + '/pred_*.npy'))
-blob_files = sorted(glob.glob(blobs_dir + '/prednodules_*.npy'))
+blob_files = sorted(glob.glob(blobs_dir + '/blob_*.npy'))
 # print blob_files
 
 tp = 0
@@ -33,8 +34,6 @@ n_pos = 0
 n_blobs = 0
 for xf, yf, pf, bf in zip(x_files, y_files, pred_files, blob_files):
     annotations_scan = utils.load_np(yf)
-    # x_scan = utils.load_np(xf)
-    # pred_scan = utils.load_np(pf)
 
     pid = utils_lung.luna_extract_pid(xf, '.npy').replace('in_', '')
     assert pid in yf
@@ -43,7 +42,6 @@ for xf, yf, pf, bf in zip(x_files, y_files, pred_files, blob_files):
     print pid
 
     print 'computing blobs'
-    # blobs = blobs_detection.blob_dog(pred_scan, min_sigma=1, max_sigma=15, threshold=0.1)
     blobs = utils.load_np(bf)
     n_blobs += len(blobs)
 
