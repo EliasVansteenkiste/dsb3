@@ -158,7 +158,6 @@ class SoerensonDiceCoefficientObjective(VolumeSegmentationObjective):
     def get_loss(self, *args, **kwargs):
         network_predictions = lasagne.layers.helper.get_output(self.prediction, *args, **kwargs)
         target_values = self.target_vars[self.target_key]
-        target_values = T.clip(target_values, 1e-6, 1.)
         network_predictions, target_values = lasagne.layers.merge.autocrop([network_predictions, target_values], [None, 'center', 'center', 'center'])
         y_true_f = target_values
         y_pred_f = network_predictions

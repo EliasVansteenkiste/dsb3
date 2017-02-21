@@ -207,7 +207,12 @@ class AugmentOnlyPositive(LioAugment):
             labels = sample[INPUT][labelstag]
             origin = sample[INPUT][origintag]
 
-            label = random.choice(labels)
+            if train_valid == 'valid':
+                lebel = labels[0]
+            elif train_valid == 'train':
+                label = random.choice(labels)
+            else:
+                raise
 
             labelloc = LunaDataLoader.world_to_voxel_coordinates(label[:3],origin=origin, spacing=spacing)
 

@@ -6,6 +6,10 @@ from augmentation_3d import sample_augmentation_parameters, Augment3D, augment_3
 
 
 class AugmentOnlyPositive(Augment3D):
+    def __init__(self, train_valid, *args, **kwargs):
+        self.train_valid = train_valid
+        super(AugmentOnlyPositive, self).__init__(*args, **kwargs)
+
     @property
     def extra_input_tags_required(self):
         """
@@ -39,7 +43,12 @@ class AugmentOnlyPositive(Augment3D):
             labels = sample[INPUT][labelstag]
             origin = sample[INPUT][origintag]
 
-            label = random.choice(labels)
+            if self.train_valid == 'valid':
+                lebel = labels[0]
+            elif self.train_valid == 'train':
+                label = random.choice(labels)
+            else:
+                raise
 
             from application.luna import LunaDataLoader
             labelloc = LunaDataLoader.world_to_voxel_coordinates(label[:3],origin=origin, spacing=spacing)
