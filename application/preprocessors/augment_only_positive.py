@@ -43,6 +43,7 @@ class AugmentOnlyPositive(Augment3D):
             labels = sample[INPUT][labelstag]
             origin = sample[INPUT][origintag]
 
+            label = None
             if self.train_valid == 'valid':
                 lebel = labels[0]
             elif self.train_valid == 'train':

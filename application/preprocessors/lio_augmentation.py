@@ -207,6 +207,7 @@ class AugmentOnlyPositive(LioAugment):
             labels = sample[INPUT][labelstag]
             origin = sample[INPUT][origintag]
 
+            label = None
             if train_valid == 'valid':
                 lebel = labels[0]
             elif train_valid == 'train':
