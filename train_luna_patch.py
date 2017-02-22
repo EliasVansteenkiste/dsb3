@@ -127,10 +127,12 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
     y_shared.set_value(y_chunk_train)
 
     # make nbatches_chunk iterations
+    chunk_train_losses = []
     for b in xrange(config().nbatches_chunk):
         loss = iter_train(b)
-        print chunk_idx, loss
+        chunk_train_losses.append(loss)
         tmp_losses_train.append(loss)
+    print chunk_idx, np.mean(chunk_train_losses)
 
     if ((chunk_idx + 1) % config().validate_every) == 0:
         print

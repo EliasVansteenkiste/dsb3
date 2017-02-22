@@ -6,9 +6,6 @@ import utils_lung
 if utils.hostname() == 'user':
     with open('SETTINGS_user.json') as data_file:
         paths = json.load(data_file)
-elif utils.hostname() == 'paard':
-    with open('SETTINGS_paard.json') as data_file:
-        paths = json.load(data_file)
 else:
     with open('SETTINGS.json') as data_file:
         paths = json.load(data_file)
