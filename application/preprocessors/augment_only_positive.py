@@ -39,8 +39,8 @@ class AugmentOnlyPositive(Augment3D):
             labels = sample[INPUT][labelstag]
             origin = sample[INPUT][origintag]
 
-            label = labels[0]
             
+            label = random.choice(labels)            
             
             from application.luna import LunaDataLoader
             labelloc = LunaDataLoader.world_to_voxel_coordinates(label[:3],origin=origin, spacing=spacing)
