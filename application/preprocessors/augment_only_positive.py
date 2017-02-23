@@ -36,10 +36,10 @@ class AugmentOnlyPositive(Augment3D):
             assert origintag in sample[INPUT], "tag %s not found"%origintag
 
             spacing = sample[INPUT][pixelspacingtag]
-            [label] = sample[INPUT][labelstag]
+            labels = sample[INPUT][labelstag]
             origin = sample[INPUT][origintag]
 
-            #label = random.choice(labels)
+            label = labels[0]
             
             
             from application.luna import LunaDataLoader
