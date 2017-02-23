@@ -36,9 +36,10 @@ class LunaDataLoader(StandardDataLoader):
 
     datasets = [TRAIN, VALIDATION]
 
-    def __init__(self, location=paths.LUNA_DATA_PATH, only_positive=False, *args, **kwargs):
+    def __init__(self, location=paths.LUNA_DATA_PATH, only_positive=False,pick_nodule=False, *args, **kwargs):
         super(LunaDataLoader,self).__init__(location=location, *args, **kwargs)
         self.only_positive = only_positive
+        self.pick_nodule=pick_nodule
 
     def prepare(self):
         """
@@ -89,7 +90,13 @@ class LunaDataLoader(StandardDataLoader):
             if self.only_positive and not label:
                 continue
             self.data[s].append(patient_file)
-            self.labels[s].append( label )
+            
+            if self.pick_nodule:
+                self.labels[s].append([random.choice(label)])                
+            else:
+                self.labels[s].append(label)
+            
+                
             self.names[s].append(patient_name)
 
         # give every patient a unique number
@@ -99,6 +106,8 @@ class LunaDataLoader(StandardDataLoader):
             if len(self.indices[s]) > 0:
                 last_index = self.indices[s][-1]
             print s, len(self.indices[s]), "samples"
+
+        
 
     @staticmethod
     def patient_name_from_file_name(patient_file):
