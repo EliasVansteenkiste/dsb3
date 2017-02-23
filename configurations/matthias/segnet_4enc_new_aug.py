@@ -34,9 +34,9 @@ save_every_chunks = 50
 
 AUGMENTATION_PARAMETERS = {
     "scale": [1, 1, 1],  # factor
-    "rotation": [180, 180, 180],  # degrees (from -180 to 180)
+    "rotation": [0,0,0],#[180, 180, 180],  # degrees (from -180 to 180)
     "shear": [0, 0, 0],  # degrees
-    "translation": [16, 16, 16],  # mms (from -128 to 128)
+    "translation": [0,0,0],#[16, 16, 16],  # mms (from -128 to 128)
     "reflection": [0, 0, 0] #Bernoulli p
 }
 
