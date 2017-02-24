@@ -1,4 +1,3 @@
-import string
 import sys
 import lasagne as nn
 import numpy as np
@@ -40,9 +39,7 @@ idx_x = T.lscalar('idx_x')
 
 fs = config().filter_size
 stride = config().stride
-pad = config().pad
-pad_value = config().pad_value
-n_windows = (config().p_transform['patch_size'][0] - fs + 2 * pad) / stride + 1
+n_windows = (config().p_transform['patch_size'][0] - fs) / stride + 1
 
 givens_valid = {}
 givens_valid[model.l_in.input_var] = x_shared[:, :,
@@ -65,18 +62,13 @@ valid_losses_dice = []
 n_pos = 0
 tp = 0
 n_blobs = 0
+pid2blobs = {}
 for n, (x, y, id, annotations, transform_matrices) in enumerate(valid_data_iterator.generate()):
     pid = id[0]
+    print '-------------------------------------'
     print n, pid
     annotations = annotations[0]
     tf_matrix = transform_matrices[0]
-    # utils.save_np(x[0, 0], outputs_path + '/in_' + pid)
-    utils.save_np(annotations, outputs_path + '/tgt_' + pid)
-    # print 'saved inputs'
-
-    if pad > 0:
-        x = np.pad(x[0, 0], pad_width=pad, mode='constant', constant_values=pad_value)
-        x = x[None, None, :, :, :]
 
     predictions_scan = np.zeros((1, 1, n_windows * stride, n_windows * stride, n_windows * stride))
 
@@ -94,12 +86,12 @@ for n, (x, y, id, annotations, transform_matrices) in enumerate(valid_data_itera
                                                  stride / 2:stride * 3 / 2, ] \
                     if config().extract_middle else predictions_patch[0, 0, :, :, :]
 
+    predictions_scan = np.clip(predictions_scan, 0, 1)
+
     if predictions_scan.shape != y.shape:
         pad_width = (np.asarray(y.shape) - np.asarray(predictions_scan.shape)) / 2
         pad_width = [(p, p) for p in pad_width]
         predictions_scan = np.pad(predictions_scan, pad_width=pad_width, mode='constant')
-
-    predictions_scan = np.clip(predictions_scan, 0, 1)
 
     d = utils_lung.dice_index(predictions_scan, y)
     print '\n dice index: ', d
@@ -111,21 +103,8 @@ for n, (x, y, id, annotations, transform_matrices) in enumerate(valid_data_itera
                         img_dir=outputs_path, idx=zyxd)
     print 'saved plot'
 
-    # utils.save_np(predictions_scan[0, 0], outputs_path + '/pred_' + pid)
-    # print 'saved predictions'
-
     print 'computing blobs'
     blobs = blobs_detection.blob_dog(predictions_scan[0, 0], min_sigma=1, max_sigma=15, threshold=0.1)
-    utils.save_np(blobs, outputs_path + '/blob_' + pid)
-    print 'saved blobs'
-
-    blobs_voxel_coords = []
-    for j in xrange(blobs.shape[0]):
-        print blobs[j, :]
-        blob_j = tf_matrix.dot(blobs[j, :])
-        print blob_j
-        print np.linalg.inv(tf_matrix).dot(blob_j)
-        blobs_voxel_coords.append(blob_j)
 
     n_blobs += len(blobs)
     for zyxd in annotations:
@@ -137,12 +116,23 @@ for n, (x, y, id, annotations, transform_matrices) in enumerate(valid_data_itera
         blob_idx = np.argmin(distance2)
         blob = blobs[blob_idx]
         print 'node', zyxd
-        print 'closest blob', blob, blob_idx
+        print 'closest blob', blob
         if distance2[blob_idx] < r ** 2:
             tp += 1
-            print 'detected!!!'
         else:
-            print 'not detected'
+            print 'not detected !!!'
     print 'n blobs/ detected', n_pos, tp
 
+    # TODO mark correct blobs with 1 and wrong with 0
+    # we will save blobs the the voxel space of the original image
+    blobs_original_voxel_coords = []
+    for j in xrange(blobs.shape[0]):
+        blob_j = np.append(blobs[j, :3], [1])
+        blobs_original_voxel_coords.append(tf_matrix.dot(blob_j))
+    pid2blobs[pid] = np.asarray(blobs_original_voxel_coords)
+    utils.save_pkl(pid2blobs, outputs_path + '/candidates.pkl')
+
 print 'Dice index validation loss', np.mean(valid_losses_dice)
+print 'n nodules', n_pos
+print 'n TP', tp
+print 'n blobs', n_blobs

@@ -1,11 +1,7 @@
 import data_transforms
 import data_iterators
 import pathfinder
-import utils
-import string
-import numpy as np
-import lasagne as nn
-import configs_seg_patch.luna_patch_local as patch_config
+import configs_seg_patch.luna_p_local as patch_config
 
 rng = patch_config.rng
 p_transform_patch = patch_config.p_transform

@@ -12,8 +12,6 @@ rng = patch_config.rng
 filter_size = patch_config.p_transform['patch_size'][0]
 stride = filter_size / 2
 extract_middle = False
-pad = 0
-pad_value = 0
 
 p_transform = {'patch_size': (416, 416, 416),
                'mm_patch_size': (416, 416, 416),
