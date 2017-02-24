@@ -5,10 +5,10 @@ from interfaces.data_loader import INPUT, OUTPUT
 from augmentation_3d import sample_augmentation_parameters, Augment3D, augment_3d
 
 
-class AugmentOnlyPositive(Augment3D):
+class AugmentCandidates(Augment3D):
     def __init__(self, train_valid, *args, **kwargs):
         self.train_valid = train_valid
-        super(AugmentOnlyPositive, self).__init__(*args, **kwargs)
+        super(AugmentCandidates, self).__init__(*args, **kwargs)
 
     @property
     def extra_input_tags_required(self):
@@ -21,7 +21,7 @@ class AugmentOnlyPositive(Augment3D):
             datasetnames.add(tag.split(':')[0])
 
         input_tags_extra = [dsn+":pixelspacing" for dsn in datasetnames]
-        input_tags_extra += [dsn+":labels" for dsn in datasetnames]
+        input_tags_extra += [dsn+":candidates" for dsn in datasetnames]
         input_tags_extra += [dsn+":origin" for dsn in datasetnames]
         return input_tags_extra
 
@@ -32,22 +32,35 @@ class AugmentOnlyPositive(Augment3D):
         for tag in self.tags:
 
             pixelspacingtag = tag.split(':')[0]+":pixelspacing"
-            labelstag = tag.split(':')[0]+":labels"
+            candidatestag = tag.split(':')[0]+":candidates"
             origintag = tag.split(':')[0]+":origin"
 
             assert pixelspacingtag in sample[INPUT], "tag %s not found"%pixelspacingtag
-            assert labelstag in sample[INPUT], "tag %s not found"%labelstag
+            assert candidatestag in sample[INPUT], "tag %s not found"%candidatestag
             assert origintag in sample[INPUT], "tag %s not found"%origintag
 
             spacing = sample[INPUT][pixelspacingtag]
-            labels = sample[INPUT][labelstag]
+            candidates = sample[INPUT][candidatestag]
             origin = sample[INPUT][origintag]
 
-            label = random.choice(labels)
 
+            if len(candidates) == 1:
+                candidate = random.choice(candidates[0])
+            elif len(candidates) == 2:
+                #we have to take a higher percentage of real nodules because there are patients without nodules and we want to balance real and fake nodules
+                percentage_chance = 0.5 
+                if random.random() < percentage_chance:
+                    candidate = random.choice(candidates[1])
+                else:
+                    candidate = random.choice(candidates[0])
+                print 'candidate', candidate
+            else:
+                raise Exception("candidates is empty")
+
+            #print 'candidate', candidate
 
             from application.luna import LunaDataLoader
-            labelloc = LunaDataLoader.world_to_voxel_coordinates(label[:3],origin=origin, spacing=spacing)
+            candidateloc = LunaDataLoader.world_to_voxel_coordinates(candidate[:3],origin=origin, spacing=spacing)
 
             if tag in sample[INPUT]:
                 volume = sample[INPUT][tag]
@@ -58,20 +71,13 @@ class AugmentOnlyPositive(Augment3D):
                     output_shape=self.output_shape,
                     norm_patch_shape=self.norm_patch_shape,
                     augment_p = augment_p,
-                    center_to_shift= - labelloc
+                    center_to_shift= - candidateloc
                 )
+                # add candidate label to output tags
+                
             elif tag in sample[OUTPUT]:
-                volume = sample[OUTPUT][tag]
-
-                sample[OUTPUT][tag] = augment_3d(
-                    volume=volume,
-                    pixel_spacing=spacing,
-                    output_shape=self.output_shape,
-                    norm_patch_shape=self.norm_patch_shape,
-                    augment_p=augment_p,
-                    center_to_shift= - labelloc,                     
-                    cval=0.0
-                )
+                #volume = sample[OUTPUT][tag]
+                sample[OUTPUT][tag] = np.int32(candidate[3])
             else:
                 pass
                 #raise Exception("Did not find tag which I had to augment: %s"%tag)

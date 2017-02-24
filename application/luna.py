@@ -32,6 +32,7 @@ class LunaDataLoader(StandardDataLoader):
 
     # These are shared between all objects of this type
     labels = dict()
+    candidates = dict()
     names = dict()
 
     datasets = [TRAIN, VALIDATION]
@@ -67,6 +68,7 @@ class LunaDataLoader(StandardDataLoader):
             self.data[s] = []
             self.labels[s] = []
             self.names[s] = []
+            self.candidates[s] = []
 
         # load the filenames and put into the right dataset
         labels_as_dict = defaultdict(list)
@@ -78,6 +80,15 @@ class LunaDataLoader(StandardDataLoader):
                 label = (float(row[1]), float(row[2]), float(row[3]), float(row[4]))
                 labels_as_dict[str(row[0])].append(label)
 
+        candidates_as_dict = defaultdict(lambda: defaultdict(list))
+
+        with open(paths.LUNA_CANDIDATES_PATH, 'rb') as csvfile:
+            reader = csv.reader(csvfile, delimiter=',', quotechar='|')
+            next(reader)  # skip the header
+            for row in reader:
+                candidate = (float(row[1]), float(row[2]), float(row[3]), float(row[4]))
+                candidates_as_dict[str(row[0])][int(float(row[4]))].append(candidate)
+
         for patient_file in file_list:
             patient_name = self.patient_name_from_file_name(patient_file)
 
@@ -85,11 +96,15 @@ class LunaDataLoader(StandardDataLoader):
                 s = VALIDATION
             else:
                 s = TRAINING
+            cans = candidates_as_dict[str(patient_name)]
+
             label = labels_as_dict[str(patient_name)]
             if self.only_positive and not label:
                 continue
+
             self.data[s].append(patient_file)
-            self.labels[s].append( label )
+            self.candidates[s].append(cans)
+            self.labels[s].append(label)
             self.names[s].append(patient_name)
 
         # give every patient a unique number
@@ -157,12 +172,26 @@ class LunaDataLoader(StandardDataLoader):
             if "labels" in tags:
                 sample[INPUT][tag] = self.labels[set][sample_index]
 
+            if "candidates" in tags:
+                if set not in self.candidates.keys():
+                    print 'Warning: set is not in the candidate keyset'
+                    print 'sample_index', sample_index
+                    print 'sample_id', sample_id
+                    print 'set', set
+                    print 'candidates', self.candidates
+
+
+                sample[INPUT][tag] = self.candidates[set][sample_index]
+
         for tag in output_keys_to_do:
             tags = tag.split(':')
             if "luna" not in tags:
                 continue
             if "sample_id" in tags:
                 sample[OUTPUT][tag] = sample_id
+
+            if "target" in tags:
+                sample[OUTPUT][tag] = np.array([-1.])
 
             if "segmentation" in tags:
                 sample[OUTPUT][tag] =  self.generate_mask(
@@ -290,10 +319,21 @@ class BcolzLunaDataLoader(LunaDataLoader):
                 label = (float(row[1]), float(row[2]), float(row[3]), float(row[4]))
                 labels_as_dict[str(row[0])].append(label)
 
+
+        candidates_as_dict = defaultdict(list)
+
+        with open(paths.LUNA_CANDIDATES_PATH, 'rb') as csvfile:
+            reader = csv.reader(csvfile, delimiter=',', quotechar='|')
+            next(reader)  # skip the header
+            for row in reader:
+                label = (float(row[1]), float(row[2]), float(row[3]), float(row[4]))
+                candidates_as_dict[str(row[0])].append(label)
+
         # make the static data empty
         for s in self.datasets:
             self.data[s] = []
             self.labels[s] = []
+            self.candidates = []
             self.names[s] = []
             self.spacings[s] = []
             self.origins[s] = []
@@ -312,13 +352,15 @@ class BcolzLunaDataLoader(LunaDataLoader):
             else:
                 dataset = TRAIN
 
-
             label = labels_as_dict[patient_id]
             if self.only_positive and not label:
                 continue
 
+            candidates = candidates_as_dict[patient_id]
+
             self.data[dataset].append(patient_folder)
             self.labels[dataset].append(label)
+            self.candidates[dataset].append(candidates)
             self.names[dataset].append(patient_id)
             self.spacings[dataset].append(spacings[patient_id])
             self.origins[dataset].append(origins[patient_id])
