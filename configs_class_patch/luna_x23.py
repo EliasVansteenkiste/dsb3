@@ -11,7 +11,7 @@ import theano.tensor as T
 import utils
 
 restart_from_save = None
-rng = np.random.RandomState(42)
+rng = np.random.RandomState(33)
 
 # transformations
 p_transform = {'patch_size': (32, 32, 32),
@@ -38,7 +38,8 @@ def data_prep_function(data, patch_center, pixel_spacing, luna_origin, p_transfo
                                                                p_transform_augment=p_transform_augment,
                                                                pixel_spacing=pixel_spacing,
                                                                luna_origin=luna_origin)
-    x = data_transforms.pixelnormHU(x)
+    x = data_transforms.hu2normHU(x)
+
     return x
 
 
@@ -60,14 +61,14 @@ train_data_iterator = data_iterators.CandidatesLunaDataGenerator(data_path=pathf
                                                                  transform_params=p_transform,
                                                                  data_prep_fun=data_prep_function_train,
                                                                  rng=rng,
-                                                                 patient_ids=train_pids,
+                                                                 patient_ids=train_valid_ids['train'],
                                                                  full_batch=True, random=True, infinite=True,
                                                                  positive_proportion=0.5)
 
 valid_data_iterator = data_iterators.CandidatesLunaValidDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                       transform_params=p_transform,
                                                                       data_prep_fun=data_prep_function_valid,
-                                                                      patient_ids=valid_pids)
+                                                                      patient_ids=train_valid_ids['valid'])
 
 nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
 max_nchunks = nchunks_per_epoch * 100
@@ -77,11 +78,11 @@ save_every = int(1. * nchunks_per_epoch)
 
 learning_rate_schedule = {
     0: 5e-4,
-    int(max_nchunks * 0.5): 2e-4,
-    int(max_nchunks * 0.6): 1e-4,
-    int(max_nchunks * 0.7): 5e-5,
-    int(max_nchunks * 0.8): 2e-5,
-    int(max_nchunks * 0.9): 1e-5
+    int(max_nchunks * 0.5): 1e-4,
+    int(max_nchunks * 0.6): 5e-5,
+    int(max_nchunks * 0.7): 2e-5,
+    int(max_nchunks * 0.8): 1e-5,
+    int(max_nchunks * 0.9): 5e-6
 }
 
 # model
@@ -96,6 +97,8 @@ max_pool3d = partial(dnn.MaxPool3DDNNLayer,
                      pool_size=2)
 
 drop = lasagne.layers.DropoutLayer
+
+bn = lasagne.layers.batch_norm
 
 dense = partial(lasagne.layers.DenseLayer,
                 W=lasagne.init.Orthogonal('relu'),
@@ -175,10 +178,11 @@ def build_model():
 
 
 def build_objective(model, deterministic=False, epsilon=1e-12):
-    predictions = nn.layers.get_output(model.l_out, deterministic=deterministic)
+    predictions = nn.layers.get_output(model.l_out)
     targets = T.cast(T.flatten(nn.layers.get_output(model.l_target)), 'int32')
     p = predictions[T.arange(predictions.shape[0]), targets]
     p = T.clip(p, epsilon, 1.)
+
     loss = T.mean(T.log(p))
     return -loss
 

@@ -9,6 +9,12 @@ import csv
 import os
 from PIL import Image
 from collections import defaultdict
+import cPickle as pickle
+
+
+def read_pkl(path):
+    d = pickle.load(open(path, "rb"))
+    return d['pixel_data'], d['origin'], d['spacing']
 
 
 def read_mhd(path):
@@ -55,7 +61,7 @@ def extract_pid(patient_data_path):
 
 
 def luna_extract_pid(patient_data_path, replace_str='.mhd'):
-    return os.path.basename(patient_data_path).replace(replace_str, '')
+    return os.path.basename(patient_data_path).replace(replace_str, '').replace('pkl','')
 
 
 def get_patient_data(patient_data_path):

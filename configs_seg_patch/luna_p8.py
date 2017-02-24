@@ -75,8 +75,8 @@ learning_rate_schedule = {
     0: 1e-5,
     int(max_nchunks * 0.4): 5e-6,
     int(max_nchunks * 0.5): 2e-6,
-    int(max_nchunks * 0.8): 1e-6,
-    int(max_nchunks * 0.9): 5e-7
+    int(max_nchunks * 0.85): 1e-6,
+    int(max_nchunks * 0.95): 5e-7
 }
 
 # model
@@ -133,16 +133,17 @@ def build_model():
 
 
 def build_objective(model, deterministic=False, epsilon=1e-12):
-    network_predictions = nn.layers.get_output(model.l_out)
-    target_values = nn.layers.get_output(model.l_target)
+    network_predictions = nn.layers.get_output(model.l_out, deterministic=deterministic)[:, 0, :, :, :]
+    target_values = nn.layers.get_output(model.l_target)[:, 0, :, :, :]
     network_predictions, target_values = nn.layers.merge.autocrop([network_predictions, target_values],
-                                                                  [None, None, 'center', 'center', 'center'])
+                                                                  [None, 'center', 'center', 'center'])
     y_true_f = target_values
     y_pred_f = network_predictions
 
-    intersection = T.sum(y_true_f * y_pred_f)
-    dice = (2 * intersection + epsilon) / (T.sum(y_true_f) + T.sum(y_pred_f) + epsilon)
-    return -1. * dice
+    intersection = T.sum(y_true_f * y_pred_f, axis=(1, 2, 3))
+    dice_batch = (2. * intersection + epsilon) / (
+        T.sum(y_true_f, axis=(1, 2, 3)) + T.sum(y_pred_f, axis=(1, 2, 3)) + epsilon)
+    return -1. * T.sum(dice_batch)
 
 
 def build_updates(train_loss, model, learning_rate):
