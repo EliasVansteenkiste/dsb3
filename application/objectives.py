@@ -49,6 +49,56 @@ class CrossEntropyObjective(TargetVarDictObjective):
         return -np.mean(expected*np.log(predicted) + (1-expected)*np.log(1-predicted))
 
 
+class BinaryCrossEntropyObjective(TargetVarDictObjective):
+    optimize = MINIMIZE
+
+    eps = 1e-12
+    """
+    This is the objective as defined by Kaggle: https://www.kaggle.com/c/data-science-bowl-2017/details/evaluation
+    """
+
+    def __init__(self, input_layers, target_name, *args, **kwargs):
+        super(BinaryCrossEntropyObjective, self).__init__(input_layers, *args, **kwargs)
+        self.target_key = target_name + ":target"
+        self.target_vars[self.target_key]  = T.lvector("target_class")
+        self.prediction = input_layers["predicted_probability"]
+
+    def get_loss(self, *args, **kwargs):
+        """
+        Return the theano loss.
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        predictions = lasagne.layers.helper.get_output(self.prediction, *args, **kwargs)
+        print 'predictions', predictions
+
+        targets = T.cast(T.flatten(self.target_vars[self.target_key]), 'int32')
+        print 'targets', targets
+
+        p = predictions[targets]
+        p = T.clip(p,self.eps,1.)
+        loss = T.log(p)
+
+        print 'loss', -loss
+        return -loss
+
+    def get_loss_from_lists(self, predicted, expected, *args, **kwargs):
+        """
+        Return an error where predicted and expected are numpy arrays (and not Theano)
+        :param predicted:
+        :param expected:
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        targets = expected
+        targets = T.flatten(targets).astype('int32')
+        p = predicted[np.arrange(predicted.shape[0]),targets]
+        p = T.clip(p,self.eps,1.)
+        loss = T.log(p)
+        return -loss
+
 
 
 
