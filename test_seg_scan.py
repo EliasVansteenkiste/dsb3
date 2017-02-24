@@ -18,7 +18,7 @@ if len(sys.argv) < 2:
     sys.exit("Usage: test_luna_scan.py <configuration_name>")
 
 config_name = sys.argv[1]
-set_configuration('configs_luna_scan', config_name)
+set_configuration('configs_seg_scan', config_name)
 
 # predictions path
 predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
@@ -51,7 +51,7 @@ givens_valid[model.l_in.input_var] = x_shared[:, :,
                                      idx_x * stride:(idx_x * stride) + fs]
 
 get_predictions_patch = theano.function([idx_z, idx_y, idx_x],
-                                        nn.layers.get_output(model.l_out),
+                                        nn.layers.get_output(model.l_out, deterministic=True),
                                         givens=givens_valid,
                                         on_unused_input='ignore')
 
@@ -65,29 +65,25 @@ valid_losses_dice = []
 n_pos = 0
 tp = 0
 n_blobs = 0
-for n, (x, y, id, annotations) in enumerate(valid_data_iterator.generate()):
-
+for n, (x, y, id, annotations, transform_matrices) in enumerate(valid_data_iterator.generate()):
     pid = id[0]
-
     print n, pid
     annotations = annotations[0]
-    predictions_scan = np.zeros_like(x)
-
-    utils.save_np(x[0, 0], outputs_path + '/in_' + pid)
+    tf_matrix = transform_matrices[0]
+    # utils.save_np(x[0, 0], outputs_path + '/in_' + pid)
     utils.save_np(annotations, outputs_path + '/tgt_' + pid)
-    print 'saved inputs'
+    # print 'saved inputs'
 
     if pad > 0:
         x = np.pad(x[0, 0], pad_width=pad, mode='constant', constant_values=pad_value)
         x = x[None, None, :, :, :]
 
-    print x.shape
-    x_shared.set_value(x)
+    predictions_scan = np.zeros((1, 1, n_windows * stride, n_windows * stride, n_windows * stride))
 
+    x_shared.set_value(x)
     for iz in xrange(n_windows):
         for iy in xrange(n_windows):
             for ix in xrange(n_windows):
-                # print iz, iy, ix
                 predictions_patch = get_predictions_patch(iz, iy, ix)
                 predictions_scan[0, 0,
                 iz * stride:(iz + 1) * stride,
@@ -98,6 +94,11 @@ for n, (x, y, id, annotations) in enumerate(valid_data_iterator.generate()):
                                                  stride / 2:stride * 3 / 2, ] \
                     if config().extract_middle else predictions_patch[0, 0, :, :, :]
 
+    if predictions_scan.shape != y.shape:
+        pad_width = (np.asarray(y.shape) - np.asarray(predictions_scan.shape)) / 2
+        pad_width = [(p, p) for p in pad_width]
+        predictions_scan = np.pad(predictions_scan, pad_width=pad_width, mode='constant')
+
     predictions_scan = np.clip(predictions_scan, 0, 1)
 
     d = utils_lung.dice_index(predictions_scan, y)
@@ -105,19 +106,26 @@ for n, (x, y, id, annotations) in enumerate(valid_data_iterator.generate()):
     valid_losses_dice.append(d)
 
     for nodule_n, zyxd in enumerate(annotations):
-        print zyxd
         plot_slice_3d_3(input=x[0, 0], mask=y[0, 0], prediction=predictions_scan[0, 0],
                         axis=0, pid='-'.join([str(n), str(nodule_n), str(id[0])]),
                         img_dir=outputs_path, idx=zyxd)
     print 'saved plot'
 
-    utils.save_np(predictions_scan[0, 0], outputs_path + '/pred_' + pid)
-    print 'saved predictions'
+    # utils.save_np(predictions_scan[0, 0], outputs_path + '/pred_' + pid)
+    # print 'saved predictions'
 
     print 'computing blobs'
     blobs = blobs_detection.blob_dog(predictions_scan[0, 0], min_sigma=1, max_sigma=15, threshold=0.1)
     utils.save_np(blobs, outputs_path + '/blob_' + pid)
     print 'saved blobs'
+
+    blobs_voxel_coords = []
+    for j in xrange(blobs.shape[0]):
+        print blobs[j, :]
+        blob_j = tf_matrix.dot(blobs[j, :])
+        print blob_j
+        print np.linalg.inv(tf_matrix).dot(blob_j)
+        blobs_voxel_coords.append(blob_j)
 
     n_blobs += len(blobs)
     for zyxd in annotations:
@@ -135,5 +143,6 @@ for n, (x, y, id, annotations) in enumerate(valid_data_iterator.generate()):
             print 'detected!!!'
         else:
             print 'not detected'
+    print 'n blobs/ detected', n_pos, tp
 
 print 'Dice index validation loss', np.mean(valid_losses_dice)

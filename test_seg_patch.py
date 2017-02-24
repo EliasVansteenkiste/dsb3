@@ -17,7 +17,7 @@ if len(sys.argv) < 2:
     sys.exit("Usage: train.py <configuration_name>")
 
 config_name = sys.argv[1]
-set_configuration('configs_luna_class', config_name)
+set_configuration('configs_seg_patch', config_name)
 
 # metadata
 metadata_dir = utils.get_dir_path('models', pathfinder.METADATA_PATH)
@@ -61,17 +61,39 @@ givens_valid = {}
 givens_valid[model.l_in.input_var] = x_shared
 
 # theano functions
-iter_get_predictions = theano.function([], nn.layers.get_output(model.l_out), givens=givens_valid)
+iter_get_predictions = theano.function([], nn.layers.get_output(model.l_out, deterministic=True), givens=givens_valid)
 valid_data_iterator = config().valid_data_iterator
 
 print
 print 'Data'
 print 'n validation: %d' % valid_data_iterator.nsamples
 
+valid_losses_dice = []
+tp = 0
 for n, (x_chunk, y_chunk, id_chunk) in enumerate(buffering.buffered_gen_threaded(valid_data_iterator.generate())):
     # load chunk to GPU
     x_shared.set_value(x_chunk)
     predictions = iter_get_predictions()
     targets = y_chunk
     inputs = x_chunk
-    print id_chunk, targets, predictions
+
+    if predictions.shape != targets.shape:
+        pad_width = (np.asarray(targets.shape) - np.asarray(predictions.shape)) / 2
+        pad_width = [(p, p) for p in pad_width]
+        predictions = np.pad(predictions, pad_width=pad_width, mode='constant')
+
+    dice = utils_lung.dice_index(predictions, targets)
+    print n, id_chunk, dice
+    valid_losses_dice.append(dice)
+    if np.sum(predictions * targets) / np.sum(targets) > 0.1:
+        tp += 1
+    else:
+        print 'not detected!!!!'
+
+    for k in xrange(predictions.shape[0]):
+        plot_slice_3d_3(input=inputs[k, 0], mask=targets[k, 0], prediction=predictions[k, 0],
+                        axis=0, pid='-'.join([str(n), str(k), str(id_chunk[k])]),
+                        img_dir=outputs_path)
+
+print 'Dice index validation loss', np.mean(valid_losses_dice)
+print 'TP', tp

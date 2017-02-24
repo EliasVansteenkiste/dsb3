@@ -29,7 +29,7 @@ def test_luna_patches_3d():
         print id
 
         annotations = id2zyxd[id]
-
+        print annotations
         for zyxd in annotations:
             img_out, mask = config().data_prep_function_train(img,
                                                               pixel_spacing=pixel_spacing,

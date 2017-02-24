@@ -98,9 +98,9 @@ def transform_scan3d(data, pixel_spacing, p_transform,
             zyxd_out = np.rint(np.append(voxel_coords_out, diameter_out))
             annotatations_out.append(zyxd_out)
         annotatations_out = np.asarray(annotatations_out)
-        return data_out, annotatations_out
+        return data_out, annotatations_out, tf_total
 
-    return data_out
+    return data_out, tf_total
 
 
 def transform_patch3d(data, pixel_spacing, p_transform,

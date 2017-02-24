@@ -38,6 +38,7 @@ class LunaDataGenerator(object):
                 y_batch = np.zeros((nb, 1) + self.transform_params['patch_size'], dtype='float32')
                 patients_ids = []
                 annotations = []
+                transform_matrices = []
 
                 for i, idx in enumerate(idxs_batch):
                     patient_path = self.patient_paths[idx]
@@ -45,28 +46,32 @@ class LunaDataGenerator(object):
                     patients_ids.append(id)
 
                     img, origin, pixel_spacing = utils_lung.read_mhd(patient_path)
-                    x_batch[i, 0, :, :, :], y_batch[i, 0, :, :, :], annotations_i = self.data_prep_fun(data=img,
-                                                                                                       pixel_spacing=pixel_spacing,
-                                                                                                       luna_annotations=
-                                                                                                       self.id2annotations[
-                                                                                                           id],
-                                                                                                       luna_origin=origin)
+                    x_batch[i, 0, :, :, :], \
+                    y_batch[i, 0, :, :, :], \
+                    annotations_i, \
+                    transformation_i = self.data_prep_fun(data=img,
+                                                          pixel_spacing=pixel_spacing,
+                                                          luna_annotations=
+                                                          self.id2annotations[
+                                                              id],
+                                                          luna_origin=origin)
                     annotations.append(annotations_i)
+                    transform_matrices.append(transformation_i)
                 if self.full_batch:
                     if nb == self.batch_size:
-                        yield x_batch, y_batch, patients_ids, annotations
+                        yield x_batch, y_batch, patients_ids, annotations, transform_matrices
                 else:
-                    yield x_batch, y_batch, patients_ids, annotations
+                    yield x_batch, y_batch, patients_ids, annotations, transform_matrices
 
             if not self.infinite:
                 break
 
 
-class PositiveLunaDataGenerator(LunaDataGenerator):
+class ScanPositiveLunaDataGenerator(LunaDataGenerator):
     def __init__(self, data_path, batch_size, transform_params, data_prep_fun, rng,
                  full_batch, random, infinite, patient_ids=None, **kwargs):
-        super(PositiveLunaDataGenerator, self).__init__(data_path, batch_size, transform_params, data_prep_fun, rng,
-                                                        full_batch, random, infinite, patient_ids, **kwargs)
+        super(ScanPositiveLunaDataGenerator, self).__init__(data_path, batch_size, transform_params, data_prep_fun, rng,
+                                                            full_batch, random, infinite, patient_ids, **kwargs)
         patient_ids_all = [utils_lung.luna_extract_pid(p) for p in self.patient_paths]
         patient_ids_pos = [pid for pid in patient_ids_all if pid in self.id2annotations.keys()]
         self.patient_paths = [data_path + '/' + p + '.mhd' for p in patient_ids_pos]

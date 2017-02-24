@@ -8,6 +8,9 @@ import utils
 restart_from_save = None
 rng = np.random.RandomState(42)
 
+restart_from_save = None
+rng = np.random.RandomState(42)
+
 # transformations
 p_transform = {'patch_size': (64, 64, 64),
                'mm_patch_size': (64, 64, 64),
@@ -22,8 +25,6 @@ p_transform_augment = {
     'rotation_range_x': [-180, 180]
 }
 
-zmuv_mean, zmuv_std = None, None
-
 
 # data preparation function
 def data_prep_function(data, patch_center, luna_annotations, pixel_spacing, luna_origin, p_transform,
@@ -35,8 +36,7 @@ def data_prep_function(data, patch_center, luna_annotations, pixel_spacing, luna
                                                                                p_transform_augment=p_transform_augment,
                                                                                pixel_spacing=pixel_spacing,
                                                                                luna_origin=luna_origin)
-    x = data_transforms.hu2normHU(x)
-    # x = data_transforms.zmuv(x, zmuv_mean, zmuv_std)
+    x = data_transforms.pixelnormHU(x)
     y = data_transforms.make_3d_mask_from_annotations(img_shape=x.shape, annotations=annotations_tf, shape='sphere')
     return x, y
 
@@ -45,7 +45,7 @@ data_prep_function_train = partial(data_prep_function, p_transform_augment=p_tra
 data_prep_function_valid = partial(data_prep_function, p_transform_augment=None, p_transform=p_transform)
 
 # data iterators
-batch_size = 1
+batch_size = 4
 nbatches_chunk = 8
 chunk_size = batch_size * nbatches_chunk
 
@@ -64,12 +64,4 @@ valid_data_iterator = data_iterators.ValidPatchPositiveLunaDataGenerator(data_pa
                                                                          transform_params=p_transform,
                                                                          data_prep_fun=data_prep_function_valid,
                                                                          patient_ids=valid_pids)
-
-print 'estimating ZMUV parameters'
-x_big = None
-for i, (x, _, _) in zip(xrange(1), train_data_iterator.generate()):
-    x_big = x if x_big is None else np.concatenate((x_big, x), axis=0)
-zmuv_mean = x_big.mean()
-zmuv_std = x_big.std()
-print 'mean:', zmuv_mean
-print 'std:', zmuv_std
+nchunks_per_epoch = train_data_iterator.nsamples / chunk_size

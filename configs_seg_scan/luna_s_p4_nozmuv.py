@@ -5,7 +5,8 @@ import utils
 import string
 import numpy as np
 import lasagne as nn
-import configs_luna_patch.luna_p4 as patch_config
+# IMPORT A CORRECT PATCH MODEL HERE
+import configs_seg_patch.luna_p4_nozmuv as patch_config
 
 rng = patch_config.rng
 p_transform_patch = patch_config.p_transform
@@ -13,7 +14,6 @@ filter_size = p_transform_patch['patch_size'][0]
 stride = filter_size / 2
 extract_middle = False
 pad = stride / 2
-pad_value = -1. * patch_config.zmuv_mean / patch_config.zmuv_std
 
 p_transform = {'patch_size': (320, 320, 320),
                'mm_patch_size': (320, 320, 320),
@@ -21,8 +21,6 @@ p_transform = {'patch_size': (320, 320, 320),
                }
 
 valid_pids = patch_config.valid_pids
-
-print patch_config.zmuv_mean, patch_config.zmuv_std
 
 
 def data_prep_function(data, luna_annotations, pixel_spacing, luna_origin,
@@ -35,18 +33,17 @@ def data_prep_function(data, luna_annotations, pixel_spacing, luna_origin,
                                                          p_transform_augment=None,
                                                          luna_origin=luna_origin)
     x = data_transforms.hu2normHU(x)
-    x = data_transforms.zmuv(x, patch_config.zmuv_mean, patch_config.zmuv_std)
     y = data_transforms.make_3d_mask_from_annotations(img_shape=x.shape, annotations=annotations_tf, shape='sphere')
     return x, y, annotations_tf
 
 
-valid_data_iterator = data_iterators.PositiveLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
-                                                               batch_size=1,
-                                                               transform_params=p_transform,
-                                                               data_prep_fun=data_prep_function,
-                                                               rng=rng,
-                                                               patient_ids=valid_pids,
-                                                               full_batch=False, random=False, infinite=False)
+valid_data_iterator = data_iterators.ScanPositiveLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
+                                                                   batch_size=1,
+                                                                   transform_params=p_transform,
+                                                                   data_prep_fun=data_prep_function,
+                                                                   rng=rng,
+                                                                   patient_ids=valid_pids,
+                                                                   full_batch=False, random=False, infinite=False)
 
 
 def build_model():
