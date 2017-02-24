@@ -271,3 +271,17 @@ class Hu2normHULayer(nn.layers.Layer):
         x = (input - self.min_hu) / (self.max_hu - self.min_hu)
         x = T.clip(x,0.,1.)
         return x
+
+class ZMUVLayer(nn.layers.Layer):
+    def __init__(self, incoming, mean=0.0, std=1.0,
+                 **kwargs):
+        super(ZMUVLayer, self).__init__(incoming, **kwargs)
+        self.mean = mean
+        self.std = std
+
+    def get_output_shape_for(self, input_shape):
+        return input_shape
+
+    def get_output_for(self, input, **kwargs):
+        x = (input - self.mean) / self.std
+        return x
