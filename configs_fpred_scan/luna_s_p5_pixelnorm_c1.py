@@ -5,32 +5,29 @@ import utils
 import string
 import numpy as np
 import lasagne as nn
-
-# IMPORT A CORRECT SCAN SEGMENTATION MODEL HERE
-import configs_seg_scan.luna_s_p5_pixelnorm as seg_scan_config
-
+# IMPORT A CORRECT PATCH CLASSIFICATION MODEL HERE
+import configs_seg_scan.luna_s_p5_pixelnorm as scan_seg_config
 # IMPORT A CORRECT PATCH CLASSIFICATION MODEL HERE
 import configs_class_patch.luna_c1 as patch_class_config
 
-p_transform = {'patch_size': patch_class_config.p_transform['patch_size'],
-               'mm_patch_size': patch_class_config.p_transform['mm_patch_size'],
-               'pixel_spacing': patch_class_config.p_transform['pixel_spacing']
-               }
+p_transform = patch_class_config.p_transform
 
-valid_pids = patch_class_config.valid_pids
-
-data_prep_function = patch_class_config.data_prep_function_valid
+data_prep_function = patch_class_config.partial(patch_class_config.data_prep_function,
+                                                p_transform_augment=None,
+                                                p_transform=p_transform,
+                                                world_coord_system=False)
 
 rng = patch_class_config.rng
 
-valid_data_iterator = data_iterators.ValidPatchPositiveLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
-                                                                         transform_params=p_transform,
-                                                                         data_prep_fun=data_prep_function,
-                                                                         rng=rng,
-                                                                         batch_size=1,
-                                                                         patient_ids=valid_pids,
-                                                                         full_batch=True,
-                                                                         random=False, infinite=False)
+# candidates after segmentations path
+predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
+candidates_path = predictions_dir + '/luna_s3_p5_pixelnorm/candidates.pkl'
+id2candidates = utils.load_pkl(candidates_path)
+
+data_iterator = data_iterators.FixedCandidatesLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
+                                                                transform_params=p_transform,
+                                                                data_prep_fun=data_prep_function,
+                                                                id2candidates=id2candidates)
 
 
 def build_model():

@@ -107,6 +107,8 @@ for n, (x, y, id, annotations, transform_matrices) in enumerate(valid_data_itera
     blobs = blobs_detection.blob_dog(predictions_scan[0, 0], min_sigma=1, max_sigma=15, threshold=0.1)
 
     n_blobs += len(blobs)
+    print 'n_blobs detected', len(blobs)
+    correct_blobs_idxs = []
     for zyxd in annotations:
         n_pos += 1
         r = zyxd[-1] / 2.
@@ -114,6 +116,7 @@ for n, (x, y, id, annotations, transform_matrices) in enumerate(valid_data_itera
                      + (zyxd[1] - blobs[:, 1]) ** 2
                      + (zyxd[2] - blobs[:, 2]) ** 2)
         blob_idx = np.argmin(distance2)
+        correct_blobs_idxs.append(blob_idx)
         blob = blobs[blob_idx]
         print 'node', zyxd
         print 'closest blob', blob
@@ -123,12 +126,16 @@ for n, (x, y, id, annotations, transform_matrices) in enumerate(valid_data_itera
             print 'not detected !!!'
     print 'n blobs/ detected', n_pos, tp
 
-    # TODO mark correct blobs with 1 and wrong with 0
     # we will save blobs the the voxel space of the original image
+    # blobs that are true detections will have blobs[-1] = 1 else 0
     blobs_original_voxel_coords = []
     for j in xrange(blobs.shape[0]):
         blob_j = np.append(blobs[j, :3], [1])
-        blobs_original_voxel_coords.append(tf_matrix.dot(blob_j))
+        blob_j_original = tf_matrix.dot(blob_j)
+        blob_j_original[-1] = 1 if j in correct_blobs_idxs else 0
+        if j in correct_blobs_idxs:
+            print 'blob in original', blob_j_original
+        blobs_original_voxel_coords.append(blob_j_original)
     pid2blobs[pid] = np.asarray(blobs_original_voxel_coords)
     utils.save_pkl(pid2blobs, outputs_path + '/candidates.pkl')
 

@@ -6,7 +6,7 @@ import string
 import numpy as np
 import lasagne as nn
 # IMPORT A CORRECT PATCH MODEL HERE
-import configs_seg_patch.luna_p5_pixelnorm as patch_config
+import configs_seg_patch.luna_p8 as patch_config
 
 rng = patch_config.rng
 filter_size = patch_config.p_transform['patch_size'][0]
@@ -24,6 +24,7 @@ valid_pids = patch_config.valid_pids
 def data_prep_function(data, luna_annotations, pixel_spacing, luna_origin,
                        p_transform=p_transform,
                        p_transform_augment=None):
+    # MAKE SURE THAT DATA IS PREPROCESSED THE SAME WAY
     x, annotations_tf, tf_matrix = data_transforms.transform_scan3d(data=data,
                                                                     pixel_spacing=pixel_spacing,
                                                                     p_transform=p_transform,

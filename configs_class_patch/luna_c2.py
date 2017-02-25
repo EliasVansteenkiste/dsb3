@@ -14,14 +14,14 @@ restart_from_save = None
 rng = np.random.RandomState(42)
 
 # transformations
-p_transform = {'patch_size': (32, 32, 32),
-               'mm_patch_size': (32, 32, 32),
+p_transform = {'patch_size': (64, 64, 64),
+               'mm_patch_size': (64, 64, 64),
                'pixel_spacing': (1., 1., 1.)
                }
 p_transform_augment = {
-    'translation_range_z': [-3, 3],
-    'translation_range_y': [-3, 3],
-    'translation_range_x': [-3, 3],
+    'translation_range_z': [-4, 4],
+    'translation_range_y': [-4, 4],
+    'translation_range_x': [-4, 4],
     'rotation_range_z': [-180, 180],
     'rotation_range_y': [-180, 180],
     'rotation_range_x': [-180, 180]
@@ -49,8 +49,8 @@ data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
                                    p_transform=p_transform, world_coord_system=True)
 
 # data iterators
-batch_size = 16
-nbatches_chunk = 1
+batch_size = 4
+nbatches_chunk = 8
 chunk_size = batch_size * nbatches_chunk
 
 train_valid_ids = utils.load_pkl(pathfinder.LUNA_VALIDATION_SPLIT_PATH)
@@ -77,98 +77,59 @@ validate_every = int(5. * nchunks_per_epoch)
 save_every = int(1. * nchunks_per_epoch)
 
 learning_rate_schedule = {
-    0: 5e-4,
-    int(max_nchunks * 0.5): 2e-4,
-    int(max_nchunks * 0.6): 1e-4,
-    int(max_nchunks * 0.7): 5e-5,
-    int(max_nchunks * 0.8): 2e-5,
-    int(max_nchunks * 0.9): 1e-5
+    0: 1e-5,
+    int(max_nchunks * 0.5): 5e-6,
+    int(max_nchunks * 0.6): 2e-6,
+    int(max_nchunks * 0.8): 1e-6,
+    int(max_nchunks * 0.9): 5e-7
 }
 
 # model
-conv3d = partial(dnn.Conv3DDNNLayer,
-                 filter_size=3,
-                 pad='same',
-                 W=nn.init.Orthogonal(),
-                 b=nn.init.Constant(0.01),
-                 nonlinearity=nn.nonlinearities.very_leaky_rectify)
+conv3 = partial(dnn.Conv3DDNNLayer,
+                filter_size=3,
+                pad='valid',
+                W=nn.init.Orthogonal(),
+                b=nn.init.Constant(0.01),
+                nonlinearity=nn.nonlinearities.very_leaky_rectify)
 
-max_pool3d = partial(dnn.MaxPool3DDNNLayer,
-                     pool_size=2)
+max_pool = partial(dnn.MaxPool3DDNNLayer,
+                   pool_size=2)
 
 drop = lasagne.layers.DropoutLayer
 
 dense = partial(lasagne.layers.DenseLayer,
-                W=lasagne.init.Orthogonal('relu'),
-                b=lasagne.init.Constant(0.0),
-                nonlinearity=lasagne.nonlinearities.rectify)
-
-
-def inrn_v2(lin):
-    n_base_filter = 32
-
-    l1 = conv3d(lin, n_base_filter, filter_size=1)
-
-    l2 = conv3d(lin, n_base_filter, filter_size=1)
-    l2 = conv3d(l2, n_base_filter, filter_size=3)
-
-    l3 = conv3d(lin, n_base_filter, filter_size=1)
-    l3 = conv3d(l3, n_base_filter, filter_size=3)
-    l3 = conv3d(l3, n_base_filter, filter_size=3)
-
-    l = lasagne.layers.ConcatLayer([l1, l2, l3])
-
-    l = conv3d(l, lin.output_shape[1], filter_size=1)
-
-    l = lasagne.layers.ElemwiseSumLayer([l, lin])
-
-    l = lasagne.layers.NonlinearityLayer(l, nonlinearity=lasagne.nonlinearities.rectify)
-
-    return l
-
-
-def inrn_v2_red(lin):
-    # We want to reduce our total volume /4
-
-    den = 16
-    nom2 = 4
-    nom3 = 5
-    nom4 = 7
-
-    ins = lin.output_shape[1]
-
-    l1 = max_pool3d(lin)
-
-    l2 = conv3d(lin, ins // den * nom2, filter_size=3, stride=2)
-
-    l3 = conv3d(lin, ins // den * nom2, filter_size=1)
-    l3 = conv3d(l3, ins // den * nom3, filter_size=3, stride=2)
-
-    l4 = conv3d(lin, ins // den * nom2, filter_size=1)
-    l4 = conv3d(l4, ins // den * nom3, filter_size=3)
-    l4 = conv3d(l4, ins // den * nom4, filter_size=3, stride=2)
-
-    l = lasagne.layers.ConcatLayer([l1, l2, l3, l4])
-
-    return l
+                W=lasagne.init.Orthogonal(),
+                b=lasagne.init.Constant(0.01),
+                nonlinearity=lasagne.nonlinearities.very_leaky_rectify)
 
 
 def build_model():
     l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
     l_target = nn.layers.InputLayer((None, 1))
 
-    l = conv3d(l_in, 64)
-    l = inrn_v2_red(l)
-    l = inrn_v2(l)
-    l = inrn_v2(l)
+    l = conv3(l_in, num_filters=128)
+    l = conv3(l, num_filters=128)
 
-    l = inrn_v2_red(l)
-    l = inrn_v2(l)
-    l = inrn_v2(l)
+    l = max_pool(l)
 
-    l = dense(drop(l), 128)
+    l = conv3(l, num_filters=128)
+    l = conv3(l, num_filters=128)
 
-    l_out = nn.layers.DenseLayer(l, num_units=2,
+    l = max_pool(l)
+
+    l = conv3(l, num_filters=256)
+    l = conv3(l, num_filters=256)
+    l = conv3(l, num_filters=256)
+
+    l = max_pool(l)
+
+    l_d01 = nn.layers.DenseLayer(l, num_units=1024, W=nn.init.Orthogonal(),
+                                 b=nn.init.Constant(0.01), nonlinearity=nn.nonlinearities.very_leaky_rectify)
+
+    l_d02 = nn.layers.DenseLayer(nn.layers.dropout(l_d01), num_units=1024, W=nn.init.Orthogonal(),
+                                 b=nn.init.Constant(0.01), nonlinearity=nn.nonlinearities.very_leaky_rectify)
+
+    l_out = nn.layers.DenseLayer(l_d02, num_units=2,
                                  W=nn.init.Constant(0.),
                                  nonlinearity=nn.nonlinearities.softmax)
 

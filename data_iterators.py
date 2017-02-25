@@ -337,7 +337,8 @@ class CandidatesLunaValidDataGenerator(object):
             for patch_center in self.id2positive_annotations[pid]:
                 patient_path = self.id2patient_path[pid]
 
-                img, origin, pixel_spacing = utils_lung.read_pkl(patient_path)
+                img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
+                    if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
                 y_batch = np.array([[1.]], dtype='float32')
                 x_batch = np.float32(self.data_prep_fun(data=img,
                                                         patch_center=patch_center,
@@ -360,56 +361,33 @@ class CandidatesLunaValidDataGenerator(object):
                 yield x_batch, y_batch, [pid]
 
 
-class CandidatesLunaDataGeneratorTODO(object):
+class FixedCandidatesLunaDataGenerator(object):
     def __init__(self, data_path, transform_params, id2candidates, data_prep_fun, **kwargs):
 
+        self.file_extension = '.pkl' if 'pkl' in data_path else '.mhd'
         self.id2candidates = id2candidates
-
-        for pid in patient_ids:
-            if pid in id2positive_annotations:
-                self.id2positive_annotations[pid] = id2positive_annotations[pid]
-                negative_annotations = id2negative_annotations[pid]
-                n_pos = len(id2positive_annotations[pid])
-                n_neg = len(id2negative_annotations[pid])
-                neg_idxs = rng.choice(n_neg, size=n_pos, replace=False)
-                negative_annotations_selected = []
-                for i in neg_idxs:
-                    negative_annotations_selected.append(negative_annotations[i])
-                self.id2negative_annotations[pid] = negative_annotations_selected
-
-                self.id2patient_path[pid] = data_path + '/' + pid + '.mhd'
-                n_positive += n_pos
-                n_negative += n_pos
-
-        print 'n positive', n_positive
-        print 'n negative', n_negative
+        self.id2patient_path = {}
+        for pid in id2candidates.keys():
+            self.id2patient_path[pid] = data_path + '/' + pid + self.file_extension
 
         self.nsamples = len(self.id2patient_path)
         self.data_path = data_path
-        self.rng = rng
         self.data_prep_fun = data_prep_fun
         self.transform_params = transform_params
 
     def generate(self):
 
-        for pid in self.id2positive_annotations.iterkeys():
-            for patch_center in self.id2positive_annotations[pid]:
-                patient_path = self.id2patient_path[pid]
+        for pid in self.id2candidates.iterkeys():
+            patient_path = self.id2patient_path[pid]
+            print 'PATIENT', pid
 
-                img, origin, pixel_spacing = utils_lung.read_mhd(patient_path)
-                y_batch = np.array([[1.]], dtype='float32')
-                x_batch = np.float32(self.data_prep_fun(data=img,
-                                                        patch_center=patch_center,
-                                                        pixel_spacing=pixel_spacing,
-                                                        luna_origin=origin))[None, None, :, :, :]
+            img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
+                if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
 
-                yield x_batch, y_batch, [pid]
-
-            for patch_center in self.id2negative_annotations[pid]:
-                patient_path = self.id2patient_path[pid]
-
-                img, origin, pixel_spacing = utils_lung.read_mhd(patient_path)
-                y_batch = np.array([[0.]], dtype='float32')
+            for candidate in self.id2candidates[pid]:
+                print candidate
+                y_batch = np.array([[candidate[-1]]], dtype='float32')
+                patch_center = candidate[:3]
                 x_batch = np.float32(self.data_prep_fun(data=img,
                                                         patch_center=patch_center,
                                                         pixel_spacing=pixel_spacing,

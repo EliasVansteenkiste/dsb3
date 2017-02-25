@@ -124,6 +124,7 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
     # make nbatches_chunk iterations
     for b in xrange(config().nbatches_chunk):
         loss = iter_train(b)
+        # print loss
         tmp_losses_train.append(loss)
         losses_train_print.append(loss)
 

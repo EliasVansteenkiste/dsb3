@@ -31,7 +31,7 @@ tp = 0
 n_blobs = 0
 pid2blobs = {}
 
-predictions_path = '/mnt/storage/metadata/dsb3/model-predictions/ikorshun/luna_s_p5_pixelnorm'
+predictions_path = '/mnt/storage/metadata/dsb3/model-predictions/ikorshun/' + config_name
 blobs = utils.load_pkl(predictions_path + '/candidates.pkl')
 blobs2 = utils.load_pkl('/mnt/storage/metadata/dsb3/model-predictions/ikorshun/luna_s2_p5_pixelnorm/candidates.pkl')
 
@@ -39,5 +39,11 @@ for n, (x, y, id, annotations, transform_matrices) in enumerate(valid_data_itera
     pid = id[0]
     annotations = annotations[0]
     tf_matrix = transform_matrices[0]
-    print blobs[pid][-1]
-    print blobs2[pid][-1]
+    print blobs[pid].shape
+    print 'p5', blobs2[pid].shape
+
+    bb = blobs[pid]
+    for i in xrange(bb.shape[0]):
+        if bb[i, -1] == 1:
+            print bb[i]
+    print '---'
