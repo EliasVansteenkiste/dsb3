@@ -54,7 +54,6 @@ class AugmentOnlyPositiveCandidates(Augment3D):
                     candidate = random.choice(candidates[0])
             else:
                 raise Exception("candidates is empty")
-            print candidate
 
             #print 'candidate', candidate
 
@@ -77,7 +76,6 @@ class AugmentOnlyPositiveCandidates(Augment3D):
             elif tag in sample[OUTPUT]:
                 #volume = sample[OUTPUT][tag]
                 sample[OUTPUT][tag] = np.int32(candidate[3])
-                print 'sample[OUTPUT][tag]', sample[OUTPUT][tag]
             else:
                 pass
                 #raise Exception("Did not find tag which I had to augment: %s"%tag)
