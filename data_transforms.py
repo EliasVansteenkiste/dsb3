@@ -1,15 +1,12 @@
 from collections import namedtuple
 import numpy as np
-import skimage.transform
-import skimage.draw
-from configuration import config
-import skimage.exposure, skimage.filters
 import scipy.ndimage
 import math
 import utils_lung
 
 MAX_HU = 400.
 MIN_HU = -1000.
+rng = np.random.RandomState(317070)
 
 
 def ct2normHU(x, metadata):
@@ -22,8 +19,7 @@ def ct2normHU(x, metadata):
     x[x < 0.] = 0.
     x = metadata['RescaleSlope'] * x + metadata['RescaleIntercept']
     x = (x - MIN_HU) / (MAX_HU - MIN_HU)
-    x[x < 0.] = 0.
-    x[x > 1.] = 1.
+    x = np.clip(x, 0., 1., out=x)
     return x
 
 
@@ -34,20 +30,19 @@ def hu2normHU(x):
     :return:
     """
     x = (x - MIN_HU) / (MAX_HU - MIN_HU)
-    x[x < 0.] = 0.
-    x[x > 1.] = 1.
+    x = np.clip(x, 0., 1., out=x)
     return x
 
 
 def sample_augmentation_parameters(transformation):
-    shift_z = config().rng.uniform(*transformation.get('translation_range_z', [0., 0.]))
-    shift_y = config().rng.uniform(*transformation.get('translation_range_y', [0., 0.]))
-    shift_x = config().rng.uniform(*transformation.get('translation_range_x', [0., 0.]))
+    shift_z = rng.uniform(*transformation.get('translation_range_z', [0., 0.]))
+    shift_y = rng.uniform(*transformation.get('translation_range_y', [0., 0.]))
+    shift_x = rng.uniform(*transformation.get('translation_range_x', [0., 0.]))
     translation = (shift_z, shift_y, shift_x)
 
-    rotation_z = config().rng.uniform(*transformation.get('rotation_range_z', [0., 0.]))
-    rotation_y = config().rng.uniform(*transformation.get('rotation_range_y', [0., 0.]))
-    rotation_x = config().rng.uniform(*transformation.get('rotation_range_x', [0., 0.]))
+    rotation_z = rng.uniform(*transformation.get('rotation_range_z', [0., 0.]))
+    rotation_y = rng.uniform(*transformation.get('rotation_range_y', [0., 0.]))
+    rotation_x = rng.uniform(*transformation.get('rotation_range_x', [0., 0.]))
     rotation = (rotation_z, rotation_y, rotation_x)
 
     return namedtuple('Params', ['translation', 'rotation'])(translation, rotation)
@@ -56,7 +51,8 @@ def sample_augmentation_parameters(transformation):
 def transform_scan3d(data, pixel_spacing, p_transform,
                      luna_annotations=None,
                      luna_origin=None,
-                     p_transform_augment=None):
+                     p_transform_augment=None,
+                     world_coord_system=True):
     mm_patch_size = np.asarray(p_transform['mm_patch_size'], dtype='float32')
     out_pixel_spacing = np.asarray(p_transform['pixel_spacing'])
 
@@ -88,7 +84,7 @@ def transform_scan3d(data, pixel_spacing, p_transform,
         annotatations_out = []
         for zyxd in luna_annotations:
             zyx = np.array(zyxd[:3])
-            voxel_coords = utils_lung.world2voxel(zyx, luna_origin, pixel_spacing)
+            voxel_coords = utils_lung.world2voxel(zyx, luna_origin, pixel_spacing) if world_coord_system else zyx
             voxel_coords = np.append(voxel_coords, [1])
             voxel_coords_out = np.linalg.inv(tf_total).dot(voxel_coords)[:3]
             diameter_mm = zyxd[-1]
@@ -105,7 +101,8 @@ def transform_patch3d(data, pixel_spacing, p_transform,
                       patch_center,
                       luna_origin,
                       luna_annotations=None,
-                      p_transform_augment=None):
+                      p_transform_augment=None,
+                      world_coord_system=True):
     mm_patch_size = np.asarray(p_transform['mm_patch_size'], dtype='float32')
     out_pixel_spacing = np.asarray(p_transform['pixel_spacing'])
 
@@ -114,7 +111,7 @@ def transform_patch3d(data, pixel_spacing, p_transform,
     output_shape = p_transform['patch_size']
 
     zyx = np.array(patch_center[:3])
-    voxel_coords = utils_lung.world2voxel(zyx, luna_origin, pixel_spacing)
+    voxel_coords = utils_lung.world2voxel(zyx, luna_origin, pixel_spacing) if world_coord_system else zyx
     voxel_coords_mm = voxel_coords * mm_shape / input_shape
 
     # here we give parameters to affine transform as if it's T in
@@ -129,6 +126,7 @@ def transform_patch3d(data, pixel_spacing, p_transform,
 
     if p_transform_augment:
         augment_params_sample = sample_augmentation_parameters(p_transform_augment)
+        # print 'augmentation parameters', augment_params_sample
         tf_augment = affine_transform(translation=augment_params_sample.translation,
                                       rotation=augment_params_sample.rotation)
         tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_augment).dot(tf_shift_uncenter).dot(tf_output_scale)
@@ -143,12 +141,13 @@ def transform_patch3d(data, pixel_spacing, p_transform,
     voxel_coords = np.append(voxel_coords, [1])
     voxel_coords_out = np.linalg.inv(tf_total).dot(voxel_coords)[:3]
     patch_annotation_out = np.rint(np.append(voxel_coords_out, diameter_out))
+    # print 'pathch_center_after_transform', patch_annotation_out
 
     if luna_annotations is not None:
         annotatations_out = []
         for zyxd in luna_annotations:
             zyx = np.array(zyxd[:3])
-            voxel_coords = utils_lung.world2voxel(zyx, luna_origin, pixel_spacing)
+            voxel_coords = utils_lung.world2voxel(zyx, luna_origin, pixel_spacing) if world_coord_system else zyx
             voxel_coords = np.append(voxel_coords, [1])
             voxel_coords_out = np.linalg.inv(tf_total).dot(voxel_coords)[:3]
             diameter_mm = zyxd[-1]
@@ -194,6 +193,26 @@ def make_3d_mask_from_annotations(img_shape, annotations, shape):
     return mask
 
 
+def make_gaussian_annotation(patch_annotation_tf, patch_size):
+    radius = patch_annotation_tf[-1] / 2.
+    zyx = patch_annotation_tf[:3]
+    distance_z = (zyx[0] - np.arange(patch_size[0])) ** 2
+    distance_y = (zyx[1] - np.arange(patch_size[1])) ** 2
+    distance_x = (zyx[2] - np.arange(patch_size[2])) ** 2
+    z_label = np.exp(- 1. * distance_z / (2 * radius ** 2))
+    y_label = np.exp(- 1. * distance_y / (2 * radius ** 2))
+    x_label = np.exp(- 1. * distance_x / (2 * radius ** 2))
+    label = np.vstack((z_label, y_label, x_label))
+    return label
+
+
+def zmuv(x, mean, std):
+    if mean is not None and std is not None:
+        return (x - mean) / std
+    else:
+        return x
+
+
 def affine_transform(scale=None, rotation=None, translation=None):
     """
     rotation and shear in degrees
@@ -232,8 +251,7 @@ def affine_transform(scale=None, rotation=None, translation=None):
         mx[1, 0] = -sin[2]
         mx[1, 1] = cos[2]
 
-        matrix = matrix.dot(mx).dot(my).dot(mz)
-
+        matrix = mx.dot(my).dot(mz).dot(matrix)
     return matrix
 
 

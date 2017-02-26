@@ -6,9 +6,11 @@ import theano
 import pathfinder
 import utils
 from configuration import config, set_configuration
-from utils_plots import plot_slice_3d_3, plot_slice_3d_3_patch
+from utils_plots import plot_slice_3d_3
 import theano.tensor as T
 import utils_lung
+import blobs_detection
+import logger
 
 theano.config.warn_float64 = 'raise'
 
@@ -23,6 +25,11 @@ predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PA
 outputs_path = predictions_dir + '/%s' % config_name
 utils.auto_make_dir(outputs_path)
 
+# logs
+logs_dir = utils.get_dir_path('logs', pathfinder.METADATA_PATH)
+sys.stdout = logger.Logger(logs_dir + '/%s.log' % config_name)
+sys.stderr = sys.stdout
+
 # builds model and sets its parameters
 model = config().build_model()
 
@@ -31,9 +38,10 @@ idx_z = T.lscalar('idx_z')
 idx_y = T.lscalar('idx_y')
 idx_x = T.lscalar('idx_x')
 
-fs = config().p_transform_patch['patch_size'][0]
-stride = fs / 2
-n_windows = (config().p_transform['patch_size'][0] - stride) / stride  # TODO wrong
+fs = config().filter_size
+stride = config().stride
+pad = config().pad
+n_windows = (config().p_transform['patch_size'][0] - fs + 2 * pad) / stride + 1
 
 givens_valid = {}
 givens_valid[model.l_in.input_var] = x_shared[:, :,
@@ -53,11 +61,25 @@ print 'Data'
 print 'n validation: %d' % valid_data_iterator.nsamples
 
 valid_losses_dice = []
+n_pos = 0
+tp = 0
+n_blobs = 0
 for n, (x, y, id, annotations) in enumerate(valid_data_iterator.generate()):
 
     pid = id[0]
+
+    print n, pid
     annotations = annotations[0]
     predictions_scan = np.zeros_like(x)
+
+    utils.save_np(x[0, 0], outputs_path + '/in_' + pid)
+    utils.save_np(annotations, outputs_path + '/tgt_' + pid)
+    print 'saved inputs'
+
+    if pad > 0:
+        x = np.pad(x[0, 0], pad_width=pad, mode='constant', constant_values=0)
+        x = x[None, None, :, :, :]
+
     x_shared.set_value(x)
 
     for iz in xrange(n_windows):
@@ -66,14 +88,17 @@ for n, (x, y, id, annotations) in enumerate(valid_data_iterator.generate()):
                 # print iz, iy, ix
                 predictions_patch = get_predictions_patch(iz, iy, ix)
                 predictions_scan[0, 0,
-                iz * stride:iz * stride + fs,
-                iy * stride:iy * stride + fs,
-                ix * stride:ix * stride + fs] += predictions_patch[0, 0]
+                iz * stride:(iz + 1) * stride,
+                iy * stride:(iy + 1) * stride,
+                ix * stride:(ix + 1) * stride] = predictions_patch[0, 0,
+                                                 stride / 2:stride * 3 / 2,
+                                                 stride / 2:stride * 3 / 2,
+                                                 stride / 2:stride * 3 / 2, ]
 
     predictions_scan = np.clip(predictions_scan, 0, 1)
 
     d = utils_lung.dice_index(predictions_scan, y)
-    print n, d
+    print '\n dice index: ', d
     valid_losses_dice.append(d)
 
     for nodule_n, zyxd in enumerate(annotations):
@@ -81,12 +106,31 @@ for n, (x, y, id, annotations) in enumerate(valid_data_iterator.generate()):
         plot_slice_3d_3(input=x[0, 0], mask=y[0, 0], prediction=predictions_scan[0, 0],
                         axis=0, pid='-'.join([str(n), str(nodule_n), str(id[0])]),
                         img_dir=outputs_path, idx=zyxd)
-    print n, 'Saved plot'
+    print 'saved plot'
 
     utils.save_np(predictions_scan[0, 0], outputs_path + '/pred_' + pid)
-    utils.save_np(x[0, 0], outputs_path + '/in_' + pid)
-    utils.save_np(annotations, outputs_path + '/tgt_' + pid)
+    print 'saved predictions'
 
-    print n, 'Saved pkl', id[0]
+    print 'computing blobs'
+    blobs = blobs_detection.blob_dog(predictions_scan[0, 0], min_sigma=1, max_sigma=15, threshold=0.1)
+    utils.save_np(blobs, outputs_path + '/blob_' + pid)
+    print 'saved blobs'
+
+    n_blobs += len(blobs)
+    for zyxd in annotations:
+        n_pos += 1
+        r = zyxd[-1] / 2.
+        distance2 = ((zyxd[0] - blobs[:, 0]) ** 2
+                     + (zyxd[1] - blobs[:, 1]) ** 2
+                     + (zyxd[2] - blobs[:, 2]) ** 2)
+        blob_idx = np.argmin(distance2)
+        blob = blobs[blob_idx]
+        print 'node', zyxd
+        print 'closest blob', blob, blob_idx
+        if distance2[blob_idx] < r ** 2:
+            tp += 1
+            print 'detected!!!'
+        else:
+            print 'not detected'
 
 print 'Dice index validation loss', np.mean(valid_losses_dice)

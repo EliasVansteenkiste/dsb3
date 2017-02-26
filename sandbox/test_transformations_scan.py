@@ -15,7 +15,7 @@ def test1():
     image_dir = image_dir + '/test_luna/'
     utils.auto_make_dir(image_dir)
 
-    id2zyxd = utils_lung.read_luna_labels(pathfinder.LUNA_LABELS_PATH)
+    id2zyxd = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
 
     luna_data_paths = utils_lung.get_patient_data_paths(pathfinder.LUNA_DATA_PATH)
     luna_data_paths = [p for p in luna_data_paths if '.mhd' in p]
@@ -55,7 +55,7 @@ def test_luna3d():
     image_dir = image_dir + '/test_luna/'
     utils.auto_make_dir(image_dir)
 
-    id2zyxd = utils_lung.read_luna_labels(pathfinder.LUNA_LABELS_PATH)
+    id2zyxd = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
 
     luna_data_paths = utils_lung.get_patient_data_paths(pathfinder.LUNA_DATA_PATH)
     luna_data_paths = [p for p in luna_data_paths if '.mhd' in p]
@@ -86,7 +86,7 @@ def test_luna3d():
 
 
 def count_proportion():
-    id2zyxd = utils_lung.read_luna_labels(pathfinder.LUNA_LABELS_PATH)
+    id2zyxd = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
 
     luna_data_paths = utils_lung.get_patient_data_paths(pathfinder.LUNA_DATA_PATH)
     luna_data_paths = [p for p in luna_data_paths if '.mhd' in p]

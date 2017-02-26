@@ -6,5 +6,6 @@
   "VALIDATION_SPLIT_PATH": "/mnt/sda3/data/kaggle-lung/stage1_sample_submission.csv",
   "LUNA_DATA_PATH": "/mnt/sda3/data/kaggle-lung/seg-lungs-LUNA16",
   "LUNA_LABELS_PATH": "/mnt/sda3/data/kaggle-lung/annotations.csv",
+  "LUNA_CANDIDATES_PATH": "/mnt/sda3/data/kaggle-lung/candidates_V2.csv",
   "LUNA_VALIDATION_SPLIT_PATH": "/mnt/sda3/data/kaggle-lung/luna_validation_split.pkl"
 }

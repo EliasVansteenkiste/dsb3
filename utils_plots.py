@@ -28,7 +28,6 @@ def plot_slice_3d_2(image3d, mask, axis, pid, img_dir=None, idx=None):
             idx = np.array(image3d.shape) / 2
     else:
         idx = idx.astype(int)
-    print np.sum(mask)
     if axis == 0:  # sax
         ax[0, 0].imshow(image3d[idx[0], :, :], cmap=plt.cm.gray)
         ax[0, 1].imshow(mask[idx[0], :, :], cmap=plt.cm.gray)

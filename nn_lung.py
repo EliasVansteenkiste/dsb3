@@ -257,6 +257,7 @@ class Upscale3DLayer(nn.layers.Layer):
                     upscaled[:, :, ::a, ::b, ::c], input)
         return upscaled
 
+
 class Hu2normHULayer(nn.layers.Layer):
     def __init__(self, incoming, min_hu=-1000,max_hu=400,
                  **kwargs):
@@ -271,3 +272,36 @@ class Hu2normHULayer(nn.layers.Layer):
         x = (input - self.min_hu) / (self.max_hu - self.min_hu)
         x = T.clip(x,0.,1.)
         return x
+
+
+class CastingLayer(nn.layers.Layer):
+    def __init__(self, incoming, dtype, **kwargs):
+        super(CastingLayer, self).__init__(incoming, **kwargs)
+        self.dtype = dtype
+
+    def get_output_for(self, input, **kwargs):
+        return T.cast(input, self.dtype)
+
+
+def heaviside(x, size):
+    return T.arange(0, size).dimshuffle('x', 0) - T.repeat(x, size, axis=1) >= 0.
+
+
+class NormalCDFLayer(nn.layers.MergeLayer):
+    def __init__(self, mu, sigma, max_support, **kwargs):
+        super(NormalCDFLayer, self).__init__([mu, sigma], **kwargs)
+        self.max_support = max_support
+
+    def get_output_shape_for(self, input_shapes):
+        return input_shapes[0][0], self.max_support
+
+    def get_output_for(self, input, **kwargs):
+        mu = input[0]
+        sigma = input[1]
+
+        x_range = T.arange(0, self.max_support).dimshuffle('x', 0)
+        mu = T.repeat(mu, self.max_support, axis=1)
+        sigma = T.repeat(sigma, self.max_support, axis=1)
+        x = (x_range - mu) / (sigma * T.sqrt(2.) + 1e-16)
+        cdf = (T.erf(x) + 1.) / 2.
+        return cdf

@@ -1,6 +1,7 @@
 import json
 import utils
 import os
+import utils_lung
 
 if utils.hostname() == 'user':
     with open('SETTINGS_user.json') as data_file:
@@ -41,6 +42,10 @@ if not os.path.isfile(LUNA_CANDIDATES_PATH):
 LUNA_LABELS_PATH = paths["LUNA_LABELS_PATH"]
 if not os.path.isfile(LUNA_LABELS_PATH):
     raise ValueError('no file with luna annotations')
+
+LUNA_CANDIDATES_PATH = paths["LUNA_CANDIDATES_PATH"]
+if not os.path.isfile(LUNA_CANDIDATES_PATH):
+    raise ValueError('no LUNA file candidates_V2.csv')
 
 LUNA_VALIDATION_SPLIT_PATH = paths["LUNA_VALIDATION_SPLIT_PATH"]
 if not os.path.isfile(LUNA_VALIDATION_SPLIT_PATH):

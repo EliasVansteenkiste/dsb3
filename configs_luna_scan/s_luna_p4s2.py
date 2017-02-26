@@ -5,13 +5,13 @@ import utils
 import string
 import numpy as np
 import lasagne as nn
-import configs_luna_patch.luna_patch_v4_dice as patch_config
+import configs_luna_patch.luna_p4s2 as patch_config
 
 rng = patch_config.rng
 p_transform_patch = patch_config.p_transform
 filter_size = p_transform_patch['patch_size'][0]
 stride = filter_size / 2
-pad = 0
+pad = stride / 2
 
 p_transform = {'patch_size': (320, 320, 320),
                'mm_patch_size': (320, 320, 320),
@@ -31,6 +31,7 @@ def data_prep_function(data, luna_annotations, pixel_spacing, luna_origin,
                                                          luna_annotations=luna_annotations,
                                                          p_transform_augment=None,
                                                          luna_origin=luna_origin)
+    x = data_transforms.zmuv(x, patch_config.zmuv_mean, patch_config.zmuv_std)
     y = data_transforms.make_3d_mask_from_annotations(img_shape=x.shape, annotations=annotations_tf, shape='sphere')
     return x, y, annotations_tf
 

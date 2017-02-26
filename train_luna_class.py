@@ -14,13 +14,13 @@ import buffering
 from configuration import config, set_configuration
 import pathfinder
 
-# theano.config.warn_float64 = 'raise'
+theano.config.warn_float64 = 'raise'
 
 if len(sys.argv) < 2:
     sys.exit("Usage: train.py <configuration_name>")
 
 config_name = sys.argv[1]
-set_configuration('configs_luna_patch', config_name)
+set_configuration('configs_luna_class', config_name)
 expid = utils.generate_expid(config_name)
 print
 print "Experiment ID: %s" % expid
@@ -71,12 +71,6 @@ givens_valid[model.l_target.input_var] = y_shared
 
 # theano functions
 iter_train = theano.function([idx], train_loss, givens=givens_train, updates=updates)
-iter_get_predictions = theano.function([idx], nn.layers.get_output(model.l_out), givens=givens_train,
-                                       on_unused_input='ignore')
-iter_get_targets = theano.function([idx], nn.layers.get_output(model.l_target), givens=givens_train,
-                                   on_unused_input='ignore')
-iter_get_inputs = theano.function([idx], nn.layers.get_output(model.l_in), givens=givens_train,
-                                  on_unused_input='ignore')
 iter_validate = theano.function([], valid_loss, givens=givens_valid)
 
 if config().restart_from_save:
@@ -112,6 +106,7 @@ chunk_idx = 0
 start_time = time.time()
 prev_time = start_time
 tmp_losses_train = []
+losses_train_print = []
 
 # use buffering.buffered_gen_threaded()
 for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buffering.buffered_gen_threaded(
@@ -129,8 +124,12 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
     # make nbatches_chunk iterations
     for b in xrange(config().nbatches_chunk):
         loss = iter_train(b)
-        print chunk_idx, loss
         tmp_losses_train.append(loss)
+        losses_train_print.append(loss)
+
+    if (chunk_idx + 1) % 10 == 0:
+        print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks), np.mean(losses_train_print)
+        losses_train_print = []
 
     if ((chunk_idx + 1) % config().validate_every) == 0:
         print
@@ -154,7 +153,6 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
 
         # calculate validation loss across validation set
         valid_loss = np.mean(tmp_losses_valid)
-        # TODO: taking mean is not correct if chunks have different sizes!!!
         print 'Validation loss: ', valid_loss
         losses_eval_valid.append(valid_loss)
 
