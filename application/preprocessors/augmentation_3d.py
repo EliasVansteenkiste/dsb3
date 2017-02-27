@@ -52,14 +52,12 @@ def sample_augmentation_parameters(augm):
 
 def augment_3d(volume, pixel_spacing, output_shape, norm_patch_shape, augment_p,center_to_shift=None, **kwargs):
 
+    input_shape = np.asarray(volume.shape, np.float)
 
-    
     if center_to_shift is None:
         #if no explicit center has been given, just center the image at the origin
         center_to_shift=-(input_shape / 2. - 0.5)
 
-    
-    input_shape = np.asarray(volume.shape, np.float)
     pixel_spacing = np.asarray(pixel_spacing, np.float)
     output_shape = np.asarray(output_shape, np.float)
     norm_patch_shape = np.asarray(norm_patch_shape, np.float)
