@@ -228,6 +228,13 @@ def train_model(expid):
     # Note that this is a generator object! It is a special kind of iterator.
     chunk_size = config.batches_per_chunk * config.batch_size
 
+    # Weight normalization
+    if hasattr(config, "init_weight_norm") and not config.restart_from_save:
+        theano_printer._stuff_to_print = []
+        from theano_utils.weight_norm import train_weight_norm
+        train_weight_norm(config, output_layers, all_layers, idx, givens, xs_shared, chunk_size, required_input, required_output)
+
+
     training_data_generator = buffering.buffered_gen_threaded(
         config.training_data.generate_batch(
             chunk_size = chunk_size,
@@ -320,7 +327,7 @@ def train_model(expid):
         # We also always validate at the end of every training!
         validate_every = max(int((config.epochs_per_validation * config.training_data.number_of_samples) / (config.batch_size * config.batches_per_chunk)),1)
 
-        if ((e + 1) % validate_every) == 0 or (num_chunks_train and e+1>=num_chunks_train):
+        if (e % validate_every) == 0 or (num_chunks_train and e+1>=num_chunks_train):
             print
             print "  Validating "
 
@@ -449,6 +456,11 @@ def train_model(expid):
                 eta_str = eta.strftime("%c")
                 print "  estimated %s to go"  % utils.hms(est_time_left)
                 print "  (ETA: %s)" % eta_str
+                if hasattr(config, "print_mean_chunks"):
+                    avg_train = losses[TRAINING]["objective"]
+                    n = min(len(avg_train), config.print_mean_chunks)
+                    avg_train = avg_train[-n:]
+                    print "  mean loss last %i chunks: %.3f"%(n, np.mean(avg_train))
         except OverflowError:
             # Shit happens
             print "  This will take really long, like REALLY long."

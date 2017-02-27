@@ -39,7 +39,7 @@ class BcolzAllDataLoader(StandardDataLoader):
         :return:
         """
         
-        print "previous bcolz nthreads:", bcolz.set_nthreads(1);
+        bcolz.set_nthreads(2)
 
         # step 0: load only when not loaded yet
         if TRAINING in self.data and VALIDATION in self.data: return
@@ -96,10 +96,6 @@ class BcolzAllDataLoader(StandardDataLoader):
                 self.labels[dataset].append(labels[patient_id])
             self.names[dataset].append(patient_id)
             self.spacings[dataset].append(spacings[patient_id])
-
-        print "train", len(self.data[TRAIN])
-        print "valid", len(self.data[VALIDATION])
-        print "test", len(self.data[TEST])
 
         # give every patient a unique number
         last_index = -1
@@ -268,22 +264,23 @@ def test_diagnosis():
 def test_loader():
     from application.preprocessors.augmentation_3d import Augment3D
     from application.preprocessors.normalize_scales import DefaultNormalizer
-    nn_input_shape = (128, 128, 64)
-    norm_patch_shape = (340, 340, 320)  # median
+    nn_input_shape = (128, 128, 40)
+    norm_patch_shape = (300, 300, 280)  # median
     preprocessors = [
         Augment3D(
             tags=["bcolzall:3d"],
             output_shape=nn_input_shape,
             norm_patch_shape=norm_patch_shape,
             augmentation_params={
-                "scale": [1.05, 1.05, 1.05],  # factor
-                "uniform scale": 1.2,  # factor
-                "rotation": [5, 5, 5],  # degrees
-                "shear": [3, 3, 3],  # deg
+                "scale": [1, 1, 1],  # factor
+                "uniform scale": 1,  # factor
+                "rotation": [0, 0, 180],  # degrees
+                "shear": [0, 0, 0],  # degrees
                 "translation": [50, 50, 50],  # mm
-                "reflection": [0, 0, 0]},  # Bernoulli p
-            interp_order=1),
-        DefaultNormalizer(tags=["bcolzall:3d"])
+                "reflection": [.5, .5, .5]},  # Bernoulli p
+            interp_order=1,
+            mode="constant"),
+        # DefaultNormalizer(tags=["bcolzall:3d"])
     ]
 
     # paths.ALL_DATA_PATH = "/home/lio/data/dsb3/stage1+luna_bcolz/",
@@ -312,6 +309,7 @@ def test_loader():
     for sample in batches:
         import utils.plt
         print sample[INPUT]["bcolzall:3d"].shape, sample[INPUT]["bcolzall:pixelspacing"]
+        print sample[INPUT]["bcolzall:3d"][0].mean()
         utils.plt.show_animate(sample[INPUT]["bcolzall:3d"][0], 50)
 
 

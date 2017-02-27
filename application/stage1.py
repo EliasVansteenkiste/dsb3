@@ -131,7 +131,7 @@ class Stage1DataLoader(StandardDataLoader):
             if "stage1" not in tags:
                 continue
 
-            if "cancer_prob" in tags:
+            if "target" in tags:
                 sample[OUTPUT][tag] = np.int64(self.labels[set][sample_index])
 
             if "sample_id" in tags:
