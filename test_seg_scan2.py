@@ -1,4 +1,3 @@
-import string
 import sys
 import lasagne as nn
 import numpy as np
@@ -8,10 +7,49 @@ import utils
 from configuration import config, set_configuration
 from utils_plots import plot_slice_3d_3
 import theano.tensor as T
-import utils_lung
 import blobs_detection
 import logger
+import time
+import multiprocessing as mp
 
+
+def extract_candidates(predictions_scan, annotations, tf_matrix, pid, outputs_path):
+    print 'computing blobs'
+    start_time = time.time()
+    blobs = blobs_detection.blob_dog(predictions_scan[0, 0], min_sigma=1, max_sigma=15, threshold=0.1)
+    print 'blobs computation time:', (time.time() - start_time) / 60.
+
+    print 'n_blobs detected', len(blobs)
+    correct_blobs_idxs = []
+    for zyxd in annotations:
+        r = zyxd[-1] / 2.
+        distance2 = ((zyxd[0] - blobs[:, 0]) ** 2
+                     + (zyxd[1] - blobs[:, 1]) ** 2
+                     + (zyxd[2] - blobs[:, 2]) ** 2)
+        blob_idx = np.argmin(distance2)
+        correct_blobs_idxs.append(blob_idx)
+        blob = blobs[blob_idx]
+        print 'node', zyxd
+        print 'closest blob', blob
+        if distance2[blob_idx] > r ** 2:
+            print 'not detected !!!'
+
+    # we will save blobs the the voxel space of the original image
+    # blobs that are true detections will have blobs[-1] = 1 else 0
+    blobs_original_voxel_coords = []
+    for j in xrange(blobs.shape[0]):
+        blob_j = np.append(blobs[j, :3], [1])
+        blob_j_original = tf_matrix.dot(blob_j)
+        blob_j_original[-1] = 1 if j in correct_blobs_idxs else 0
+        if j in correct_blobs_idxs:
+            print 'blob in original', blob_j_original
+        blobs_original_voxel_coords.append(blob_j_original)
+
+    blobs = np.asarray(blobs_original_voxel_coords)
+    utils.save_pkl(blobs, outputs_path + '/%s.pkl' % pid)
+
+
+jobs = []
 theano.config.warn_float64 = 'raise'
 
 if len(sys.argv) < 2:
@@ -20,31 +58,83 @@ if len(sys.argv) < 2:
 config_name = sys.argv[1]
 set_configuration('configs_seg_scan', config_name)
 
+# predictions path
+predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
+outputs_path = predictions_dir + '/%s' % config_name
+utils.auto_make_dir(outputs_path)
+
+# logs
+logs_dir = utils.get_dir_path('logs', pathfinder.METADATA_PATH)
+sys.stdout = logger.Logger(logs_dir + '/%s.log' % config_name)
+sys.stderr = sys.stdout
+
+# builds model and sets its parameters
+model = config().build_model()
+
+x_shared = nn.utils.shared_empty(dim=len(model.l_in.shape))
+idx_z = T.lscalar('idx_z')
+idx_y = T.lscalar('idx_y')
+idx_x = T.lscalar('idx_x')
+
+window_size = config().window_size
+stride = config().stride
+n_windows = config().n_windows
+
+givens = {}
+givens[model.l_in.input_var] = x_shared
+
+get_predictions_patch = theano.function([],
+                                        nn.layers.get_output(model.l_out, deterministic=True),
+                                        givens=givens,
+                                        on_unused_input='ignore')
+
 valid_data_iterator = config().valid_data_iterator
+
 print
 print 'Data'
-print 'n validation: %d' % valid_data_iterator.nsamples
+print 'n samples: %d' % valid_data_iterator.nsamples
 
-valid_losses_dice = []
-n_pos = 0
-tp = 0
-n_blobs = 0
-pid2blobs = {}
-
-predictions_path = '/mnt/storage/metadata/dsb3/model-predictions/ikorshun/luna_s_p5_pixelnorm'
-
+start_time = time.time()
 for n, (x, y, id, annotations, transform_matrices) in enumerate(valid_data_iterator.generate()):
     pid = id[0]
+    print '-------------------------------------'
+    print n, pid
     annotations = annotations[0]
     tf_matrix = transform_matrices[0]
 
-    blobs = utils.load_np(predictions_path + '/blob_%s.npy' % pid)
-    blobs_original_voxel_coords = []
-    for j in xrange(blobs.shape[0]):
-        blob_j = np.append(blobs[j, :3], [1])
-        blobs_original_voxel_coords.append(tf_matrix.dot(blob_j))
-    blobs_original_voxel_coords = np.asarray(blobs_original_voxel_coords)
-    pid2blobs[pid] = np.copy(blobs_original_voxel_coords)
+    predictions_scan = np.zeros((1, 1, n_windows * stride, n_windows * stride, n_windows * stride))
 
-utils.save_pkl(pid2blobs, path=predictions_path + 'candidates.pkl')
-print 'Candidates saved'
+    for iz in xrange(n_windows):
+        for iy in xrange(n_windows):
+            for ix in xrange(n_windows):
+                start_time_patch = time.time()
+                x_shared.set_value(x[:, :, iz * stride:(iz * stride) + window_size,
+                                   iy * stride:(iy * stride) + window_size,
+                                   ix * stride:(ix * stride) + window_size])
+                predictions_patch = get_predictions_patch()
+
+                predictions_scan[0, 0,
+                iz * stride:(iz + 1) * stride,
+                iy * stride:(iy + 1) * stride,
+                ix * stride:(ix + 1) * stride] = predictions_patch
+
+    if predictions_scan.shape != x.shape:
+        pad_width = (np.asarray(x.shape) - np.asarray(predictions_scan.shape)) / 2
+        pad_width = [(p, p) for p in pad_width]
+        predictions_scan = np.pad(predictions_scan, pad_width=pad_width, mode='constant')
+
+    for nodule_n, zyxd in enumerate(annotations):
+        plot_slice_3d_3(input=x[0, 0], mask=y[0, 0], prediction=predictions_scan[0, 0],
+                        axis=0, pid='-'.join([str(n), str(nodule_n), str(id[0])]),
+                        img_dir=outputs_path, idx=zyxd)
+    print 'saved plot'
+    print 'time since start:', (time.time() - start_time) / 60.
+
+    jobs = [job for job in jobs if job.is_alive]
+    if len(jobs) >= 3:
+        jobs[0].join()
+        del jobs[0]
+    jobs.append(
+        mp.Process(target=extract_candidates, args=(predictions_scan, annotations, tf_matrix, pid, outputs_path)))
+    jobs[-1].daemon = True
+    jobs[-1].start()

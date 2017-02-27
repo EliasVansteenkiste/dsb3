@@ -47,14 +47,21 @@ print
 print 'Data'
 print 'n samples: %d' % data_iterator.nsamples
 
+nblob2prob, nblob2label = {}, {}
 for n, (x, y, id) in enumerate(data_iterator.generate()):
     pid = id[0]
     x_shared.set_value(x)
     predictions = get_predictions_patch()
-    label = y[0][0]
+    label = y[-1]
     p1 = predictions[0][1]
+    nblob2prob[n] = p1
+    nblob2label[n] = label
     if label == 1 or (label == 0 and p1 > 0.2):
-        print label, p1, pid
         plot_slice_3d_3(input=x[0, 0], mask=x[0, 0], prediction=x[0, 0],
                         axis=0, pid='-'.join([str(n), str(id[0]), str(label), str(p1)]),
                         img_dir=outputs_path)
+
+blobs_sorted = sorted(nblob2prob.items(), key=lambda x: x[1], reverse=True)
+for k in blobs_sorted:
+    nn = k[0]
+    print nn, nblob2prob[nn], nblob2label[nn]

@@ -7,7 +7,7 @@ import utils_lung
 from configuration import set_configuration, config
 from utils_plots import plot_slice_3d_2, plot_2d, plot_2d_4, plot_slice_3d_3
 
-set_configuration('configs_luna_scan', 's_luna_patch_local')
+set_configuration('configs_seg_scan', 'luna_s_local')
 
 
 def test1():
@@ -129,43 +129,35 @@ def test_kaggle3d():
     for k, p in enumerate(patient_data_paths):
         pid = utils_lung.extract_pid(p)
         sid2data, sid2metadata = utils_lung.get_patient_data(p)
-        sids_sorted = utils_lung.sort_slices_plane(sid2metadata)
+        sids_sorted = utils_lung.sort_sids_by_position(sid2metadata)
         sids_sorted_jonas = utils_lung.sort_slices_jonas(sid2metadata)
         sid2position = utils_lung.slice_location_finder(sid2metadata)
-
-        try:
-            slice_thickness_pos = np.abs(sid2metadata[sids_sorted[0]]['ImagePositionPatient'][2] -
-                                         sid2metadata[sids_sorted[1]]['ImagePositionPatient'][2])
-        except:
-            print 'This patient has no ImagePosition!'
-            slice_thickness_pos = 0.
-        try:
-            slice_thickness_loc = np.abs(
-                sid2metadata[sids_sorted[0]]['SliceLocation'] - sid2metadata[sids_sorted[1]]['SliceLocation'])
-        except:
-            print 'This patient has no SliceLocation!'
-            slice_thickness_loc = 0.
 
         jonas_slicethick = []
         for i in xrange(len(sids_sorted_jonas) - 1):
             s = np.abs(sid2position[sids_sorted_jonas[i + 1]] - sid2position[sids_sorted_jonas[i]])
             jonas_slicethick.append(s)
 
-        img = np.stack([data_transforms.ct2normHU(sid2data[sid], sid2metadata[sid]) for sid in sids_sorted])
+        img = np.stack([data_transforms.ct2HU(sid2data[sid], sid2metadata[sid]) for sid in sids_sorted])
         xx = (jonas_slicethick[0],
               sid2metadata[sids_sorted[0]]['PixelSpacing'][0],
               sid2metadata[sids_sorted[0]]['PixelSpacing'][1])
         pixel_spacing = np.asarray(xx)
 
-        img_out = data_transforms.transform_scan3d(img,
-                                                   pixel_spacing=pixel_spacing,
-                                                   p_transform=config().p_transform,
-                                                   p_transform_augment=config().p_transform_augment)
+        # img, pixel_spacing = utils_lung.read_dicom_scan(p)
+        print pid
+        print pixel_spacing
+        print '===================================='
 
-        # plot_2d_3dimg(img_out, img_out, axis=0, pid=pid + 'z', img_dir=image_dir)
-        plot_slice_3d_2(img_out, img_out, axis=1, pid=pid + 'y', img_dir=image_dir)
-        # plot_2d_3dimg(img_out, img_out, axis=2, pid=pid + 'x', img_dir=image_dir)
+        img_out, transform_matrix = data_transforms.transform_scan3d(img,
+                                                                     pixel_spacing=pixel_spacing,
+                                                                     p_transform=config().p_transform,
+                                                                     p_transform_augment=None)
+
+        # plot_slice_3d_2(img_out, img_out, 0, pid)
+        plot_slice_3d_2(img_out, img_out, 1, pid)
+        # plot_slice_3d_2(img_out, img_out, 2, pid)
 
 
 if __name__ == '__main__':
-    test_luna3d()
+    test_kaggle3d()

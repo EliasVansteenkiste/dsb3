@@ -1,6 +1,7 @@
 import numpy as np
 import utils_lung
 import pathfinder
+import data_transforms
 
 
 class LunaDataGenerator(object):
@@ -377,16 +378,17 @@ class FixedCandidatesLunaDataGenerator(object):
 
     def generate(self):
 
-        for pid in self.id2candidates.iterkeys():
+        # for pid in self.id2candidates.iterkeys():
+        for pid in ['1.3.6.1.4.1.14519.5.2.1.6279.6001.247060297988514823071467295949']:
             patient_path = self.id2patient_path[pid]
             print 'PATIENT', pid
+            print 'n blobs', len(self.id2candidates[pid])
 
             img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
                 if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
 
             for candidate in self.id2candidates[pid]:
-                print candidate
-                y_batch = np.array([[candidate[-1]]], dtype='float32')
+                y_batch = np.array(candidate, dtype='float32')
                 patch_center = candidate[:3]
                 x_batch = np.float32(self.data_prep_fun(data=img,
                                                         patch_center=patch_center,
@@ -394,3 +396,23 @@ class FixedCandidatesLunaDataGenerator(object):
                                                         luna_origin=origin))[None, None, :, :, :]
 
                 yield x_batch, y_batch, [pid]
+
+
+class DSBScanDataGenerator(object):
+    def __init__(self, data_path, transform_params, data_prep_fun, **kwargs):
+        self.patient_paths = utils_lung.get_patient_data_paths(data_path)
+        self.nsamples = len(self.patient_paths)
+        self.data_path = data_path
+        self.data_prep_fun = data_prep_fun
+        self.transform_params = transform_params
+
+    def generate(self):
+        for p in self.patient_paths:
+            pid = utils_lung.extract_pid(p)
+
+            img, pixel_spacing = utils_lung.read_dicom_scan(p)
+
+            x, tf_matrix = self.data_prep_fun(data=img, pixel_spacing=pixel_spacing)
+
+            x = np.float32(x)[None, None, :, :, :]
+            yield x, tf_matrix, pid

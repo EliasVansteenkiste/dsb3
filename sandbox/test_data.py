@@ -55,7 +55,7 @@ def test1():
         pid = utils_lung.extract_pid(p)
         try:
             sid2data, sid2metadata = utils_lung.get_patient_data(p)
-            sids_sorted = utils_lung.sort_slices_plane(sid2metadata)
+            sids_sorted = utils_lung.sort_sids_by_position(sid2metadata)
             sids_sorted_jonas = utils_lung.sort_slices_jonas(sid2metadata)
             sid2position = utils_lung.slice_location_finder(sid2metadata)
 

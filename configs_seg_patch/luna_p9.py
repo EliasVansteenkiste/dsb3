@@ -97,9 +97,10 @@ def conv_prelu_layer(l_in, n_filters):
     return l
 
 
-def build_model():
-    l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
-    l_target = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
+def build_model(patch_size=None):
+    patch_size = p_transform['patch_size'] if patch_size is None else patch_size
+    l_in = nn.layers.InputLayer((None, 1,) + patch_size)
+    l_target = nn.layers.InputLayer((None, 1,) + patch_size)
 
     net = {}
     base_n_filters = 128

@@ -1,13 +1,8 @@
-import numpy as np
-import csv
 import dicom
-import os
-import re
 import SimpleITK as sitk
 import numpy as np
 import csv
 import os
-from PIL import Image
 from collections import defaultdict
 import cPickle as pickle
 
@@ -61,7 +56,7 @@ def extract_pid(patient_data_path):
 
 
 def luna_extract_pid(patient_data_path, replace_str='.mhd'):
-    return os.path.basename(patient_data_path).replace(replace_str, '').replace('pkl','')
+    return os.path.basename(patient_data_path).replace(replace_str, '').replace('pkl', '')
 
 
 def get_patient_data(patient_data_path):
@@ -76,16 +71,40 @@ def get_patient_data(patient_data_path):
     return sid2data, sid2metadata
 
 
-def sort_slices_intance_number(sid2metadata):
-    return sorted(sid2metadata.keys(), key=lambda x: sid2metadata[x]['InstanceNumber'])
+def ct2HU(x, metadata):
+    x[x < 0.] = 0.
+    x = metadata['RescaleSlope'] * x + metadata['RescaleIntercept']
+    return x
+
+
+def read_dicom_scan(patient_data_path):
+    sid2data, sid2metadata = get_patient_data(patient_data_path)
+    sid2position = {}
+    for sid in sid2data.keys():
+        sid2position[sid] = get_slice_position(sid2metadata[sid])
+    sids_sorted = sorted(sid2position.items(), key=lambda x: x[1])
+    sids_sorted = [s[0] for s in sids_sorted]
+    z_pixel_spacing = []
+    for s1, s2 in zip(sids_sorted[1:], sids_sorted[:-1]):
+        z_pixel_spacing.append(sid2position[s1] - sid2position[s2])
+    z_pixel_spacing = np.array(z_pixel_spacing)
+    assert np.all((z_pixel_spacing - z_pixel_spacing[0]) < 0.01)
+
+    pixel_spacing = np.array((z_pixel_spacing[0],
+                              sid2metadata[sids_sorted[0]]['PixelSpacing'][0],
+                              sid2metadata[sids_sorted[0]]['PixelSpacing'][1]))
+
+    img = np.stack([ct2HU(sid2data[sid], sid2metadata[sid]) for sid in sids_sorted])
+
+    return img, pixel_spacing
 
 
 def sort_slices_position(patient_data):
-    return sorted(patient_data, key=lambda x: thru_plane_position(x['metadata']))
+    return sorted(patient_data, key=lambda x: get_slice_position(x['metadata']))
 
 
-def sort_slices_plane(sid2metadata):
-    return sorted(sid2metadata.keys(), key=lambda x: thru_plane_position(sid2metadata[x]))
+def sort_sids_by_position(sid2metadata):
+    return sorted(sid2metadata.keys(), key=lambda x: get_slice_position(sid2metadata[x]))
 
 
 def sort_slices_jonas(sid2metadata):
@@ -93,12 +112,12 @@ def sort_slices_jonas(sid2metadata):
     return sorted(sid2metadata.keys(), key=lambda x: sid2position[x])
 
 
-def thru_plane_position(slice_metadata):
+def get_slice_position(slice_metadata):
     """
     https://www.kaggle.com/rmchamberlain/data-science-bowl-2017/dicom-to-3d-numpy-arrays
     """
-    orientation = tuple((float(o) for o in slice_metadata['ImageOrientationPatient']))
-    position = tuple((float(p) for p in slice_metadata['ImagePositionPatient']))
+    orientation = tuple((o for o in slice_metadata['ImageOrientationPatient']))
+    position = tuple((p for p in slice_metadata['ImagePositionPatient']))
     rowvec, colvec = orientation[:3], orientation[3:]
     normal_vector = np.cross(rowvec, colvec)
     slice_pos = np.dot(position, normal_vector)

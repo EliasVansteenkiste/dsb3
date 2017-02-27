@@ -37,7 +37,7 @@ def data_prep_function(data, patch_center, luna_annotations, pixel_spacing, luna
                                                                                p_transform_augment=p_transform_augment,
                                                                                pixel_spacing=pixel_spacing,
                                                                                luna_origin=luna_origin)
-    x = data_transforms.hu2normHU(x)
+    x = data_transforms.pixelnormHU(x)
     y = data_transforms.make_3d_mask_from_annotations(img_shape=x.shape, annotations=annotations_tf, shape='sphere')
     return x, y
 
@@ -74,8 +74,7 @@ save_every = int(0.5 * nchunks_per_epoch)
 learning_rate_schedule = {
     0: 1e-5,
     int(max_nchunks * 0.4): 5e-6,
-    int(max_nchunks * 0.5): 3e-6,
-    int(max_nchunks * 0.6): 2e-6,
+    int(max_nchunks * 0.5): 2e-6,
     int(max_nchunks * 0.85): 1e-6,
     int(max_nchunks * 0.95): 5e-7
 }
@@ -92,6 +91,12 @@ max_pool3d = partial(dnn.MaxPool3DDNNLayer,
                      pool_size=2)
 
 
+def conv_prelu_layer(l_in, n_filters):
+    l = conv3d(l_in, n_filters)
+    l = nn.layers.ParametricRectifierLayer(l)
+    return l
+
+
 def build_model(patch_size=None):
     patch_size = p_transform['patch_size'] if patch_size is None else patch_size
     l_in = nn.layers.InputLayer((None, 1,) + patch_size)
@@ -99,35 +104,25 @@ def build_model(patch_size=None):
 
     net = {}
     base_n_filters = 128
-    net['contr_1_1'] = conv3d(l_in, base_n_filters)
-    net['contr_1_1'] = nn.layers.ParametricRectifierLayer(net['contr_1_1'])
-    net['contr_1_2'] = conv3d(net['contr_1_1'], base_n_filters)
-    net['contr_1_2'] = nn.layers.ParametricRectifierLayer(net['contr_1_2'])
-    net['contr_1_3'] = conv3d(net['contr_1_2'], base_n_filters)
-    net['contr_1_3'] = nn.layers.ParametricRectifierLayer(net['contr_1_3'])
+    net['contr_1_1'] = conv_prelu_layer(l_in, base_n_filters)
+    net['contr_1_2'] = conv_prelu_layer(net['contr_1_1'], base_n_filters)
+    net['contr_1_3'] = conv_prelu_layer(net['contr_1_2'], base_n_filters)
     net['pool1'] = max_pool3d(net['contr_1_3'])
 
-    net['encode_1'] = conv3d(net['pool1'], base_n_filters)
-    net['encode_1'] = nn.layers.ParametricRectifierLayer(net['encode_1'])
-    net['encode_2'] = conv3d(net['encode_1'], base_n_filters)
-    net['encode_2'] = nn.layers.ParametricRectifierLayer(net['encode_2'])
-    net['encode_3'] = conv3d(net['encode_2'], base_n_filters)
-    net['encode_3'] = nn.layers.ParametricRectifierLayer(net['encode_3'])
-    net['encode_4'] = conv3d(net['encode_3'], base_n_filters)
-    net['encode_4'] = nn.layers.ParametricRectifierLayer(net['encode_4'])
+    net['encode_1'] = conv_prelu_layer(net['pool1'], base_n_filters)
+    net['encode_2'] = conv_prelu_layer(net['encode_1'], base_n_filters)
+    net['encode_3'] = conv_prelu_layer(net['encode_2'], base_n_filters)
+    net['encode_4'] = conv_prelu_layer(net['encode_3'], base_n_filters)
 
-    net['dropout_1'] = nn.layers.DropoutLayer(net['encode_4'])
-
-    net['upscale1'] = nn.layers.Upscale3DLayer(net['dropout_1'], 2)
-
+    net['upscale1'] = nn.layers.Upscale3DLayer(net['encode_4'], 2)
     net['concat1'] = nn.layers.ConcatLayer([net['upscale1'], net['contr_1_3']],
                                            cropping=(None, None, "center", "center", "center"))
-    net['expand_1_1'] = conv3d(net['concat1'], 2 * base_n_filters)
-    net['expand_1_1'] = nn.layers.ParametricRectifierLayer(net['expand_1_1'])
-    net['expand_1_2'] = conv3d(net['expand_1_1'], 2 * base_n_filters)
-    net['expand_1_2'] = nn.layers.ParametricRectifierLayer(net['expand_1_2'])
-    net['expand_1_3'] = conv3d(net['expand_1_2'], base_n_filters)
-    net['expand_1_3'] = nn.layers.ParametricRectifierLayer(net['expand_1_3'])
+
+    net['dropout_1'] = nn.layers.dropout_channels(net['concat1'], p=0.15)
+
+    net['expand_1_1'] = conv_prelu_layer(net['dropout_1'], 2 * base_n_filters)
+    net['expand_1_2'] = conv_prelu_layer(net['expand_1_1'], 2 * base_n_filters)
+    net['expand_1_3'] = conv_prelu_layer(net['expand_1_2'], base_n_filters)
 
     l_out = dnn.Conv3DDNNLayer(net['expand_1_3'], num_filters=1,
                                filter_size=1,

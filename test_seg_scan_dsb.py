@@ -52,23 +52,20 @@ get_predictions_patch = theano.function([idx_z, idx_y, idx_x],
                                         givens=givens,
                                         on_unused_input='ignore')
 
-valid_data_iterator = config().valid_data_iterator
+data_iterator = config().data_iterator
 
 print
 print 'Data'
-print 'n samples: %d' % valid_data_iterator.nsamples
+print 'n samples: %d' % data_iterator.nsamples
 
 n_pos = 0
 tp = 0
 n_blobs = 0
 pid2blobs = {}
-for n, (x, y, id, annotations, transform_matrices) in enumerate(valid_data_iterator.generate()):
-    pid = id[0]
+for n, (x, tf_matrix, pid) in enumerate(data_iterator.generate()):
     print '-------------------------------------'
     print n, pid
     start_time = time.time()
-    annotations = annotations[0]
-    tf_matrix = transform_matrices[0]
 
     predictions_scan = np.zeros((1, 1, n_windows * stride, n_windows * stride, n_windows * stride))
 
@@ -76,11 +73,7 @@ for n, (x, y, id, annotations, transform_matrices) in enumerate(valid_data_itera
     for iz in xrange(n_windows):
         for iy in xrange(n_windows):
             for ix in xrange(n_windows):
-                print iz, iy, ix
-                # start_time_patch = time.time()
                 predictions_patch = get_predictions_patch(iz, iy, ix)
-                # print 'test time:', (time.time() - start_time_patch)
-
                 predictions_scan[0, 0,
                 iz * stride:(iz + 1) * stride,
                 iy * stride:(iy + 1) * stride,
@@ -93,10 +86,9 @@ for n, (x, y, id, annotations, transform_matrices) in enumerate(valid_data_itera
         pad_width = [(p, p) for p in pad_width]
         predictions_scan = np.pad(predictions_scan, pad_width=pad_width, mode='constant')
 
-    for nodule_n, zyxd in enumerate(annotations):
-        plot_slice_3d_3(input=x[0, 0], mask=y[0, 0], prediction=predictions_scan[0, 0],
-                        axis=0, pid='-'.join([str(n), str(nodule_n), str(id[0])]),
-                        img_dir=outputs_path, idx=zyxd)
+    plot_slice_3d_3(input=x[0, 0], mask=x[0, 0], prediction=predictions_scan[0, 0],
+                    axis=0, pid='-'.join([str(n), str(pid)]),
+                    img_dir=outputs_path, idx=np.array(x[0, 0].shape) / 2)
     print 'saved plot'
 
     print 'computing blobs'
@@ -106,40 +98,11 @@ for n, (x, y, id, annotations, transform_matrices) in enumerate(valid_data_itera
 
     n_blobs += len(blobs)
     print 'n_blobs detected', len(blobs)
-    correct_blobs_idxs = []
-    for zyxd in annotations:
-        n_pos += 1
-        r = zyxd[-1] / 2.
-        distance2 = ((zyxd[0] - blobs[:, 0]) ** 2
-                     + (zyxd[1] - blobs[:, 1]) ** 2
-                     + (zyxd[2] - blobs[:, 2]) ** 2)
-        blob_idx = np.argmin(distance2)
-        correct_blobs_idxs.append(blob_idx)
-        blob = blobs[blob_idx]
-        print 'node', zyxd
-        print 'closest blob', blob
-        if distance2[blob_idx] < r ** 2:
-            tp += 1
-        else:
-            print 'not detected !!!'
-    print 'n blobs/ detected', n_pos, tp
 
-    # we will save blobs the the voxel space of the original image
-    # blobs that are true detections will have blobs[-1] = 1 else 0
     blobs_original_voxel_coords = []
     for j in xrange(blobs.shape[0]):
         blob_j = np.append(blobs[j, :3], [1])
         blob_j_original = tf_matrix.dot(blob_j)
-        blob_j_original[-1] = 1 if j in correct_blobs_idxs else 0
-        if j in correct_blobs_idxs:
-            print 'blob in original', blob_j_original
         blobs_original_voxel_coords.append(blob_j_original)
     pid2blobs[pid] = np.asarray(blobs_original_voxel_coords)
     utils.save_pkl(pid2blobs, outputs_path + '/candidates.pkl')
-
-print 'n nodules', n_pos
-print 'n TP', tp
-print 'n blobs', n_blobs
-
-
-
