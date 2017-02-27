@@ -135,7 +135,7 @@ class PatchCentersPositiveLunaDataGenerator(LunaDataGenerator):
                                                                     full_batch, random, infinite, patient_ids, **kwargs)
         patient_ids_all = [utils_lung.luna_extract_pid(p) for p in self.patient_paths]
         patient_ids_pos = [pid for pid in patient_ids_all if pid in self.id2annotations.keys()]
-        self.patient_paths = [data_path + '/' + p + '.mhd' for p in patient_ids_pos]
+        self.patient_paths = [data_path + '/' + p + '.pkl' for p in patient_ids_pos]
         self.nsamples = len(self.patient_paths)
 
     def generate(self):
@@ -160,7 +160,7 @@ class PatchCentersPositiveLunaDataGenerator(LunaDataGenerator):
                     id = utils_lung.luna_extract_pid(patient_path)
                     patients_ids.append(id)
 
-                    img, origin, pixel_spacing = utils_lung.read_mhd(patient_path)
+                    img, origin, pixel_spacing = utils_lung.read_pkl(patient_path)
 
                     patient_annotations = self.id2annotations[id]
                     patch_center = patient_annotations[self.rng.randint(len(patient_annotations))]
@@ -282,7 +282,7 @@ class CandidatesLunaValidDataGenerator(object):
                     negative_annotations_selected.append(negative_annotations[i])
                 self.id2negative_annotations[pid] = negative_annotations_selected
 
-                self.id2patient_path[pid] = data_path + '/' + pid + '.mhd'
+                self.id2patient_path[pid] = data_path + '/' + pid + '.pkl'
                 n_positive += n_pos
                 n_negative += n_pos
 
@@ -302,7 +302,7 @@ class CandidatesLunaValidDataGenerator(object):
                 patient_path = self.id2patient_path[pid]
                 print 'patch_center', patch_center
 
-                img, origin, pixel_spacing = utils_lung.read_mhd(patient_path)
+                img, origin, pixel_spacing = utils_lung.read_pkl(patient_path)
                 y_batch = np.array([[1.]], dtype='float32')
                 x_batch = np.float32(self.data_prep_fun(data=img,
                                                         patch_center=patch_center,
@@ -315,7 +315,7 @@ class CandidatesLunaValidDataGenerator(object):
                 patient_path = self.id2patient_path[pid]
                 print 'patch_center', patch_center
 
-                img, origin, pixel_spacing = utils_lung.read_mhd(patient_path)
+                img, origin, pixel_spacing = utils_lung.read_pkl(patient_path)
                 y_batch = np.array([[0.]], dtype='float32')
                 x_batch = np.float32(self.data_prep_fun(data=img,
                                                         patch_center=patch_center,
