@@ -26,9 +26,9 @@ def test_loader():
             augmentation_params={
                 "scale": [1, 1, 1],  # factor
                 "uniform scale": 1,  # factor
-                "rotation": [0, 0, 0],  # degrees
+                "rotation": [0, 0, 180],  # degrees
                 "shear": [0, 0, 0],  # deg
-                "translation": [0, 0, 0],  # mm
+                "translation": [5, 5, 5],  # mm
                 "reflection": [0, 0, 0]},  # Bernoulli p
             interp_order=1),
         DefaultNormalizer(tags=["stage1:3d"])

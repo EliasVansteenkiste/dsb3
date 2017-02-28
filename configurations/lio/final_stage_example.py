@@ -32,7 +32,7 @@ save_every_chunks = 1000. / float(batch_size * batches_per_chunk)
 print_gradnorm = False
 print_score_every_chunk = True
 print_mean_chunks = 800 / batches_per_chunk
-# init_weight_norm = 32  # number of samples
+init_weight_norm = 32  # number of samples
 
 #####################
 #   preprocessing   #
@@ -68,9 +68,9 @@ preprocessors = [
         augmentation_params={
             "scale": [1, 1, 1],  # factor
             "uniform scale": 1,  # factor
-            "rotation": [0, 0, 0],  # degrees
+            "rotation": [0, 0, 180],  # degrees
             "shear": [0, 0, 0],  # degrees
-            "translation": [0, 0, 0],  # mm
+            "translation": [5, 5, 5],  # mm
             "reflection": [0, 0, 0]},  # Bernoulli p
         ),
     # DefaultNormalizer(tags=[tag+"3d"])
@@ -176,6 +176,8 @@ conv2d = partial(dnn.Conv2DDNNLayer,
                  # untie_biases=True,
                  nonlinearity=lasagne.nonlinearities.rectify)
 
+
+
 max_pool2d = partial(dnn.MaxPool2DDNNLayer, pool_size=2)
 
 max_pool3d = partial(dnn.MaxPool3DDNNLayer, pool_size=2)
@@ -208,19 +210,22 @@ def build_model():
 
     l = lasagne.layers.ReshapeLayer(l, (-1, 1, nn_input_shape[0], nn_input_shape[1]))
 
-    n = 32
+    n = 64
+    l = conv2d(l, n, filter_size=5, stride=2)
+    l = wn(l)
+
+    n *= 2
     l = conv2d(l, n)
+    l = wn(l)
     l = conv2d(l, n)
+    l = wn(l)
     l = max_pool2d(l)
 
     n *= 2
     l = conv2d(l, n)
+    l = wn(l)
     l = conv2d(l, n)
-    l = max_pool2d(l)
-
-    n *= 2
-    l = conv2d(l, n)
-    l = conv2d(l, n)
+    l = wn(l)
     l = max_pool2d(l)
 
     n_features = np.prod(l.output_shape[-3:])
@@ -229,9 +234,11 @@ def build_model():
 
     n *= 2
     l = dense(l, n)
-    # l = drop(l)
+    l = wn(l)
+    l = drop(l)
     l = dense(l, n)
-    # l = drop(l)
+    l = wn(l)
+    l = drop(l)
 
     l = lasagne.layers.DenseLayer(l,
                                   num_units=1,
