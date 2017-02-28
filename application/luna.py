@@ -274,7 +274,7 @@ class BcolzLunaDataLoader(LunaDataLoader):
         In this case, only filenames are loaded prematurely
         :return:
         """
-        print "previous bcolz nthreads:", bcolz.set_nthreads(1);
+        bcolz.set_nthreads(2)
 
         # step 0: load only when not loaded yet
         if TRAINING in self.data and VALIDATION in self.data: return
@@ -385,11 +385,17 @@ class BcolzLunaDataLoader(LunaDataLoader):
             if "filename" in tags:
                 sample[INPUT][tag] = patient_name
 
+            if "patient_id" in tags:
+                sample[INPUT][tag] = patient_name
+
             if "3d" in tags or "default" in tags:
                 sample[INPUT][tag] = volume[::-1,:,:]  # see prep_noscale
 
             if "pixelspacing" in tags:
                 sample[INPUT][tag] = self.spacings[set][sample_index]  # in mm per pixel
+
+            if "origin" in tags:
+                sample[INPUT][tag] = np.array(list(self.origins[set][sample_index]))
 
             if "shape" in tags:
                 sample[INPUT][tag] = volume.shape

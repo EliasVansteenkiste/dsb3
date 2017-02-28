@@ -7,25 +7,22 @@ from functools import partial
 
 from application.preprocessors.augment_fpr_candidates import AugmentFPRCandidates
 from application.objectives import CrossEntropyObjective
-# from application.stage1 import Stage1DataLoader
-from application.luna import LunaDataLoader
-# from application.bcolz_all_data import BcolzAllDataLoader
-from application.preprocessors.augment_roi_zero_pad import AugmentROIZeroPad
+from application.luna import LunaDataLoader, BcolzLunaDataLoader
 from interfaces.data_loader import VALIDATION, TRAINING
-from application.preprocessors.dicom_to_HU import DicomToHU
 from application.preprocessors.normalize_scales import DefaultNormalizer
 from interfaces.preprocess import ZMUV
 from theano_utils.weight_norm import weight_norm
+from deep_learning.nn_lung import Hu2normHULayer, ZMUVLayer
 
 #####################
 #   running speed   #
 #####################
 
 "This is the number of samples in each batch"
-batch_size = 1
+batch_size = 32
 "This is the number of batches in each chunk. Computation speeds up if this is as big as possible." \
 "However, when too big, the GPU will run out of memory"
-batches_per_chunk = 16
+batches_per_chunk = 1
 "Reload the parameters from last time and continue, or start anew when you run this config file again"
 restart_from_save = False
 "After how many chunks sho uld you save parameters. Keep this number high for better performance. It will always store at end anyway"
@@ -34,7 +31,7 @@ save_every_chunks = 1000. / float(batch_size * batches_per_chunk)
 print_gradnorm = False
 print_score_every_chunk = True
 print_mean_chunks = 800 / batches_per_chunk
-init_weight_norm = 32  # number of samples
+# init_weight_norm = 32  # number of samples
 
 #####################
 #   preprocessing   #
@@ -49,12 +46,13 @@ candidates_csv = "candidates_V2"
 
 tag = "luna:"
 
-data_loader = partial(LunaDataLoader, #BcolzAllDataLoader, Stage1DataLoader, LunaDataLoader
+data_loader = partial(LunaDataLoader, #BcolzAllDataLoader, Stage1DataLoader, LunaDataLoader, BcolzLunaDataLoader
+    only_positive=True,
     multiprocess=True,
     crash_on_exception=True)
 
 augment = partial(AugmentFPRCandidates,
-                  candidates_csv="candidates_V2",
+                  candidates_csv=candidates_csv,
                   tags=[tag+"3d"],
                   output_shape=nn_input_shape,
                   norm_patch_shape=norm_patch_shape,
@@ -67,19 +65,19 @@ preprocessors = [
         augmentation_params={
             "scale": [1, 1, 1],  # factor
             "uniform scale": 1,  # factor
-            "rotation": [0, 0, 180],  # degrees
+            "rotation": [180, 180, 180],  # degrees
             "shear": [0, 0, 0],  # degrees
             "translation": [3, 3, 3],  # mm
             "reflection": [0, 0, 0]},  # Bernoulli p
         ),
     # DefaultNormalizer(tags=[tag+"3d"])
-    ZMUV(tag+"3d", bias=-648.59027, std=679.21021)
+    # ZMUV(tag+"3d", bias=-648.59027, std=679.21021)
 ]
 
 preprocessors_valid = [
     augment(),
     # DefaultNormalizer(tags=[tag+"3d"])
-    ZMUV(tag+"3d", bias=-648.59027, std=679.21021)
+    # ZMUV(tag+"3d", bias=-648.59027, std=679.21021)
 ]
 
 #####################
@@ -95,14 +93,22 @@ training_data = data_loader(
     preprocessors=preprocessors)
 
 "Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate."
-lr = 0.00001
-lr_min = lr / 1000.
-lr_decay = 0.95
-learning_rate_schedule = {}
-for i in range(n_epochs):
-    lr_ = lr * (lr_decay ** i)
-    if lr_ < lr_min: break
-    learning_rate_schedule[i] = lr_
+# lr = 0.00001
+# lr_min = lr / 1000.
+# lr_decay = 0.95
+# learning_rate_schedule = {}
+# for i in range(n_epochs):
+#     lr_ = lr * (lr_decay ** i)
+#     if lr_ < lr_min: break
+#     learning_rate_schedule[i] = lr_
+learning_rate_schedule = {
+    0: 5e-4,
+    int(n_epochs * 0.5): 1e-4,
+    int(n_epochs * 0.6): 5e-5,
+    int(n_epochs * 0.7): 2e-5,
+    int(n_epochs * 0.8): 1e-5,
+    int(n_epochs * 0.9): 5e-6
+}
 
 # print learning_rate_schedule
 
@@ -156,93 +162,102 @@ def build_objectives(interface_layers):
 #################
 # Regular model #
 #################
-
-"For ease of working, we predefine some layers with their parameters"
 conv3d = partial(dnn.Conv3DDNNLayer,
                  filter_size=3,
                  pad='same',
-                 W=lasagne.init.Orthogonal('relu'),
-                 b=lasagne.init.Constant(0.0),
-                 # untie_biases=True,
-                 nonlinearity=lasagne.nonlinearities.rectify)
+                 W=lasagne.init.Orthogonal(),
+                 b=lasagne.init.Constant(0.01),
+                 nonlinearity=lasagne.nonlinearities.very_leaky_rectify)
 
-conv2d = partial(dnn.Conv2DDNNLayer,
-                 filter_size=3,
-                 pad='same',
-                 W=lasagne.init.Orthogonal('relu'),
-                 b=lasagne.init.Constant(0.0),
-                 # untie_biases=True,
-                 nonlinearity=lasagne.nonlinearities.rectify)
-
-
-
-max_pool2d = partial(dnn.MaxPool2DDNNLayer, pool_size=2)
-
-max_pool3d = partial(dnn.MaxPool3DDNNLayer, pool_size=2)
-
-dense = partial(lasagne.layers.DenseLayer,
-                # W=lasagne.init.Orthogonal('relu'),
-                b=lasagne.init.Constant(0.0),
-                nonlinearity=lasagne.nonlinearities.rectify)
-
-nin = partial(lasagne.layers.NINLayer,
-              W=lasagne.init.Orthogonal('relu'),
-              b=lasagne.init.Constant(0.0),
-              nonlinearity=lasagne.nonlinearities.rectify)
+max_pool3d = partial(dnn.MaxPool3DDNNLayer,
+                     pool_size=2)
 
 drop = lasagne.layers.DropoutLayer
 
-# bn = lasagne.layers.batch_norm
-bn = lasagne.layers.dnn.batch_norm_dnn
-wn = weight_norm
+bn = lasagne.layers.batch_norm
+
+dense = partial(lasagne.layers.DenseLayer,
+                W=lasagne.init.Orthogonal('relu'),
+                b=lasagne.init.Constant(0.0),
+                nonlinearity=lasagne.nonlinearities.rectify)
+
+
+def inrn_v2(lin):
+    n_base_filter = 32
+
+    l1 = conv3d(lin, n_base_filter, filter_size=1)
+
+    l2 = conv3d(lin, n_base_filter, filter_size=1)
+    l2 = conv3d(l2, n_base_filter, filter_size=3)
+
+    l3 = conv3d(lin, n_base_filter, filter_size=1)
+    l3 = conv3d(l3, n_base_filter, filter_size=3)
+    l3 = conv3d(l3, n_base_filter, filter_size=3)
+
+    l = lasagne.layers.ConcatLayer([l1, l2, l3])
+
+    l = conv3d(l, lin.output_shape[1], filter_size=1)
+
+    l = lasagne.layers.ElemwiseSumLayer([l, lin])
+
+    l = lasagne.layers.NonlinearityLayer(l, nonlinearity=lasagne.nonlinearities.rectify)
+
+    return l
+
+
+def inrn_v2_red(lin):
+    # We want to reduce our total volume /4
+
+    den = 16
+    nom2 = 4
+    nom3 = 5
+    nom4 = 7
+
+    ins = lin.output_shape[1]
+
+    l1 = max_pool3d(lin)
+
+    l2 = conv3d(lin, ins // den * nom2, filter_size=3, stride=2)
+
+    l3 = conv3d(lin, ins // den * nom2, filter_size=1)
+    l3 = conv3d(l3, ins // den * nom3, filter_size=3, stride=2)
+
+    l4 = conv3d(lin, ins // den * nom2, filter_size=1)
+    l4 = conv3d(l4, ins // den * nom3, filter_size=3)
+    l4 = conv3d(l4, ins // den * nom4, filter_size=3, stride=2)
+
+    l = lasagne.layers.ConcatLayer([l1, l2, l3, l4])
+
+    return l
+
 
 "Here we build a model. The model returns a dict with the requested inputs for each layer:" \
 "And with the outputs it generates. You may generate multiple outputs (for analysis or for some other objectives, etc)" \
 "Unused outputs don't cost in performance"
 
 
-def build_model():
-    l_in = lasagne.layers.InputLayer(shape=(None,) + nn_input_shape)
+def build_model(image_size=nn_input_shape):
+    l_in = lasagne.layers.InputLayer(shape=(None,) + image_size)
+    l_norm = Hu2normHULayer(l_in, min_hu=-1000, max_hu=400)
+    l_norm = ZMUVLayer(l_norm, mean=0.36, std=0.31)
+    l0 = lasagne.layers.DimshuffleLayer(l_norm, pattern=[0, 'x', 1, 2, 3])
 
-    l = lasagne.layers.DimshuffleLayer(l_in, pattern=(0, 3, "x", 2, 1))
+    l = conv3d(l0, 64)
+    l = inrn_v2_red(l)
+    l = inrn_v2(l)
+    l = inrn_v2(l)
 
-    l = lasagne.layers.ReshapeLayer(l, (-1, 1, nn_input_shape[0], nn_input_shape[1]))
+    l = inrn_v2_red(l)
+    l = inrn_v2(l)
+    l = inrn_v2(l)
 
-    n = 64
-    l = conv2d(l, n, filter_size=5, stride=2)
-    l = wn(l)
+    l = dense(drop(l), 128)
 
-    n *= 2
-    l = conv2d(l, n)
-    l = wn(l)
-    l = conv2d(l, n)
-    l = wn(l)
-    l = max_pool2d(l)
-
-    n *= 2
-    l = conv2d(l, n)
-    l = wn(l)
-    l = conv2d(l, n)
-    l = wn(l)
-    l = max_pool2d(l)
-
-    n_features = np.prod(l.output_shape[-3:])
-    l = lasagne.layers.ReshapeLayer(l, (-1, nn_input_shape[2], n_features))
-    l = lasagne.layers.FeaturePoolLayer(l, nn_input_shape[2], axis=1)
-
-    n *= 2
-    l = dense(l, n)
-    l = wn(l)
-    l = drop(l)
-    l = dense(l, n)
-    l = wn(l)
-    l = drop(l)
-
-    l = lasagne.layers.DenseLayer(l,
-                                  num_units=1,
+    # this is a different way to output compared to luna_direct_x23 config
+    l = lasagne.layers.DenseLayer(l, num_units=1,
                                   W=lasagne.init.Constant(0.),
-                                  b=lasagne.init.Constant(-np.log(1. / 0.5 - 1.)),
                                   nonlinearity=lasagne.nonlinearities.sigmoid)
+
     l_out = lasagne.layers.reshape(l, shape=(-1,))
 
     return {
