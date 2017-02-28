@@ -21,7 +21,6 @@ n_windows = (p_transform['patch_size'][0] - window_size) / stride + 1
 
 valid_pids = patch_config.valid_pids
 
-
 def data_prep_function(data, luna_annotations, pixel_spacing, luna_origin,
                        p_transform=p_transform,
                        p_transform_augment=None):

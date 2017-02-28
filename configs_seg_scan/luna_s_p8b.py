@@ -6,17 +6,21 @@ import string
 import numpy as np
 import lasagne as nn
 # IMPORT A CORRECT PATCH MODEL HERE
-import configs_seg_patch.luna_p8_a as patch_config
+import configs_seg_patch.luna_p8b as patch_config
 
 rng = patch_config.rng
-filter_size = patch_config.p_transform['patch_size'][0]
-stride = filter_size / 2
-extract_middle = False
 
-p_transform = {'patch_size': (416, 416, 416),
-               'mm_patch_size': (416, 416, 416),
+# calculate the following things correctly!
+p_transform = {'patch_size': (424, 424, 424),
+               'mm_patch_size': (424, 424, 424),
                'pixel_spacing': patch_config.p_transform['pixel_spacing']
                }
+window_size = 160
+stride = 132
+n_windows = (p_transform['patch_size'][0] - window_size) / stride + 1
+print window_size
+print stride
+print n_windows
 
 valid_pids = patch_config.valid_pids
 
@@ -24,7 +28,7 @@ valid_pids = patch_config.valid_pids
 def data_prep_function(data, luna_annotations, pixel_spacing, luna_origin,
                        p_transform=p_transform,
                        p_transform_augment=None):
-    # MAKE SURE THAT DATA IS PREPROCESSED THE SAME WAY
+    # make sure the data is processed the same way 
     x, annotations_tf, tf_matrix = data_transforms.transform_scan3d(data=data,
                                                                     pixel_spacing=pixel_spacing,
                                                                     p_transform=p_transform,
@@ -52,7 +56,7 @@ def build_model():
     metadata = utils.load_pkl(metadata_path)
 
     print 'Build model'
-    model = patch_config.build_model()
+    model = patch_config.build_model(patch_size=(window_size, window_size, window_size))
     all_layers = nn.layers.get_all_layers(model.l_out)
     num_params = nn.layers.count_params(model.l_out)
     print '  number of parameters: %d' % num_params

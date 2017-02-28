@@ -9,14 +9,17 @@ import lasagne as nn
 import configs_seg_patch.luna_p9 as patch_config
 
 rng = patch_config.rng
-filter_size = patch_config.p_transform['patch_size'][0]
-stride = filter_size / 2
-extract_middle = False
 
 p_transform = {'patch_size': (416, 416, 416),
                'mm_patch_size': (416, 416, 416),
                'pixel_spacing': patch_config.p_transform['pixel_spacing']
                }
+window_size = 160
+stride = 128
+n_windows = (p_transform['patch_size'][0] - window_size) / stride + 1
+print window_size
+print stride
+print n_windows
 
 valid_pids = patch_config.valid_pids
 

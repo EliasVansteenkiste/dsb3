@@ -5,8 +5,10 @@ import utils
 import string
 import numpy as np
 import lasagne as nn
+
 # IMPORT A CORRECT PATCH CLASSIFICATION MODEL HERE
-import configs_seg_scan.luna_s_p5_pixelnorm as scan_seg_config
+seg_config_name = 'luna_s2_p8'
+
 # IMPORT A CORRECT PATCH CLASSIFICATION MODEL HERE
 import configs_class_patch.luna_c1 as patch_class_config
 
@@ -21,7 +23,7 @@ rng = patch_class_config.rng
 
 # candidates after segmentations path
 predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
-candidates_path = predictions_dir + '/luna_s3_p5_pixelnorm/candidates.pkl'
+candidates_path = predictions_dir + '/%s/candidates.pkl' % seg_config_name
 id2candidates = utils.load_pkl(candidates_path)
 
 data_iterator = data_iterators.FixedCandidatesLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
