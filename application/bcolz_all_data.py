@@ -147,6 +147,9 @@ class BcolzAllDataLoader(StandardDataLoader):
             if "filename" in tags:
                 sample[INPUT][tag] = patient_name
 
+            if "patient_id" in tags:
+                sample[INPUT][tag] = str(self.data[set][sample_index].split(path.sep)[-2])
+
             if "3d" in tags or "default" in tags:
                 sample[INPUT][tag] = volume
 
