@@ -34,7 +34,7 @@ for p in blob_files:
     print 'n_blobs', len(blobs)
     print 'tp / n pos ', int(np.sum(blobs[:, -1])), len(pid2annotations[pid])
     if int(np.sum(blobs[:, -1])) < len(pid2annotations[pid]):
-        print 'HEREREREREER!!!!!!'
+        print '-------- HERE!!!!!! ------------'
     tp += np.sum(blobs[:, -1])
     print '====================================='
 

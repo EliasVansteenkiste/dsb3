@@ -8,6 +8,10 @@ import lasagne as nn
 # IMPORT A CORRECT PATCH MODEL HERE
 import configs_seg_patch.luna_p8 as patch_config
 
+# print utils.get_script_name(__file__).split('_')[-1]
+# print patch_config.__name__.split('.')[-1]
+# assert utils.get_script_name(__file__).replace('_s*_', '_') == patch_config.__name__.split('.')[-1]
+
 rng = patch_config.rng
 
 # calculate the following things correctly!
@@ -20,6 +24,7 @@ stride = 128
 n_windows = (p_transform['patch_size'][0] - window_size) / stride + 1
 
 valid_pids = patch_config.valid_pids
+
 
 def data_prep_function(data, luna_annotations, pixel_spacing, luna_origin,
                        p_transform=p_transform,

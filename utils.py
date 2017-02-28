@@ -108,3 +108,7 @@ def current_learning_rate(schedule, idx):
             current_lr = schedule[i]
 
     return current_lr
+
+
+def get_script_name(file_path):
+    return os.path.basename(file_path).replace('.py', '')

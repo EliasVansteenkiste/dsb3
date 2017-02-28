@@ -48,30 +48,25 @@ print
 print 'Data'
 print 'n samples: %d' % data_iterator.nsamples
 
-nblob2prob, nblob2label = {}, {}
-pid2candidates = defaultdict(list)
+prev_pid = None
+candidates = []
+patients_count = 0
 for n, (x, candidate_zyxd, id) in enumerate(data_iterator.generate()):
     pid = id[0]
+
+    if pid != prev_pid and prev_pid is not None:
+        print patients_count, prev_pid, len(candidates)
+        candidates = np.asarray(candidates)
+        a = np.asarray(sorted(candidates, key=lambda x: x[-1], reverse=True))
+        utils.save_pkl(a, outputs_path + '/%s.pkl' % prev_pid)
+        print 'saved predictions'
+        patients_count += 1
+        candidates = []
+
     x_shared.set_value(x)
     predictions = get_predictions_patch()
-    label = candidate_zyxd[-1]
     p1 = predictions[0][1]
-    nblob2prob[n] = p1
-    nblob2label[n] = label
     candidate_zyxdp = np.append(candidate_zyxd, [[p1]])
-    pid2candidates[pid].append(candidate_zyxdp)
+    candidates.append(candidate_zyxdp)
 
-    # if p1 > 0.9 or label == 1:
-    #     plot_slice_3d_3(input=x[0, 0], mask=x[0, 0], prediction=x[0, 0],
-    #                     axis=0, pid='-'.join([str(id[0]), str(label), str(p1)]),
-    #                     img_dir=outputs_path, idx=np.array(x[0, 0].shape) / 2)
-
-for k in pid2candidates.iterkeys():
-    print '----------------------------------------'
-    print k
-    candidates = np.asarray(pid2candidates[k])
-    a = np.asarray(sorted(candidates, key=lambda x: x[-1], reverse=True))
-    pid2candidates[k] = a
-    print a[:10]
-
-utils.save_pkl(pid2candidates, outputs_path + '/candidates.pkl')
+    prev_pid = pid

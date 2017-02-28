@@ -5,6 +5,8 @@ import csv
 import os
 from collections import defaultdict
 import cPickle as pickle
+import glob
+import utils
 
 
 def read_pkl(path):
@@ -57,6 +59,16 @@ def extract_pid(patient_data_path):
 
 def luna_extract_pid(patient_data_path, replace_str='.mhd'):
     return os.path.basename(patient_data_path).replace(replace_str, '').replace('pkl', '')
+
+
+def load_pkl_candidates(path):
+    id2candidates = {}
+    file_paths = sorted(glob.glob(path + '/*.pkl'))
+    for p in file_paths:
+        pid = luna_extract_pid(p, '.pkl')
+        blobs = utils.load_pkl(p)
+        id2candidates[pid] = blobs
+    return id2candidates
 
 
 def get_patient_data(patient_data_path):
@@ -259,23 +271,3 @@ def cross_entropy(predictions, targets, epsilon=1e-12):
     targets = np.asarray(targets).flatten()
     ce = np.mean(np.log(predictions) * targets + np.log(1 - predictions) * (1. - targets))
     return ce
-
-# def luna_merge_negative_candidates(file_path1, file_path2, output_file_path):
-#     candidates_csv1 = csv.reader(open(file_path1))
-#     candidates_csv2 = csv.reader(open(file_path2))
-#
-#     f = open(output_file_path, 'w+')
-#     fo = csv.writer(f, lineterminator='\n')
-#
-#     fo.writerow(candidates_csv1.next())
-#     for line in candidates_csv1:
-#         label = int(line[-1])
-#         if label == 0:
-#             fo.writerow(line)
-#
-#     candidates_csv2.next()
-#     for line in candidates_csv2:
-#         label = int(line[-1])
-#         if label == 0:
-#             fo.writerow(line)
-#     f.close()

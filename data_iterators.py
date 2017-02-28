@@ -378,8 +378,10 @@ class FixedCandidatesLunaDataGenerator(object):
 
     def generate(self):
 
-        # for pid in self.id2candidates.iterkeys():
-        for pid in ['1.3.6.1.4.1.14519.5.2.1.6279.6001.247060297988514823071467295949']:
+        for pid in self.id2candidates.iterkeys():
+            # for pid in ['1.3.6.1.4.1.14519.5.2.1.6279.6001.247060297988514823071467295949',
+            #             '1.3.6.1.4.1.14519.5.2.1.6279.6001.295420274214095686326263147663',
+            #             '1.3.6.1.4.1.14519.5.2.1.6279.6001.143412474064515942785157561636']:
             patient_path = self.id2patient_path[pid]
             print 'PATIENT', pid
             print 'n blobs', len(self.id2candidates[pid])
@@ -416,3 +418,33 @@ class DSBScanDataGenerator(object):
 
             x = np.float32(x)[None, None, :, :, :]
             yield x, tf_matrix, pid
+
+
+class CandidatesDSBDataGenerator(object):
+    def __init__(self, data_path, transform_params, id2candidates, data_prep_fun, **kwargs):
+
+        self.id2candidates = id2candidates
+        self.id2patient_path = {}
+        for pid in id2candidates.keys():
+            self.id2patient_path[pid] = data_path + '/' + pid
+
+        self.nsamples = len(self.id2patient_path)
+        self.data_path = data_path
+        self.data_prep_fun = data_prep_fun
+        self.transform_params = transform_params
+
+    def generate(self):
+
+        for pid in self.id2candidates.iterkeys():
+
+            patient_path = self.id2patient_path[pid]
+            img, pixel_spacing = utils_lung.read_dicom_scan(patient_path)
+
+            for candidate in self.id2candidates[pid]:
+                y_batch = np.array(candidate, dtype='float32')
+                patch_center = candidate[:3]
+                x_batch = np.float32(self.data_prep_fun(data=img,
+                                                        patch_center=patch_center,
+                                                        pixel_spacing=pixel_spacing))[None, None, :, :, :]
+
+                yield x_batch, y_batch, [pid]
