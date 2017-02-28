@@ -175,6 +175,7 @@ def extract_rois(expid):
             if config.plot:
                 plot_segmentation_and_nodules(patches, rois, pred, patient_id)
 
+    for job in jobs: job.join()
     return
 
 

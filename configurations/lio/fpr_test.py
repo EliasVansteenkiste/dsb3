@@ -5,9 +5,11 @@ from lasagne.layers import dnn
 import numpy as np
 from functools import partial
 
+from application.preprocessors.augment_fpr_candidates import AugmentFPRCandidates
 from application.objectives import CrossEntropyObjective
-from application.stage1 import Stage1DataLoader
-from application.bcolz_all_data import BcolzAllDataLoader
+# from application.stage1 import Stage1DataLoader
+from application.luna import LunaDataLoader
+# from application.bcolz_all_data import BcolzAllDataLoader
 from application.preprocessors.augment_roi_zero_pad import AugmentROIZeroPad
 from interfaces.data_loader import VALIDATION, TRAINING
 from application.preprocessors.dicom_to_HU import DicomToHU
@@ -43,34 +45,31 @@ init_weight_norm = 32  # number of samples
 
 nn_input_shape = (32,)*3
 norm_patch_shape = (32,)*3 # in mm
-roi_config = "configurations.elias.roi_stage1_1"
-max_rois = 64
+candidates_csv = "candidates_V2"
 
-tag = "bcolzall:"
+tag = "luna:"
 
-data_loader = partial(BcolzAllDataLoader, #BcolzAllDataLoader, Stage1DataLoader
+data_loader = partial(LunaDataLoader, #BcolzAllDataLoader, Stage1DataLoader, LunaDataLoader
     multiprocess=True,
     crash_on_exception=True)
 
-augment_roi = partial(AugmentROIZeroPad,
-    max_rois=max_rois,
-    roi_config=roi_config,
-    tags=[tag+"3d"],
-    output_shape=nn_input_shape,
-    norm_patch_shape=norm_patch_shape,
-    interp_order=1,
-    mode="constant"
-    )
+augment = partial(AugmentFPRCandidates,
+                  candidates_csv="candidates_V2",
+                  tags=[tag+"3d"],
+                  output_shape=nn_input_shape,
+                  norm_patch_shape=norm_patch_shape,
+                  interp_order=1,
+                  mode="constant"
+                  )
 
 preprocessors = [
-    # DicomToHU(tags=[tag+"3d"]),
-    augment_roi(
+    augment(
         augmentation_params={
             "scale": [1, 1, 1],  # factor
             "uniform scale": 1,  # factor
             "rotation": [0, 0, 180],  # degrees
             "shear": [0, 0, 0],  # degrees
-            "translation": [5, 5, 5],  # mm
+            "translation": [3, 3, 3],  # mm
             "reflection": [0, 0, 0]},  # Bernoulli p
         ),
     # DefaultNormalizer(tags=[tag+"3d"])
@@ -78,8 +77,7 @@ preprocessors = [
 ]
 
 preprocessors_valid = [
-    # DicomToHU(tags=[tag+"3d"]),
-    augment_roi(),
+    augment(),
     # DefaultNormalizer(tags=[tag+"3d"])
     ZMUV(tag+"3d", bias=-648.59027, std=679.21021)
 ]
@@ -204,9 +202,9 @@ wn = weight_norm
 
 
 def build_model():
-    l_in = lasagne.layers.InputLayer(shape=(None, max_rois) + nn_input_shape)
+    l_in = lasagne.layers.InputLayer(shape=(None,) + nn_input_shape)
 
-    l = lasagne.layers.DimshuffleLayer(l_in, pattern=(0, 1, 4, "x", 3, 2))
+    l = lasagne.layers.DimshuffleLayer(l_in, pattern=(0, 3, "x", 2, 1))
 
     l = lasagne.layers.ReshapeLayer(l, (-1, 1, nn_input_shape[0], nn_input_shape[1]))
 
@@ -229,8 +227,8 @@ def build_model():
     l = max_pool2d(l)
 
     n_features = np.prod(l.output_shape[-3:])
-    l = lasagne.layers.ReshapeLayer(l, (-1, max_rois*nn_input_shape[2], n_features))
-    l = lasagne.layers.FeaturePoolLayer(l, max_rois*nn_input_shape[2], axis=1)
+    l = lasagne.layers.ReshapeLayer(l, (-1, nn_input_shape[2], n_features))
+    l = lasagne.layers.FeaturePoolLayer(l, nn_input_shape[2], axis=1)
 
     n *= 2
     l = dense(l, n)
@@ -243,7 +241,7 @@ def build_model():
     l = lasagne.layers.DenseLayer(l,
                                   num_units=1,
                                   W=lasagne.init.Constant(0.),
-                                  b=lasagne.init.Constant(-np.log(1. / 0.25 - 1.)),
+                                  b=lasagne.init.Constant(-np.log(1. / 0.5 - 1.)),
                                   nonlinearity=lasagne.nonlinearities.sigmoid)
     l_out = lasagne.layers.reshape(l, shape=(-1,))
 

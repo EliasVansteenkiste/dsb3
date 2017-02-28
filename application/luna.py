@@ -431,3 +431,44 @@ class OnlyPositiveLunaDataLoader(LunaDataLoader):
     @deprecated
     def __init__(self, *args, **kwargs):
         super(OnlyPositiveLunaDataLoader,self).__init__(only_positive=True, *args, **kwargs)
+
+
+# class FPRLunaDataLoader(LunaDataLoader):
+#     candidates = dict()
+#
+#     def __init__(self, candidates_path, *args, **kwargs):
+#         super(FPRLunaDataLoader,self).__init__(*args, **kwargs)
+#         self.candidates_path = candidates_path
+#
+#     def prepare(self):
+#         super(FPRLunaDataLoader, self).prepare()
+#
+#         # make the static data empty
+#         for s in self.datasets:
+#             self.candidates[s] = []
+#
+#         candidates = defaultdict(lambda: defaultdict(list))
+#
+#         with open(self.candidates_path, 'rb') as csvfile:
+#             reader = csv.reader(csvfile, delimiter=',', quotechar='|')
+#             next(reader)  # skip the header
+#             for row in reader:
+#                 c = (float(row[1]), float(row[2]), float(row[3]), int(row[4]))
+#                 candidates[str(row[0])][int(row[4])].append(c)
+#
+#         for set, patient_files in self.data.items():
+#             for patient_file in patient_files:
+#                 patient_name = self.patient_name_from_file_name(patient_file)
+#                 self.candidates[set].append(candidates[str(patient_name)])
+#
+#     def load_sample(self, sample_id, input_keys_to_do, output_keys_to_do):
+#
+#         # find which set this sample is in
+#         set, set_indices = None, None
+#         for set, set_indices in self.indices.iteritems():
+#             if sample_id in set_indices:
+#                 break
+#
+#         sample_id =
+#
+#         super(FPRLunaDataLoader, self).load_sample(sample_id, input_keys_to_do, output_keys_to_do)
