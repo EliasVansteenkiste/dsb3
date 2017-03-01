@@ -81,4 +81,4 @@ class AugmentFPRCandidates(Augment3D):
         )
         # add candidate label to output tags
 
-        sample[OUTPUT][basetag+":target"] = np.int64(candidate[3])
+        sample[OUTPUT][basetag+":target"] = np.int32(candidate[3])

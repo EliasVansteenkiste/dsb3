@@ -32,7 +32,8 @@ save_every_chunks = 1000. / float(batch_size * batches_per_chunk)
 print_gradnorm = False
 print_score_every_chunk = True
 print_mean_chunks = 800 / batches_per_chunk
-init_weight_norm = 32  # number of samples
+init_weight_norm = 64  # number of samples
+dont_sum_losses = True
 
 #####################
 #   preprocessing   #

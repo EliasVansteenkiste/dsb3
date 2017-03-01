@@ -49,6 +49,35 @@ class CrossEntropyObjective(TargetVarDictObjective):
         return -np.mean(expected*np.log(predicted) + (1-expected)*np.log(1-predicted))
 
 
+class NLLObjective(TargetVarDictObjective):
+    optimize = MINIMIZE
+
+    eps = 1e-12
+
+    def __init__(self, input_layers, target_name, *args, **kwargs):
+        super(NLLObjective, self).__init__(input_layers, *args, **kwargs)
+        self.target_key = target_name + ":target"
+        self.target_vars[self.target_key]  = T.ivector("target_class")
+        self.prediction = input_layers["predicted_probability"]
+
+    def get_loss(self, *args, **kwargs):
+        predictions = lasagne.layers.helper.get_output(self.prediction, *args, **kwargs)
+        targets = T.flatten(self.target_vars[self.target_key])
+        p = predictions[T.arange(predictions.shape[0]), targets]
+        p = T.clip(p, self.eps, 1.)
+        return -T.log(p)
+
+        # network_predictions = lasagne.layers.helper.get_output(self.prediction, *args, **kwargs)
+        # target_values = self.target_vars[self.target_key].astype('float32')  # convert from int
+        # log_loss = lasagne.objectives.binary_crossentropy(network_predictions, target_values.flatten())
+        # return log_loss
+
+    def get_loss_from_lists(self, predicted, expected, *args, **kwargs):
+        predicted = np.array(predicted)
+        expected = np.array(expected)
+        p = predicted[np.arange(predicted.shape[0]), expected]
+        p = np.clip(p, self.eps, 1.)
+        return -np.mean(np.log(p))
 
 
 

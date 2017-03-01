@@ -142,7 +142,10 @@ def train_model(expid):
 
     # sum over the losses of the objective we optimize. We will optimize this sum (either minimize or maximize)
     # sum makes the learning rate independent of batch size!
-    train_loss_theano = T.sum(train_losses_theano["objective"]) * (-1 if objectives["train"]["objective"].optimize == MAXIMIZE else 1)
+    if hasattr(config, "dont_sum_losses") and config.dont_sum_losses:
+        train_loss_theano = T.mean(train_losses_theano["objective"])
+    else:
+        train_loss_theano = T.sum(train_losses_theano["objective"]) * (-1 if objectives["train"]["objective"].optimize == MAXIMIZE else 1)
 
     # build the update step for Theano
     updates = config.build_updates(train_loss_theano, all_params, learning_rate)
@@ -312,6 +315,7 @@ def train_model(expid):
 
             # these are not needed anyway, just to make Theano call the print function
             # stuff_to_print = th_result[-len(theano_printer.get_the_stuff_to_print()):]
+            # print resulting_losses.shape, chunk_losses.shape
             chunk_losses = np.concatenate((chunk_losses, resulting_losses), axis=1)
 
         # check if we found NaN's. When there are NaN's we might as well exit.
