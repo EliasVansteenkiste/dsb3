@@ -102,7 +102,7 @@ training_data = data_loader(
 #     if lr_ < lr_min: break
 #     learning_rate_schedule[i] = lr_
 learning_rate_schedule = {
-    0: 5e-4,
+    0: 1e-4,
     int(n_epochs * 0.5): 1e-4,
     int(n_epochs * 0.6): 5e-5,
     int(n_epochs * 0.7): 2e-5,
