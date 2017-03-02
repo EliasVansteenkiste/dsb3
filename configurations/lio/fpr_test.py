@@ -6,7 +6,7 @@ import numpy as np
 from functools import partial
 
 from application.preprocessors.augment_fpr_candidates import AugmentFPRCandidates
-from application.objectives import CrossEntropyObjective
+from application.objectives import CrossEntropyObjective, NLLObjective
 from application.luna import LunaDataLoader, BcolzLunaDataLoader
 from interfaces.data_loader import VALIDATION, TRAINING
 from application.preprocessors.normalize_scales import DefaultNormalizer
@@ -19,10 +19,10 @@ from deep_learning.nn_lung import Hu2normHULayer, ZMUVLayer
 #####################
 
 "This is the number of samples in each batch"
-batch_size = 32
+batch_size = 16
 "This is the number of batches in each chunk. Computation speeds up if this is as big as possible." \
 "However, when too big, the GPU will run out of memory"
-batches_per_chunk = 1
+batches_per_chunk = 2
 "Reload the parameters from last time and continue, or start anew when you run this config file again"
 restart_from_save = False
 "After how many chunks sho uld you save parameters. Keep this number high for better performance. It will always store at end anyway"
@@ -31,6 +31,7 @@ save_every_chunks = 1000. / float(batch_size * batches_per_chunk)
 print_gradnorm = False
 print_score_every_chunk = True
 print_mean_chunks = 800 / batches_per_chunk
+dont_sum_losses = True
 # init_weight_norm = 32  # number of samples
 
 #####################
@@ -40,15 +41,15 @@ print_mean_chunks = 800 / batches_per_chunk
 "Put in here the preprocessors for your data." \
 "They will be run consequently on the datadict of the dataloader in the order of your list."
 
-nn_input_shape = (32,)*3
-norm_patch_shape = (32,)*3 # in mm
+nn_input_shape = (48,)*3
+norm_patch_shape = (48,)*3 # in mm
 candidates_csv = "candidates_V2"
 
 tag = "luna:"
 
 data_loader = partial(LunaDataLoader, #BcolzAllDataLoader, Stage1DataLoader, LunaDataLoader, BcolzLunaDataLoader
     only_positive=True,
-    multiprocess=True,
+    multiprocess=False,
     crash_on_exception=True)
 
 augment = partial(AugmentFPRCandidates,
@@ -148,7 +149,8 @@ test_data = None
 
 
 def build_objectives(interface_layers):
-    obj = CrossEntropyObjective(interface_layers["outputs"], target_name=tag[:-1])
+    obj = NLLObjective(interface_layers["outputs"], target_name=tag[:-1])
+    # obj = CrossEntropyObjective(interface_layers["outputs"], target_name=tag[:-1])
     return {
         "train": {
             "objective": obj,
@@ -239,26 +241,31 @@ def inrn_v2_red(lin):
 def build_model(image_size=nn_input_shape):
     l_in = lasagne.layers.InputLayer(shape=(None,) + image_size)
     l_norm = Hu2normHULayer(l_in, min_hu=-1000, max_hu=400)
-    l_norm = ZMUVLayer(l_norm, mean=0.36, std=0.31)
-    l0 = lasagne.layers.DimshuffleLayer(l_norm, pattern=[0, 'x', 1, 2, 3])
+    # l_norm = ZMUVLayer(l_norm, mean=0.36, std=0.31)
+    l = lasagne.layers.DimshuffleLayer(l_norm, pattern=[0, 'x', 1, 2, 3])
 
-    l = conv3d(l0, 64)
+    l = conv3d(l, 64)
     l = inrn_v2_red(l)
     l = inrn_v2(l)
-    l = inrn_v2(l)
 
     l = inrn_v2_red(l)
     l = inrn_v2(l)
-    l = inrn_v2(l)
+
+    l = inrn_v2_red(l)
+    l = inrn_v2_red(l)
 
     l = dense(drop(l), 128)
 
     # this is a different way to output compared to luna_direct_x23 config
-    l = lasagne.layers.DenseLayer(l, num_units=1,
-                                  W=lasagne.init.Constant(0.),
-                                  nonlinearity=lasagne.nonlinearities.sigmoid)
+    l_out = lasagne.layers.DenseLayer(l, num_units=2,
+                                 W=lasagne.init.Constant(0.),
+                                 nonlinearity=lasagne.nonlinearities.softmax)
 
-    l_out = lasagne.layers.reshape(l, shape=(-1,))
+    # l_out = lasagne.layers.DenseLayer(l, num_units=1,
+    #                              W=lasagne.init.Constant(0.),
+    #                              nonlinearity=lasagne.nonlinearities.sigmoid)
+
+    # l_out = lasagne.layers.reshape(l_out, shape=(-1,))
 
     return {
         "inputs": {
