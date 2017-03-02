@@ -30,7 +30,7 @@ save_every_chunks = 1000. / float(batch_size * batches_per_chunk)
 
 print_gradnorm = False
 print_score_every_chunk = True
-print_mean_chunks = 800 / batches_per_chunk
+print_mean_chunks = 800 / (batches_per_chunk*batch_size)
 dont_sum_losses = True
 # init_weight_norm = 32  # number of samples
 

@@ -164,7 +164,7 @@ class BcolzAllDataLoader(StandardDataLoader):
             if "bcolzall" not in tags: continue
 
             if "target" in tags:
-                sample[OUTPUT][tag] = np.int64(self.labels[set][sample_index])
+                sample[OUTPUT][tag] = np.int32(self.labels[set][sample_index])
 
             if "sample_id" in tags:
                 sample[OUTPUT][tag] = sample_id
