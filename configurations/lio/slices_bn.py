@@ -6,7 +6,7 @@ import theano.tensor as T
 import numpy as np
 from functools import partial
 
-from application.objectives import CrossEntropyObjective
+from application.objectives import CrossEntropyObjective, NLLObjective
 from application.bcolz_all_data import BcolzAllDataLoader
 # from application.stage1 import Stage1DataLoader
 from interfaces.data_loader import VALIDATION, TRAINING, TEST, TRAIN
@@ -24,7 +24,7 @@ from theano_utils.weight_norm import weight_norm
 batch_size = 1
 "This is the number of batches in each chunk. Computation speeds up if this is as big as possible." \
 "However, when too big, the GPU will run out of memory"
-batches_per_chunk = 16
+batches_per_chunk = 8
 "Reload the parameters from last time and continue, or start anew when you run this config file again"
 restart_from_save = False
 "After how many chunks sho uld you save parameters. Keep this number high for better performance. It will always store at end anyway"
@@ -43,7 +43,7 @@ init_weight_norm = 32 # number of samples
 
 "Put in here the preprocessors for your data." \
 "They will be run consequently on the datadict of the dataloader in the order of your list."
-nn_input_shape = (128, 128, 40)
+nn_input_shape = (256, 256, 80)
 norm_patch_shape = (300, 300, 280)
 
 preprocessors = [
@@ -92,7 +92,7 @@ training_data = BcolzAllDataLoader(
     crash_on_exception=True)
 
 "Schedule the reducing of the learning rate. On indexing with the number of epochs, it should return a value for the learning rate." 
-lr = 0.000001
+lr = 0.00001
 lr_min = lr/1000.
 lr_decay = 0.95
 learning_rate_schedule = {}
@@ -145,7 +145,8 @@ test_data = None
 "On both sets, you may request multiple objectives! Only the one called 'objective' is used to optimize on."
 
 def build_objectives(interface_layers):
-    obj = CrossEntropyObjective(interface_layers["outputs"], target_name="bcolzall")
+    obj = NLLObjective(interface_layers["outputs"], target_name="bcolzall")
+    # obj = CrossEntropyObjective(interface_layers["outputs"], target_name="bcolzall")
     return {
         "train":{
             "objective": obj,
@@ -213,18 +214,18 @@ def build_model():
     # n = 16
     # l = conv2d(l, n, filter_size=7, stride=2)
     # l = wn(l)
-    # # 256
-    # n *= 2
-    # l = conv2d(l, n)
-    # l = wn(l)
-    # l = conv2d(l, n)
-    # l = wn(l)
-    # l = conv2d(l, n)
-    # l = wn(l)
-    # l = max_pool2d(l)
+    # 256
+    n = 32
+    l = conv2d(l, n)
+    l = wn(l)
+    l = conv2d(l, n)
+    l = wn(l)
+    l = conv2d(l, n)
+    l = wn(l)
+    l = max_pool2d(l)
     
     # 128
-    n = 128
+    n = 64
     l = conv2d(l, n)
     l = wn(l)
     l = conv2d(l, n)
@@ -267,7 +268,7 @@ def build_model():
     l = lasagne.layers.FeaturePoolLayer(l, nn_input_shape[2], axis=1)
     # l = lasagne.layers.ReshapeLayer(l, (-1, n_features))
 
-    n *= 8
+    n *= 16
     l = dense(l, n)
     l = wn(l)
     # l = drop(l)
@@ -275,12 +276,16 @@ def build_model():
     l = wn(l)
     # l = drop(l)
 
-    l = lasagne.layers.DenseLayer(l,
-                                 num_units=1,
+    # l = lasagne.layers.DenseLayer(l,
+    #                              num_units=1,
+    #                              W=lasagne.init.Constant(0.),
+    #                              b=lasagne.init.Constant(-np.log(1./0.25-1.)),
+    #                              nonlinearity=lasagne.nonlinearities.sigmoid)
+    # l_out = lasagne.layers.reshape(l, shape=(-1,))
+
+    l_out = lasagne.layers.DenseLayer(l, num_units=2,
                                  W=lasagne.init.Constant(0.),
-                                 b=lasagne.init.Constant(-np.log(1./0.25-1.)),
-                                 nonlinearity=lasagne.nonlinearities.sigmoid)
-    l_out = lasagne.layers.reshape(l, shape=(-1,))
+                                 nonlinearity=lasagne.nonlinearities.softmax)
 
     return {
         "inputs":{

@@ -5,7 +5,7 @@ from lasagne.layers import dnn
 import numpy as np
 from functools import partial
 
-from application.objectives import CrossEntropyObjective
+from application.objectives import CrossEntropyObjective, NLLObjective
 from application.stage1 import Stage1DataLoader
 from application.bcolz_all_data import BcolzAllDataLoader
 from application.preprocessors.augment_roi_zero_pad import AugmentROIZeroPad
@@ -31,7 +31,7 @@ save_every_chunks = 1000. / float(batch_size * batches_per_chunk)
 
 print_gradnorm = False
 print_score_every_chunk = True
-print_mean_chunks = 800 / batches_per_chunk
+print_mean_chunks = 800 / (batches_per_chunk*batch_size)
 init_weight_norm = 64  # number of samples
 dont_sum_losses = True
 
@@ -145,7 +145,8 @@ test_data = None
 
 
 def build_objectives(interface_layers):
-    obj = CrossEntropyObjective(interface_layers["outputs"], target_name=tag[:-1])
+    obj = NLLObjective(interface_layers["outputs"], target_name=tag[:-1])
+    # obj = CrossEntropyObjective(interface_layers["outputs"], target_name=tag[:-1])
     return {
         "train": {
             "objective": obj,
@@ -241,12 +242,16 @@ def build_model():
     l = wn(l)
     l = drop(l)
 
-    l = lasagne.layers.DenseLayer(l,
-                                  num_units=1,
-                                  W=lasagne.init.Constant(0.),
-                                  b=lasagne.init.Constant(-np.log(1. / 0.25 - 1.)),
-                                  nonlinearity=lasagne.nonlinearities.sigmoid)
-    l_out = lasagne.layers.reshape(l, shape=(-1,))
+    # l = lasagne.layers.DenseLayer(l,
+    #                               num_units=1,
+    #                               W=lasagne.init.Constant(0.),
+    #                               b=lasagne.init.Constant(-np.log(1. / 0.25 - 1.)),
+    #                               nonlinearity=lasagne.nonlinearities.sigmoid)
+    # l_out = lasagne.layers.reshape(l, shape=(-1,))
+
+    l_out = lasagne.layers.DenseLayer(l, num_units=2,
+                                 W=lasagne.init.Constant(0.),
+                                 nonlinearity=lasagne.nonlinearities.softmax)
 
     return {
         "inputs": {
