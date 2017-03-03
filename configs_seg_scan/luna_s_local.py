@@ -55,12 +55,11 @@ def data_prep_function(data, luna_annotations, pixel_spacing, luna_origin,
                                                                                    p_transform_augment=None,
                                                                                    luna_origin=luna_origin,
                                                                                    lung_mask=lung_mask)
-    # x = data_transforms.pixelnormHU(x)
+    x = data_transforms.pixelnormHU(x)
     y = data_transforms.make_3d_mask_from_annotations(img_shape=x.shape, annotations=annotations_tf, shape='sphere')
     return x, y, lung_mask_out, annotations_tf, tf_matrix
 
 
-valid_pids = ['1.3.6.1.4.1.14519.5.2.1.6279.6001.247060297988514823071467295949']
 valid_data_iterator = data_iterators.LunaScanPositiveLungMaskDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                            transform_params=p_transform,
                                                                            data_prep_fun=data_prep_function,

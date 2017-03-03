@@ -30,7 +30,7 @@ p_transform_augment = {
 }
 
 
-def data_prep_function(data, patch_center, pixel_spacing, luna_origin, p_transform,
+def data_prep_function(data, patch_centers, pixel_spacing, p_transform,
                        p_transform_augment, world_coord_system, **kwargs):
     x = data_transforms.transform_scan3d(data=data,
                                          luna_annotations=None,
