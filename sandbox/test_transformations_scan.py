@@ -6,6 +6,8 @@ import utils
 import utils_lung
 from configuration import set_configuration, config
 from utils_plots import plot_slice_3d_2, plot_2d, plot_2d_4, plot_slice_3d_3
+import utils_lung
+import lung_segmentation
 
 set_configuration('configs_seg_scan', 'luna_s_local')
 
@@ -74,7 +76,7 @@ def test_luna3d():
 
         img_out, mask, annotations_out = config().data_prep_function(img,
                                                                      pixel_spacing=pixel_spacing,
-                                                                     luna_annotations=annotations,
+                                                                     luna_annotations=None,
                                                                      luna_origin=origin)
 
         mask[mask == 0.] = 0.1
@@ -144,20 +146,24 @@ def test_kaggle3d():
               sid2metadata[sids_sorted[0]]['PixelSpacing'][1])
         pixel_spacing = np.asarray(xx)
 
-        # img, pixel_spacing = utils_lung.read_dicom_scan(p)
+        img, pixel_spacing = utils_lung.read_dicom_scan(p)
+        mask = lung_segmentation.segment_HU_scan(img)
         print pid
         print pixel_spacing
         print '===================================='
 
-        img_out, transform_matrix = data_transforms.transform_scan3d(img,
-                                                                     pixel_spacing=pixel_spacing,
-                                                                     p_transform=config().p_transform,
-                                                                     p_transform_augment=None)
+        img_out, transform_matrix, mask_out = data_transforms.transform_scan3d(img,
+                                                                               pixel_spacing=pixel_spacing,
+                                                                               p_transform=config().p_transform,
+                                                                               p_transform_augment=None,
+                                                                               lung_mask=mask)
 
-        # plot_slice_3d_2(img_out, img_out, 0, pid)
-        plot_slice_3d_2(img_out, img_out, 1, pid)
+        plot_slice_3d_2(mask_out, img_out, 0, pid, idx=np.array(img_out.shape) / 2)
+        plot_slice_3d_2(mask_out, img_out, 0, pid, idx=np.array(img_out.shape) / 4)
+        plot_slice_3d_2(mask_out, img_out, 0, pid, idx=np.array(img_out.shape) / 8)
+        # plot_slice_3d_2(img_out, img_out, 1, pid)
         # plot_slice_3d_2(img_out, img_out, 2, pid)
 
 
 if __name__ == '__main__':
-    test_kaggle3d()
+    test_luna3d()

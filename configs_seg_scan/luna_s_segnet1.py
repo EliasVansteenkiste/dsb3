@@ -37,13 +37,11 @@ def data_prep_function(data, luna_annotations, pixel_spacing, luna_origin,
     return x, y, annotations_tf, tf_matrix
 
 
-valid_data_iterator = data_iterators.ScanPositiveLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
+valid_data_iterator = data_iterators.LunaScanPositiveDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                    transform_params=p_transform,
                                                                    data_prep_fun=data_prep_function,
                                                                    rng=rng,
-                                                                   batch_size=1,
                                                                    patient_ids=valid_pids,
-                                                                   full_batch=True,
                                                                    random=False, infinite=False)
 
 

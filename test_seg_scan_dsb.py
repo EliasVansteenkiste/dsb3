@@ -75,7 +75,7 @@ print 'Data'
 print 'n samples: %d' % data_iterator.nsamples
 
 start_time = time.time()
-for n, (x, tf_matrix, pid) in enumerate(data_iterator.generate()):
+for n, (x, lung_mask, tf_matrix, pid) in enumerate(data_iterator.generate()):
     print '-------------------------------------'
     print n, pid
 
@@ -99,6 +99,9 @@ for n, (x, tf_matrix, pid) in enumerate(data_iterator.generate()):
         pad_width = (np.asarray(x.shape) - np.asarray(predictions_scan.shape)) / 2
         pad_width = [(p, p) for p in pad_width]
         predictions_scan = np.pad(predictions_scan, pad_width=pad_width, mode='constant')
+
+    if lung_mask is not None:
+        predictions_scan *= lung_mask
 
     print 'saved plot'
     print 'time since start:', (time.time() - start_time) / 60.

@@ -18,9 +18,9 @@ p_transform = {'patch_size': (64, 64, 64),
                'pixel_spacing': (1., 1., 1.)
                }
 p_transform_augment = {
-    'translation_range_z': [-12, 12],
-    'translation_range_y': [-12, 12],
-    'translation_range_x': [-12, 12],
+    'translation_range_z': [-16, 16],
+    'translation_range_y': [-16, 16],
+    'translation_range_x': [-16, 16],
     'rotation_range_z': [-180, 180],
     'rotation_range_y': [-180, 180],
     'rotation_range_x': [-180, 180]
@@ -37,7 +37,7 @@ def data_prep_function(data, patch_center, luna_annotations, pixel_spacing, luna
                                                                                p_transform_augment=p_transform_augment,
                                                                                pixel_spacing=pixel_spacing,
                                                                                luna_origin=luna_origin)
-    x = data_transforms.pixelnormHU(x)
+    x = data_transforms.hu2normHU(x)
     y = data_transforms.make_3d_mask_from_annotations(img_shape=x.shape, annotations=annotations_tf, shape='sphere')
     return x, y
 
@@ -74,7 +74,7 @@ save_every = int(0.5 * nchunks_per_epoch)
 learning_rate_schedule = {
     0: 1e-5,
     int(max_nchunks * 0.4): 5e-6,
-    int(max_nchunks * 0.5): 2e-6,
+    int(max_nchunks * 0.6): 2e-6,
     int(max_nchunks * 0.85): 1e-6,
     int(max_nchunks * 0.95): 5e-7
 }
@@ -83,7 +83,7 @@ learning_rate_schedule = {
 conv3d = partial(dnn.Conv3DDNNLayer,
                  filter_size=3,
                  pad='valid',
-                 W=nn.init.Orthogonal('relu'),
+                 W=nn.init.Orthogonal(),
                  b=nn.init.Constant(0.0),
                  nonlinearity=nn.nonlinearities.identity)
 
@@ -114,22 +114,19 @@ def build_model(patch_size=None):
     net['encode_3'] = conv_prelu_layer(net['encode_2'], base_n_filters)
     net['encode_4'] = conv_prelu_layer(net['encode_3'], base_n_filters)
 
-    net['upscale1'] = nn.layers.Upscale3DLayer(net['encode_4'], 2)
+    net['dropout_1'] = nn.layers.dropout_channels(net['encode_4'], p=0.1)
+
+    net['upscale1'] = nn.layers.Upscale3DLayer(net['dropout_1'], 2)
     net['concat1'] = nn.layers.ConcatLayer([net['upscale1'], net['contr_1_3']],
                                            cropping=(None, None, "center", "center", "center"))
 
-    net['dropout_1'] = nn.layers.dropout_channels(net['concat1'], p=0.25)
-
-    net['expand_1_1'] = conv_prelu_layer(net['dropout_1'], 2 * base_n_filters)
-    net['expand_1_2'] = conv_prelu_layer(net['expand_1_1'], base_n_filters)
+    net['expand_1_1'] = conv_prelu_layer(net['concat1'], 2 * base_n_filters)
+    net['expand_1_2'] = conv_prelu_layer(net['expand_1_1'], 2 * base_n_filters)
     net['expand_1_3'] = conv_prelu_layer(net['expand_1_2'], base_n_filters)
-    net['expand_1_4'] = conv_prelu_layer(net['expand_1_3'], base_n_filters)
-    net['expand_1_5'] = conv_prelu_layer(net['expand_1_4'], base_n_filters)
 
-    l_out = dnn.Conv3DDNNLayer(net['expand_1_5'], num_filters=1,
+    l_out = dnn.Conv3DDNNLayer(net['expand_1_3'], num_filters=1,
                                filter_size=1,
                                nonlinearity=nn.nonlinearities.sigmoid)
-
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 
 

@@ -70,7 +70,8 @@ def transform_scan3d(data, pixel_spacing, p_transform,
                      luna_annotations=None,
                      luna_origin=None,
                      p_transform_augment=None,
-                     world_coord_system=True):
+                     world_coord_system=True,
+                     lung_mask=None):
     mm_patch_size = np.asarray(p_transform['mm_patch_size'], dtype='float32')
     out_pixel_spacing = np.asarray(p_transform['pixel_spacing'])
 
@@ -98,6 +99,10 @@ def transform_scan3d(data, pixel_spacing, p_transform,
 
     data_out = apply_affine_transform(data, tf_total, order=1, output_shape=output_shape)
 
+    if lung_mask is not None:
+        lung_mask_out = apply_affine_transform(lung_mask, tf_total, order=1, output_shape=output_shape)
+        lung_mask_out[lung_mask_out > 0.] = 1.
+
     if luna_annotations is not None:
         annotatations_out = []
         for zyxd in luna_annotations:
@@ -110,9 +115,15 @@ def transform_scan3d(data, pixel_spacing, p_transform,
             zyxd_out = np.rint(np.append(voxel_coords_out, diameter_out))
             annotatations_out.append(zyxd_out)
         annotatations_out = np.asarray(annotatations_out)
-        return data_out, annotatations_out, tf_total
+        if lung_mask is None:
+            return data_out, annotatations_out, tf_total
+        else:
+            return data_out, annotatations_out, tf_total, lung_mask_out
 
-    return data_out, tf_total
+    if lung_mask is None:
+        return data_out, tf_total
+    else:
+        return data_out, tf_total, lung_mask_out
 
 
 def transform_patch3d(data, pixel_spacing, p_transform,

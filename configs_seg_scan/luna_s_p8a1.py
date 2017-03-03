@@ -5,11 +5,16 @@ import utils
 import string
 import numpy as np
 import lasagne as nn
-# IMPORT A CORRECT PATCH MODEL HERE
-import configs_seg_patch.luna_p9 as patch_config
+# TODO: IMPORT A CORRECT PATCH MODEL HERE
+import configs_seg_patch.luna_p8a1 as patch_config
+
+# print utils.get_script_name(__file__).split('_')[-1]
+# print patch_config.__name__.split('.')[-1]
+# assert utils.get_script_name(__file__).replace('_s*_', '_') == patch_config.__name__.split('.')[-1]
 
 rng = patch_config.rng
 
+# calculate the following things correctly!
 p_transform = {'patch_size': (416, 416, 416),
                'mm_patch_size': (416, 416, 416),
                'pixel_spacing': patch_config.p_transform['pixel_spacing']
@@ -17,9 +22,6 @@ p_transform = {'patch_size': (416, 416, 416),
 window_size = 160
 stride = 128
 n_windows = (p_transform['patch_size'][0] - window_size) / stride + 1
-print window_size
-print stride
-print n_windows
 
 valid_pids = patch_config.valid_pids
 
@@ -27,14 +29,14 @@ valid_pids = patch_config.valid_pids
 def data_prep_function(data, luna_annotations, pixel_spacing, luna_origin,
                        p_transform=p_transform,
                        p_transform_augment=None):
-    # MAKE SURE THAT DATA IS PREPROCESSED THE SAME WAY
+    # make sure the data is processed the same way 
     x, annotations_tf, tf_matrix = data_transforms.transform_scan3d(data=data,
                                                                     pixel_spacing=pixel_spacing,
                                                                     p_transform=p_transform,
                                                                     luna_annotations=luna_annotations,
                                                                     p_transform_augment=None,
                                                                     luna_origin=luna_origin)
-    x = data_transforms.hu2normHU(x)
+    x = data_transforms.pixelnormHU(x)
     y = data_transforms.make_3d_mask_from_annotations(img_shape=x.shape, annotations=annotations_tf, shape='sphere')
     return x, y, annotations_tf, tf_matrix
 
@@ -53,7 +55,7 @@ def build_model():
     metadata = utils.load_pkl(metadata_path)
 
     print 'Build model'
-    model = patch_config.build_model()
+    model = patch_config.build_model(patch_size=(window_size, window_size, window_size))
     all_layers = nn.layers.get_all_layers(model.l_out)
     num_params = nn.layers.count_params(model.l_out)
     print '  number of parameters: %d' % num_params

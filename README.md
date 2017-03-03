@@ -1,8 +1,7 @@
 # TODO
 
-- save scan segmentations together with pixel_spacing and origin 0 in .npz files?
-- look at the nodules we cannot detect
-- ordering of slices for kaggle data (Jonas)
+- luna_s_p8a1 compute scan segmentations
+
 
 
 ssh -X -p 10001 ikorshun@localhost

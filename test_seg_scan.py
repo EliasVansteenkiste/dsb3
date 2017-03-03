@@ -5,12 +5,13 @@ import theano
 import pathfinder
 import utils
 from configuration import config, set_configuration
-from utils_plots import plot_slice_3d_3
+from utils_plots import plot_slice_3d_4
 import theano.tensor as T
 import blobs_detection
 import logger
 import time
 import multiprocessing as mp
+import buffering
 
 
 def extract_candidates(predictions_scan, annotations, tf_matrix, pid, outputs_path):
@@ -95,12 +96,10 @@ print 'Data'
 print 'n samples: %d' % valid_data_iterator.nsamples
 
 start_time = time.time()
-for n, (x, y, id, annotations, transform_matrices) in enumerate(valid_data_iterator.generate()):
-    pid = id[0]
+for n, (x, y, lung_mask, annotations, tf_matrix, pid) in enumerate(
+        buffering.buffered_gen_threaded(valid_data_iterator.generate(), buffer_size=2)):
     print '-------------------------------------'
     print n, pid
-    annotations = annotations[0]
-    tf_matrix = transform_matrices[0]
 
     predictions_scan = np.zeros((1, 1, n_windows * stride, n_windows * stride, n_windows * stride))
 
@@ -123,9 +122,13 @@ for n, (x, y, id, annotations, transform_matrices) in enumerate(valid_data_itera
         pad_width = [(p, p) for p in pad_width]
         predictions_scan = np.pad(predictions_scan, pad_width=pad_width, mode='constant')
 
+    if lung_mask is not None:
+        predictions_scan *= lung_mask
+
     for nodule_n, zyxd in enumerate(annotations):
-        plot_slice_3d_3(input=x[0, 0], mask=y[0, 0], prediction=predictions_scan[0, 0],
-                        axis=0, pid='-'.join([str(n), str(nodule_n), str(id[0])]),
+        plot_slice_3d_4(input=x[0, 0], mask=y[0, 0], prediction=predictions_scan[0, 0],
+                        lung_mask=lung_mask[0, 0] if lung_mask is not None else x[0, 0],
+                        axis=0, pid='-'.join([str(n), str(nodule_n), str(pid)]),
                         img_dir=outputs_path, idx=zyxd)
     print 'saved plot'
     print 'time since start:', (time.time() - start_time) / 60.
