@@ -9,11 +9,19 @@ import lasagne.layers.dnn as dnn
 import lasagne
 import theano.tensor as T
 import utils
+import glob
+import utils_lung
+
 # TODO: import correct config here
-import configs_fpred_scan.dsb_c1_s_p8 as candidates_config
+candidates_config = 'dsb_c1_s_p8'
 
 restart_from_save = None
 rng = np.random.RandomState(42)
+
+predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
+candidates_path = predictions_dir + '/%s' % candidates_config
+
+id2candidates = utils_lung.load_pkl_candidates(candidates_path)
 
 # transformations
 p_transform = {'patch_size': (48, 48, 48),
@@ -28,47 +36,45 @@ p_transform_augment = {
     'rotation_range_y': [-180, 180],
     'rotation_range_x': [-180, 180]
 }
+n_candidates_per_patient = 8
 
 
 def data_prep_function(data, patch_centers, pixel_spacing, p_transform,
-                       p_transform_augment, world_coord_system, **kwargs):
-    x = data_transforms.transform_scan3d(data=data,
-                                         luna_annotations=None,
-                                         p_transform=p_transform,
-                                         p_transform_augment=p_transform_augment,
-                                         pixel_spacing=pixel_spacing,
-                                         world_coord_system=world_coord_system)
+                       p_transform_augment, **kwargs):
+    x = data_transforms.transform_dsb_candidates(data=data,
+                                                 patch_centers=patch_centers,
+                                                 p_transform=p_transform,
+                                                 p_transform_augment=p_transform_augment,
+                                                 pixel_spacing=pixel_spacing)
     x = data_transforms.pixelnormHU(x)
-    # TODO x has to be a (n_patches, z, y, x)
     return x
 
 
-data_prep_function_train = partial(data_prep_function, p_transform_augment=p_transform_augment,
-                                   p_transform=p_transform, world_coord_system=True)
+data_prep_function_train = partial(data_prep_function, p_transform_augment=None, # TODO!!!!!
+                                   p_transform=p_transform)
 data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
-                                   p_transform=p_transform, world_coord_system=True)
+                                   p_transform=p_transform)
 
 # data iterators
 batch_size = 4
 nbatches_chunk = 8
 chunk_size = batch_size * nbatches_chunk
 
-train_valid_ids = utils.load_pkl(pathfinder.LUNA_VALIDATION_SPLIT_PATH)
-train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['valid']
+# train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
+# train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['valid']
 
-train_data_iterator = data_iterators.CandidatesLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
-                                                                 batch_size=chunk_size,
-                                                                 transform_params=p_transform,
-                                                                 data_prep_fun=data_prep_function_train,
-                                                                 rng=rng,
-                                                                 patient_ids=train_pids,
-                                                                 full_batch=True, random=True, infinite=True,
-                                                                 positive_proportion=0.5)
+train_pids = None
 
-valid_data_iterator = data_iterators.CandidatesLunaValidDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
-                                                                      transform_params=p_transform,
-                                                                      data_prep_fun=data_prep_function_valid,
-                                                                      patient_ids=valid_pids)
+train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
+                                                              transform_params=p_transform,
+                                                              n_candidates_per_patient=n_candidates_per_patient,
+                                                              data_prep_fun=data_prep_function_train,
+                                                              id2candidates=id2candidates,
+                                                              rng=rng,
+                                                              patient_ids=train_pids,
+                                                              random=True, infinite=True)
+
+valid_data_iterator = train_data_iterator
 
 nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
 max_nchunks = nchunks_per_epoch * 100
@@ -104,7 +110,7 @@ dense = partial(lasagne.layers.DenseLayer,
 
 
 def build_model():
-    l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
+    l_in = nn.layers.InputLayer((n_candidates_per_patient, 1,) + p_transform['patch_size'])
     l_target = nn.layers.InputLayer((None, 1))
 
     l = conv3(l_in, num_filters=128)

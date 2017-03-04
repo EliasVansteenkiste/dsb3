@@ -1,6 +1,7 @@
 # TODO
 
-- luna_s_p8a1 compute scan segmentations
+- make validation split for dsb
+- filter blobs that are too close to each other 
 
 
 
@@ -28,3 +29,14 @@ max yx: (u'1.3.6.1.4.1.14519.5.2.1.6279.6001.202811684116768680758082619196', ar
 ## NEED TO CHECK
 LUNA, strange image border: 1-1.3.6.1.4.1.14519.5.2.1.6279.6001.249530219848512542668813996730 
 LUNA 0-1.3.6.1.4.1.14519.5.2.1.6279.6001.233001470265230594739708503198
+
+
+
+## LUNA
+generate blobs: test_seg_scan.py  
+probabilities for blobs (fpred): test_fpred_scan.py
+stats over segmentation blobs: evaluate_luna_seg_scan.py
+stats over fpred: evaluate_luna_fpred_scan.py
+
+
+

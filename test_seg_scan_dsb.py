@@ -11,6 +11,7 @@ import blobs_detection
 import logger
 import time
 import multiprocessing as mp
+import buffering
 
 
 def extract_candidates(predictions_scan, tf_matrix, pid, outputs_path):
@@ -75,7 +76,8 @@ print 'Data'
 print 'n samples: %d' % data_iterator.nsamples
 
 start_time = time.time()
-for n, (x, lung_mask, tf_matrix, pid) in enumerate(data_iterator.generate()):
+for n, (x, lung_mask, tf_matrix, pid) in enumerate(
+        buffering.buffered_gen_threaded(data_iterator.generate(), buffer_size=2)):
     print '-------------------------------------'
     print n, pid
 

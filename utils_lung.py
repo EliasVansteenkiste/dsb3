@@ -64,6 +64,7 @@ def luna_extract_pid(patient_data_path, replace_str='.mhd'):
 def load_pkl_candidates(path):
     id2candidates = {}
     file_paths = sorted(glob.glob(path + '/*.pkl'))
+    print file_paths
     for p in file_paths:
         pid = luna_extract_pid(p, '.pkl')
         blobs = utils.load_pkl(p)

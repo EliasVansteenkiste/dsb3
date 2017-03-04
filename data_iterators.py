@@ -358,10 +358,10 @@ class FixedCandidatesLunaDataGenerator(object):
 
     def generate(self):
 
-        # for pid in self.id2candidates.iterkeys():
-        for pid in ['1.3.6.1.4.1.14519.5.2.1.6279.6001.247060297988514823071467295949',
-                    '1.3.6.1.4.1.14519.5.2.1.6279.6001.295420274214095686326263147663',
-                    '1.3.6.1.4.1.14519.5.2.1.6279.6001.143412474064515942785157561636']:
+        for pid in self.id2candidates.iterkeys():
+            # for pid in ['1.3.6.1.4.1.14519.5.2.1.6279.6001.247060297988514823071467295949',
+            #             '1.3.6.1.4.1.14519.5.2.1.6279.6001.295420274214095686326263147663',
+            #             '1.3.6.1.4.1.14519.5.2.1.6279.6001.143412474064515942785157561636']:
             patient_path = self.id2patient_path[pid]
             print 'PATIENT', pid
             print 'n blobs', len(self.id2candidates[pid])
@@ -456,6 +456,7 @@ class DSBPatientsDataGenerator(object):
                  n_candidates_per_patient, rng, random, infinite, patient_ids=None, **kwargs):
 
         self.id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
+        print self.id2label
         self.id2candidates = id2candidates
         self.patient_paths = []
         if patient_ids is not None:
@@ -463,7 +464,8 @@ class DSBPatientsDataGenerator(object):
                 self.patient_paths.append(data_path + '/' + pid)
         else:
             for pid in self.id2candidates.iterkeys():
-                self.patient_paths.append(data_path + '/' + pid)
+                if pid in self.id2label.keys():  # TODO remove
+                    self.patient_paths.append(data_path + '/' + pid)
 
         self.nsamples = len(self.patient_paths)
         self.data_path = data_path
@@ -488,8 +490,14 @@ class DSBPatientsDataGenerator(object):
 
                 img, pixel_spacing = utils_lung.read_dicom_scan(patient_path)
 
+                all_candidates = self.id2candidates[pid]
+                all_candidates = np.asarray(sorted(all_candidates, key=lambda x: x[-1],
+                                                   reverse=True))
+                top_candidates = all_candidates[:self.n_candidates_per_patient]
+                print top_candidates
+
                 x = np.float32(self.data_prep_fun(data=img,
-                                                  patch_centers=self.id2candidates[pid],
+                                                  patch_centers=top_candidates,
                                                   pixel_spacing=pixel_spacing))[:, None, :, :, :]
 
                 yield x, y, pid

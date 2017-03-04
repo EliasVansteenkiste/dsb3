@@ -8,18 +8,17 @@ import lasagne as nn
 import utils_lung
 
 # TODO: IMPORT A CORRECT PATCH CLASSIFICATION MODEL HERE
-seg_config_name = 'dsb_s_p8'
+seg_config_name = 'luna_s2_p8a1'
 
 # TODO: IMPORT A CORRECT PATCH CLASSIFICATION MODEL HERE
-import configs_fpred_patch.luna_c1 as patch_class_config
+import configs_fpred_patch.luna_c3 as patch_class_config
 
 p_transform = patch_class_config.p_transform
 
 data_prep_function = patch_class_config.partial(patch_class_config.data_prep_function,
                                                 p_transform_augment=None,
                                                 p_transform=p_transform,
-                                                world_coord_system=False,
-                                                luna_origin=None)
+                                                world_coord_system=False)
 
 rng = patch_class_config.rng
 
@@ -28,10 +27,10 @@ predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PA
 segmentation_outputs_path = predictions_dir + '/%s' % seg_config_name
 id2candidates = utils_lung.load_pkl_candidates(segmentation_outputs_path)
 
-data_iterator = data_iterators.CandidatesDSBDataGenerator(data_path=pathfinder.DATA_PATH,
-                                                          transform_params=p_transform,
-                                                          data_prep_fun=data_prep_function,
-                                                          id2candidates=id2candidates)
+data_iterator = data_iterators.FixedCandidatesLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
+                                                                transform_params=p_transform,
+                                                                data_prep_fun=data_prep_function,
+                                                                id2candidates=id2candidates)
 
 
 def build_model():

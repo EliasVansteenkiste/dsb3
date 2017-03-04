@@ -190,8 +190,7 @@ def transform_patch3d(data, pixel_spacing, p_transform,
 
 
 def transform_dsb_candidates(data, patch_centers, pixel_spacing, p_transform,
-                             p_transform_augment=None,
-                             world_coord_system=True):
+                             p_transform_augment=None):
     mm_patch_size = np.asarray(p_transform['mm_patch_size'], dtype='float32')
     out_pixel_spacing = np.asarray(p_transform['pixel_spacing'])
 
@@ -199,51 +198,28 @@ def transform_dsb_candidates(data, patch_centers, pixel_spacing, p_transform,
     mm_shape = input_shape * pixel_spacing / out_pixel_spacing
     output_shape = p_transform['patch_size']
 
-    # here we give parameters to affine transform as if it's T in
-    # output = T.dot(input)
-    # https://www.cs.mtu.edu/~shene/COURSES/cs3621/NOTES/geometry/geo-tran.html
-    # but the affine_transform() makes it reversed for scipy
-    tf_mm_scale = affine_transform(scale=mm_shape / input_shape)
-    tf_shift_center = affine_transform(translation=-mm_shape / 2.)
+    patches_out = []
+    for zyxd in patch_centers:
+        zyx = np.array(zyxd[:3])
+        zyx_mm = zyx * mm_shape / input_shape
 
-    tf_shift_uncenter = affine_transform(translation=mm_patch_size / 2.)
-    tf_output_scale = affine_transform(scale=output_shape / mm_patch_size)
+        tf_mm_scale = affine_transform(scale=mm_shape / input_shape)
+        tf_shift_center = affine_transform(translation=-zyx_mm)
+        tf_shift_uncenter = affine_transform(translation=mm_patch_size / 2.)
+        tf_output_scale = affine_transform(scale=output_shape / mm_patch_size)
 
-    if p_transform_augment:
-        augment_params_sample = sample_augmentation_parameters(p_transform_augment)
-        tf_augment = affine_transform(translation=augment_params_sample.translation,
-                                      rotation=augment_params_sample.rotation)
-        tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_augment).dot(tf_shift_uncenter).dot(tf_output_scale)
-    else:
-        tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_shift_uncenter).dot(tf_output_scale)
-
-    data_out = apply_affine_transform(data, tf_total, order=1, output_shape=output_shape)
-
-    if lung_mask is not None:
-        lung_mask_out = apply_affine_transform(lung_mask, tf_total, order=1, output_shape=output_shape)
-        lung_mask_out[lung_mask_out > 0.] = 1.
-
-    if luna_annotations is not None:
-        annotatations_out = []
-        for zyxd in luna_annotations:
-            zyx = np.array(zyxd[:3])
-            voxel_coords = utils_lung.world2voxel(zyx, luna_origin, pixel_spacing) if world_coord_system else zyx
-            voxel_coords = np.append(voxel_coords, [1])
-            voxel_coords_out = np.linalg.inv(tf_total).dot(voxel_coords)[:3]
-            diameter_mm = zyxd[-1]
-            diameter_out = diameter_mm * output_shape[1] / mm_patch_size[1] / out_pixel_spacing[1]
-            zyxd_out = np.rint(np.append(voxel_coords_out, diameter_out))
-            annotatations_out.append(zyxd_out)
-        annotatations_out = np.asarray(annotatations_out)
-        if lung_mask is None:
-            return data_out, annotatations_out, tf_total
+        if p_transform_augment:
+            augment_params_sample = sample_augmentation_parameters(p_transform_augment)
+            tf_augment = affine_transform(translation=augment_params_sample.translation,
+                                          rotation=augment_params_sample.rotation)
+            tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_augment).dot(tf_shift_uncenter).dot(tf_output_scale)
         else:
-            return data_out, annotatations_out, tf_total, lung_mask_out
+            tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_shift_uncenter).dot(tf_output_scale)
 
-    if lung_mask is None:
-        return data_out, tf_total
-    else:
-        return data_out, tf_total, lung_mask_out
+        patch_out = apply_affine_transform(data, tf_total, order=1, output_shape=output_shape)
+        patches_out.append(patch_out[None, :, :, :])
+
+    return np.concatenate(patches_out, axis=0)
 
 
 def make_3d_mask(img_shape, center, radius, shape='sphere'):
