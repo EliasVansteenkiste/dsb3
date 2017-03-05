@@ -70,3 +70,10 @@ for n, (x, candidate_zyxd, id) in enumerate(data_iterator.generate()):
     candidates.append(candidate_zyxdp)
 
     prev_pid = pid
+
+# save the last one
+print patients_count, prev_pid, len(candidates)
+candidates = np.asarray(candidates)
+a = np.asarray(sorted(candidates, key=lambda x: x[-1], reverse=True))
+utils.save_pkl(a, outputs_path + '/%s.pkl' % prev_pid)
+print 'saved predictions'

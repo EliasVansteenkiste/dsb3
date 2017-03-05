@@ -8,10 +8,10 @@ import lasagne as nn
 import utils_lung
 
 # TODO: IMPORT A CORRECT PATCH CLASSIFICATION MODEL HERE
-seg_config_name = 'dsb_s_p8'
+seg_config_name = 'dsb_s2_p8a1'
 
 # TODO: IMPORT A CORRECT PATCH CLASSIFICATION MODEL HERE
-import configs_fpred_patch.luna_c1 as patch_class_config
+import configs_fpred_patch.luna_c3 as patch_class_config
 
 p_transform = patch_class_config.p_transform
 
@@ -27,6 +27,7 @@ rng = patch_class_config.rng
 predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
 segmentation_outputs_path = predictions_dir + '/%s' % seg_config_name
 id2candidates = utils_lung.load_pkl_candidates(segmentation_outputs_path)
+print id2candidates.keys()
 
 data_iterator = data_iterators.CandidatesDSBDataGenerator(data_path=pathfinder.DATA_PATH,
                                                           transform_params=p_transform,

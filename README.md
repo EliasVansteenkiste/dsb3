@@ -39,4 +39,11 @@ stats over segmentation blobs: evaluate_luna_seg_scan.py
 stats over fpred: evaluate_luna_fpred_scan.py
 
 
+## DSB
+
+generate blobs: test_seg_scan_dsb.py
+fpred: test_fpred_scan_dsb.py
+plot rois as in the final data iterator: plot_dsb_roi.py
+
+
 

@@ -13,7 +13,6 @@ import theano.tensor as T
 import buffering
 from configuration import config, set_configuration
 import pathfinder
-import utils_plots
 
 theano.config.warn_float64 = 'raise'
 
@@ -30,10 +29,6 @@ print
 # metadata
 metadata_dir = utils.get_dir_path('models', pathfinder.METADATA_PATH)
 metadata_path = metadata_dir + '/%s.pkl' % expid
-
-predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
-outputs_path = predictions_dir + '/%s' % config_name
-utils.auto_make_dir(outputs_path)
 
 # logs
 logs_dir = utils.get_dir_path('logs', pathfinder.METADATA_PATH)
@@ -65,23 +60,16 @@ updates = config().build_updates(train_loss, model, learning_rate)
 x_shared = nn.utils.shared_empty(dim=len(model.l_in.shape))
 y_shared = nn.utils.shared_empty(dim=len(model.l_target.shape))
 
-idx = T.lscalar('idx')
 givens_train = {}
-givens_train[model.l_in.input_var] = x_shared[idx * config().batch_size:(idx + 1) * config().batch_size]
-givens_train[model.l_target.input_var] = y_shared[idx * config().batch_size:(idx + 1) * config().batch_size]
+givens_train[model.l_in.input_var] = x_shared
+givens_train[model.l_target.input_var] = y_shared
 
 givens_valid = {}
 givens_valid[model.l_in.input_var] = x_shared
 givens_valid[model.l_target.input_var] = y_shared
 
 # theano functions
-iter_train = theano.function([idx], train_loss, givens=givens_train, updates=updates)
-iter_get_predictions = theano.function([idx], nn.layers.get_output(model.l_out), givens=givens_train,
-                                       on_unused_input='ignore')
-iter_get_targets = theano.function([idx], nn.layers.get_output(model.l_target), givens=givens_train,
-                                   on_unused_input='ignore')
-iter_get_inputs = theano.function([idx], nn.layers.get_output(model.l_in), givens=givens_train,
-                                  on_unused_input='ignore')
+iter_train = theano.function([], train_loss, givens=givens_train, updates=updates)
 iter_validate = theano.function([], valid_loss, givens=givens_valid)
 
 if config().restart_from_save:
@@ -117,89 +105,81 @@ chunk_idx = 0
 start_time = time.time()
 prev_time = start_time
 tmp_losses_train = []
+losses_train_print = []
 
-# use buffering.buffered_gen_threaded()
-for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs,  # buffering.buffered_gen_threaded(
-                                                                train_data_iterator.generate()):
+for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buffering.buffered_gen_threaded(
+        train_data_iterator.generate())):
     if chunk_idx in learning_rate_schedule:
         lr = np.float32(learning_rate_schedule[chunk_idx])
         print '  setting learning rate to %.7f' % lr
         print
         learning_rate.set_value(lr)
 
-    print id_train
-    print x_chunk_train.shape
+    # load chunk to GPU
+    x_shared.set_value(x_chunk_train)
+    y_shared.set_value(y_chunk_train)
 
-    for i in xrange(x_chunk_train.shape[0]):
-        utils_plots.plot_slice_3d_3(input=x_chunk_train[i, 0], mask=x_chunk_train[i, 0],
-                                    prediction=x_chunk_train[i, 0],
-                                    axis=0, pid='-'.join([str(id_train), str(i)]),
-                                    img_dir=outputs_path,
-                                    idx=np.array(x_chunk_train[i, 0].shape) / 2)
+    # make nbatches_chunk iterations
 
-        # # load chunk to GPU
-        # x_shared.set_value(x_chunk_train)
-        # y_shared.set_value(y_chunk_train)
-        #
-        # # make nbatches_chunk iterations
-        # chunk_train_losses = []
-        # for b in xrange(config().nbatches_chunk):
-        #     loss = iter_train(b)
-        #     chunk_train_losses.append(loss)
-        #     tmp_losses_train.append(loss)
-        # print chunk_idx, np.mean(chunk_train_losses)
-        #
-        # if ((chunk_idx + 1) % config().validate_every) == 0:
-        #     print
-        #     print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks)
-        #     # calculate mean train loss since the last validation phase
-        #     mean_train_loss = np.mean(tmp_losses_train)
-        #     print 'Mean train loss: %7f' % mean_train_loss
-        #     losses_eval_train.append(mean_train_loss)
-        #     tmp_losses_train = []
-        #
-        #     # load validation data to GPU
-        #     tmp_losses_valid = []
-        #     for i, (x_chunk_valid, y_chunk_valid, ids_batch) in enumerate(
-        #             buffering.buffered_gen_threaded(valid_data_iterator.generate(),
-        #                                             buffer_size=2)):
-        #         x_shared.set_value(x_chunk_valid)
-        #         y_shared.set_value(y_chunk_valid)
-        #         l_valid = iter_validate()
-        #         print i, l_valid
-        #         tmp_losses_valid.append(l_valid)
-        #
-        #     # calculate validation loss across validation set
-        #     valid_loss = np.mean(tmp_losses_valid)
-        #     # TODO: taking mean is not correct if chunks have different sizes!!!
-        #     print 'Validation loss: ', valid_loss
-        #     losses_eval_valid.append(valid_loss)
-        #
-        #     now = time.time()
-        #     time_since_start = now - start_time
-        #     time_since_prev = now - prev_time
-        #     prev_time = now
-        #     est_time_left = time_since_start * (config().max_nchunks - chunk_idx + 1.) / (chunk_idx + 1. - start_chunk_idx)
-        #     eta = datetime.now() + timedelta(seconds=est_time_left)
-        #     eta_str = eta.strftime("%c")
-        #     print "  %s since start (%.2f s)" % (utils.hms(time_since_start), time_since_prev)
-        #     print "  estimated %s to go (ETA: %s)" % (utils.hms(est_time_left), eta_str)
-        #     print
-        #
-        # if ((chunk_idx + 1) % config().save_every) == 0:
-        #     print
-        #     print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks)
-        #     print 'Saving metadata, parameters'
-        #
-        #     with open(metadata_path, 'w') as f:
-        #         pickle.dump({
-        #             'configuration_file': config_name,
-        #             'git_revision_hash': utils.get_git_revision_hash(),
-        #             'experiment_id': expid,
-        #             'chunks_since_start': chunk_idx,
-        #             'losses_eval_train': losses_eval_train,
-        #             'losses_eval_valid': losses_eval_valid,
-        #             'param_values': nn.layers.get_all_param_values(model.l_out)
-        #         }, f, pickle.HIGHEST_PROTOCOL)
-        #         print '  saved to %s' % metadata_path
-        #         print
+    loss = iter_train()
+    print loss, y_chunk_train, id_train
+    tmp_losses_train.append(loss)
+    losses_train_print.append(loss)
+
+    if (chunk_idx + 1) % 10 == 0:
+        print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks), np.mean(losses_train_print)
+        losses_train_print = []
+
+    if ((chunk_idx + 1) % config().validate_every) == 0:
+        print
+        print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks)
+        # calculate mean train loss since the last validation phase
+        mean_train_loss = np.mean(tmp_losses_train)
+        print 'Mean train loss: %7f' % mean_train_loss
+        losses_eval_train.append(mean_train_loss)
+        tmp_losses_train = []
+
+        # load validation data to GPU
+        tmp_losses_valid = []
+        for i, (x_chunk_valid, y_chunk_valid, ids_batch) in enumerate(
+                buffering.buffered_gen_threaded(valid_data_iterator.generate(),
+                                                buffer_size=2)):
+            x_shared.set_value(x_chunk_valid)
+            y_shared.set_value(y_chunk_valid)
+            l_valid = iter_validate()
+            print i, l_valid
+            tmp_losses_valid.append(l_valid)
+
+        # calculate validation loss across validation set
+        valid_loss = np.mean(tmp_losses_valid)
+        print 'Validation loss: ', valid_loss
+        losses_eval_valid.append(valid_loss)
+
+        now = time.time()
+        time_since_start = now - start_time
+        time_since_prev = now - prev_time
+        prev_time = now
+        est_time_left = time_since_start * (config().max_nchunks - chunk_idx + 1.) / (chunk_idx + 1. - start_chunk_idx)
+        eta = datetime.now() + timedelta(seconds=est_time_left)
+        eta_str = eta.strftime("%c")
+        print "  %s since start (%.2f s)" % (utils.hms(time_since_start), time_since_prev)
+        print "  estimated %s to go (ETA: %s)" % (utils.hms(est_time_left), eta_str)
+        print
+
+    if ((chunk_idx + 1) % config().save_every) == 0:
+        print
+        print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks)
+        print 'Saving metadata, parameters'
+
+        with open(metadata_path, 'w') as f:
+            pickle.dump({
+                'configuration_file': config_name,
+                'git_revision_hash': utils.get_git_revision_hash(),
+                'experiment_id': expid,
+                'chunks_since_start': chunk_idx,
+                'losses_eval_train': losses_eval_train,
+                'losses_eval_valid': losses_eval_valid,
+                'param_values': nn.layers.get_all_param_values(model.l_out)
+            }, f, pickle.HIGHEST_PROTOCOL)
+            print '  saved to %s' % metadata_path
+            print

@@ -456,7 +456,6 @@ class DSBPatientsDataGenerator(object):
                  n_candidates_per_patient, rng, random, infinite, patient_ids=None, **kwargs):
 
         self.id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
-        print self.id2label
         self.id2candidates = id2candidates
         self.patient_paths = []
         if patient_ids is not None:
@@ -486,15 +485,15 @@ class DSBPatientsDataGenerator(object):
 
                 patient_path = self.patient_paths[idx]
                 pid = utils_lung.extract_pid(patient_path)
-                y = self.id2label[pid]
+                y = np.array([self.id2label[pid]], dtype='float32')
 
                 img, pixel_spacing = utils_lung.read_dicom_scan(patient_path)
 
                 all_candidates = self.id2candidates[pid]
-                all_candidates = np.asarray(sorted(all_candidates, key=lambda x: x[-1],
-                                                   reverse=True))
+                # all_candidates = np.asarray(sorted(all_candidates, key=lambda x: x[-1],
+                #                                    reverse=True))
                 top_candidates = all_candidates[:self.n_candidates_per_patient]
-                print top_candidates
+                # print top_candidates
 
                 x = np.float32(self.data_prep_fun(data=img,
                                                   patch_centers=top_candidates,
