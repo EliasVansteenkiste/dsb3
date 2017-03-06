@@ -108,7 +108,7 @@ def in_mask(roi, ct_scan):
     d2_segmentation_mask = segment_HU_scan_2d(pixelnormHU_01(ct_scan[:,:,roi[2]]))
 
     #Construct 2D spherical mask
-    r_mask=1
+    r_mask=0
     dim_mask = 2*r_mask+1
     spherical_mask = np.zeros((dim_mask,dim_mask))
     for x in range(dim_mask):
