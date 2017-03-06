@@ -201,8 +201,6 @@ def check_in_mask(segmentation_mask, spherical_mask, r_mask, l_x, h_x, l_y, h_y)
 		spherical_mask = spherical_mask[:,:max_y-h_y]
 		h_y = max_y
 
-	print 'spherical_mask.shape', spherical_mask.shape
-
 	return np.sum(spherical_mask*segmentation_mask[l_x:h_x,l_y:h_y]) > 0
 
 
