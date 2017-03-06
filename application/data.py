@@ -3,7 +3,7 @@ import csv
 import random
 from os import path
 import dicom
-
+import cPickle as pickle
 import numpy as np
 
 from interfaces.data_loader import StandardDataLoader, TRAINING, VALIDATION, TEST, INPUT, OUTPUT, TRAIN
@@ -63,7 +63,7 @@ class PatientDataLoader(StandardDataLoader):
         random.seed(317070)
         ids_per_label = [[patient_id for patient_id,label in labels.iteritems() if label==l] for l in [0,1]]
         validation_patients = sum([random.sample(sorted(ids), int(VALIDATION_SET_SIZE*len(ids))) for ids in ids_per_label],[])
-
+        pickle.dump(validation_patients, open('validation_patients.pkl','w'))
         # make the static data empty
         for s in self.datasets:
             self.data[s] = []

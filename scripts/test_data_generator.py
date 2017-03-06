@@ -1,3 +1,4 @@
+from application.data import PatientDataLoader
 from application.luna import LunaDataLoader
 from application.preprocessors.in_the_middle import PutInTheMiddle
 from application.preprocessors.lio_augmentation import LioAugment
@@ -36,17 +37,12 @@ augmentation_parameters = {
 }
 
 preprocessors = [
-    LioAugment(tags=[])
-                 #RescaleInput(input_scale=(0,255), output_scale=(0.0, 1.0)),
-                 #AugmentInput(output_shape=(160,120),**augmentation_parameters),
-                 #NormalizeInput(num_samples=100),
-
 ]
 
 #####################
 #     training      #
 #####################
-training_data = LunaDataLoader(sets=TRAINING,
+training_data = PatientDataLoader(sets=TRAINING,
                                  epochs=1,
                                  preprocessors=preprocessors,
                                  multiprocess=False,

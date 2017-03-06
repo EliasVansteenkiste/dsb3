@@ -206,7 +206,7 @@ class LunaDataLoader(StandardDataLoader):
     @staticmethod
     def world_to_voxel_coordinates(world_coord, origin, spacing):
         # TODO: this np.absolute is so weird....
-        stretched_voxel_coord = np.absolute(world_coord - origin)
+        stretched_voxel_coord = np.absolute(np.array(world_coord) - np.array(origin))
         voxel_coord = stretched_voxel_coord / spacing
         return voxel_coord
 
@@ -262,10 +262,11 @@ class BcolzLunaDataLoader(LunaDataLoader):
         In this case, only filenames are loaded prematurely
         :return:
         """
-        print "previous bcolz nthreads:", bcolz.set_nthreads(1);
 
         # step 0: load only when not loaded yet
         if TRAINING in self.data and VALIDATION in self.data: return
+
+        print "previous bcolz nthreads:", bcolz.set_nthreads(1)
 
         # step 1: load the file names
         patients = sorted(glob.glob(self.location+'/*.*/'))
@@ -381,6 +382,12 @@ class BcolzLunaDataLoader(LunaDataLoader):
 
             if "shape" in tags:
                 sample[INPUT][tag] = volume.shape
+
+            if "labels" in tags:
+                sample[INPUT][tag] = self.labels[set][sample_index]
+
+            if "origin" in tags:
+                sample[INPUT][tag] = self.origins[set][sample_index]
 
         for tag in output_keys_to_do:
             tags = tag.split(':')
