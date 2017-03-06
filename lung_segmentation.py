@@ -83,6 +83,7 @@ def segment_HU_scan_fred(x):
 
         # threshold grey values
         t = 0.25
-        binary = closed < t
+        mask[iz] = closed < t
 
-    return binary
+
+    return mask
