@@ -27,7 +27,7 @@ tp = 0
 n_pos = 0
 n_blobs = 0
 for p in blob_files:
-    pid = utils_lung.luna_extract_pid(p, '.pkl')
+    pid = utils_lung.extract_pid_filename(p, '.pkl')
     blobs = utils.load_pkl(p)
     n_blobs += len(blobs)
     print pid

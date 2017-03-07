@@ -53,19 +53,19 @@ def read_dicom(path):
     return np.array(d.pixel_array), metadata
 
 
-def extract_pid(patient_data_path):
+def extract_pid_dir(patient_data_path):
     return patient_data_path.split('/')[-1]
 
 
-def luna_extract_pid(patient_data_path, replace_str='.mhd'):
-    return os.path.basename(patient_data_path).replace(replace_str, '').replace('pkl', '')
+def extract_pid_filename(file_path, replace_str='.mhd'):
+    return os.path.basename(file_path).replace(replace_str, '').replace('.pkl', '')
 
 
 def load_pkl_candidates(path):
     id2candidates = {}
     file_paths = sorted(glob.glob(path + '/*.pkl'))
     for p in file_paths:
-        pid = luna_extract_pid(p, '.pkl')
+        pid = extract_pid_filename(p, '.pkl')
         blobs = utils.load_pkl(p)
         id2candidates[pid] = blobs
     return id2candidates

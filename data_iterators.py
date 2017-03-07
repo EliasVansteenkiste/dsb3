@@ -31,7 +31,7 @@ class LunaDataGenerator(object):
                 idx = rand_idxs[pos]
 
                 patient_path = self.patient_paths[idx]
-                pid = utils_lung.luna_extract_pid(patient_path)
+                pid = utils_lung.extract_pid_filename(patient_path)
 
                 img, origin, pixel_spacing = utils_lung.read_mhd(patient_path)
                 x, y, annotations, tf_matrix = self.data_prep_fun(data=img,
@@ -54,7 +54,7 @@ class LunaScanPositiveDataGenerator(LunaDataGenerator):
                  random, infinite, patient_ids=None, **kwargs):
         super(LunaScanPositiveDataGenerator, self).__init__(data_path, transform_params, data_prep_fun, rng,
                                                             random, infinite, patient_ids, **kwargs)
-        patient_ids_all = [utils_lung.luna_extract_pid(p) for p in self.patient_paths]
+        patient_ids_all = [utils_lung.extract_pid_filename(p) for p in self.patient_paths]
         patient_ids_pos = [pid for pid in patient_ids_all if pid in self.id2annotations.keys()]
         self.patient_paths = [data_path + '/' + p + '.mhd' for p in patient_ids_pos]
         self.nsamples = len(self.patient_paths)
@@ -76,7 +76,7 @@ class LunaScanPositiveLungMaskDataGenerator(LunaScanPositiveDataGenerator):
                 idx = rand_idxs[pos]
 
                 patient_path = self.patient_paths[idx]
-                pid = utils_lung.luna_extract_pid(patient_path)
+                pid = utils_lung.extract_pid_filename(patient_path)
 
                 img, origin, pixel_spacing = utils_lung.read_mhd(patient_path)
                 x, y, lung_mask, annotations, tf_matrix = self.data_prep_fun(data=img,
@@ -107,7 +107,7 @@ class PatchPositiveLunaDataGenerator(object):
             patient_paths = utils_lung.get_patient_data_paths(data_path)
             self.patient_paths = [p for p in patient_paths if '.mhd' in p]
 
-        patient_ids_all = [utils_lung.luna_extract_pid(p) for p in self.patient_paths]
+        patient_ids_all = [utils_lung.extract_pid_filename(p) for p in self.patient_paths]
         patient_ids_pos = [pid for pid in patient_ids_all if pid in self.id2annotations.keys()]
         self.patient_paths = [data_path + '/' + p + '.mhd' for p in patient_ids_pos]
 
@@ -136,7 +136,7 @@ class PatchPositiveLunaDataGenerator(object):
 
                 for i, idx in enumerate(idxs_batch):
                     patient_path = self.patient_paths[idx]
-                    id = utils_lung.luna_extract_pid(patient_path)
+                    id = utils_lung.extract_pid_filename(patient_path)
                     patients_ids.append(id)
                     img, origin, pixel_spacing = utils_lung.read_mhd(patient_path)
 
@@ -247,7 +247,7 @@ class CandidatesLunaDataGenerator(object):
                 for i, idx in enumerate(idxs_batch):
                     patient_path = self.patient_paths[idx]
 
-                    id = utils_lung.luna_extract_pid(patient_path, self.file_extension)
+                    id = utils_lung.extract_pid_filename(patient_path, self.file_extension)
                     patients_ids.append(id)
 
                     img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
@@ -390,7 +390,7 @@ class DSBScanDataGenerator(object):
 
     def generate(self):
         for p in self.patient_paths:
-            pid = utils_lung.extract_pid(p)
+            pid = utils_lung.extract_pid_dir(p)
 
             img, pixel_spacing = utils_lung.read_dicom_scan(p)
 
@@ -401,8 +401,16 @@ class DSBScanDataGenerator(object):
 
 
 class DSBScanLungMaskDataGenerator(object):
-    def __init__(self, data_path, transform_params, data_prep_fun, **kwargs):
+    def __init__(self, data_path, transform_params, data_prep_fun, exclude_pids=None, **kwargs):
         self.patient_paths = utils_lung.get_patient_data_paths(data_path)
+
+        if exclude_pids is not None:
+            for ep in exclude_pids:
+                for i in xrange(len(self.patient_paths)):
+                    if ep in self.patient_paths[i]:
+                        self.patient_paths.pop(i)
+                        break
+
         self.nsamples = len(self.patient_paths)
         self.data_path = data_path
         self.data_prep_fun = data_prep_fun
@@ -410,7 +418,7 @@ class DSBScanLungMaskDataGenerator(object):
 
     def generate(self):
         for p in self.patient_paths:
-            pid = utils_lung.extract_pid(p)
+            pid = utils_lung.extract_pid_dir(p)
 
             img, pixel_spacing = utils_lung.read_dicom_scan(p)
 
@@ -484,7 +492,7 @@ class DSBPatientsDataGenerator(object):
                 idx = rand_idxs[pos]
 
                 patient_path = self.patient_paths[idx]
-                pid = utils_lung.extract_pid(patient_path)
+                pid = utils_lung.extract_pid_dir(patient_path)
                 y = np.array([self.id2label[pid]], dtype='float32')
 
                 img, pixel_spacing = utils_lung.read_dicom_scan(patient_path)

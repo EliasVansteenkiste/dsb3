@@ -129,7 +129,7 @@ def test_kaggle3d():
     print len(patient_data_paths)
 
     for k, p in enumerate(patient_data_paths):
-        pid = utils_lung.extract_pid(p)
+        pid = utils_lung.extract_pid_dir(p)
         sid2data, sid2metadata = utils_lung.get_patient_data(p)
         sids_sorted = utils_lung.sort_sids_by_position(sid2metadata)
         sids_sorted_jonas = utils_lung.sort_slices_jonas(sid2metadata)

@@ -36,7 +36,7 @@ p_transform = {'patch_size': (64, 64, 64),
                }
 
 for p in blob_files:
-    pid = utils_lung.luna_extract_pid(p, '.pkl')
+    pid = utils_lung.extract_pid_filename(p, '.pkl')
     blobs = utils.load_pkl(p)
     blobs = np.asarray(sorted(blobs, key=lambda x: x[-1], reverse=True))
 

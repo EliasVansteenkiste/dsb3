@@ -57,10 +57,8 @@ data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
 # data iterators
 batch_size = 1
 
-# train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
-# train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['valid']
-
-train_pids, valid_pids = None, None
+train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
+train_pids, valid_pids = train_valid_ids['training'], train_valid_ids['validation']
 
 train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
                                                               transform_params=p_transform,
