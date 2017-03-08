@@ -49,7 +49,73 @@ class CrossEntropyObjective(TargetVarDictObjective):
         return -np.mean(expected*np.log(predicted) + (1-expected)*np.log(1-predicted))
 
 
+class BinaryCrossEntropyObjective(TargetVarDictObjective):
+    optimize = MINIMIZE
 
+    eps = 1e-12
+    """
+    This is the objective as defined by Kaggle: https://www.kaggle.com/c/data-science-bowl-2017/details/evaluation
+    """
+
+    def __init__(self, input_layers, target_name, *args, **kwargs):
+        super(BinaryCrossEntropyObjective, self).__init__(input_layers, *args, **kwargs)
+        self.target_key = target_name + ":target"
+        self.target_vars[self.target_key]  = T.lvector("target_class")
+        self.prediction = input_layers["predicted_probability"]
+
+    def get_loss(self, *args, **kwargs):
+        """
+        Return the theano loss.
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        predictions = lasagne.layers.helper.get_output(self.prediction, *args, **kwargs)
+        targets = T.cast(T.flatten(self.target_vars[self.target_key]), 'int32')
+        p = predictions[targets]
+        p = T.clip(p,self.eps,1.)
+        loss = T.log(p)
+
+        return -loss
+
+    def get_loss_from_lists(self, predicted, expected, *args, **kwargs):
+        """
+        Return an error where predicted and expected are numpy arrays (and not Theano)
+        :param predicted:
+        :param expected:
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        predicted = np.clip(np.array(predicted), np.float32(self.eps), np.float32(1-self.eps))
+        return -np.mean(expected*np.log(predicted) + (1-expected)*np.log(1-predicted))
+
+
+class NLLObjective(TargetVarDictObjective):
+    optimize = MINIMIZE
+
+    eps = 1e-12
+
+    def __init__(self, input_layers, target_name, *args, **kwargs):
+        super(NLLObjective, self).__init__(input_layers, *args, **kwargs)
+        self.target_key = target_name + ":target"
+        self.target_vars[self.target_key]  = T.ivector("target_class")
+        self.prediction = input_layers["predicted_probability"]
+
+    def get_loss(self, *args, **kwargs):
+        predictions = lasagne.layers.helper.get_output(self.prediction, *args, **kwargs)
+        targets = T.flatten(self.target_vars[self.target_key])
+        p = predictions[T.arange(predictions.shape[0]), targets]
+        p = T.clip(p, self.eps, 1.)
+        return -T.log(p)
+
+
+    def get_loss_from_lists(self, predicted, expected, *args, **kwargs):
+        predicted = np.array(predicted)
+        expected = np.array(expected)
+        p = predicted[np.arange(predicted.shape[0]), expected]
+        p = np.clip(p, self.eps, 1.)
+        return -np.mean(np.log(p))
 
 
 class VolumeSegmentationObjective(TargetVarDictObjective):
@@ -158,7 +224,6 @@ class SoerensonDiceCoefficientObjective(VolumeSegmentationObjective):
     def get_loss(self, *args, **kwargs):
         network_predictions = lasagne.layers.helper.get_output(self.prediction, *args, **kwargs)
         target_values = self.target_vars[self.target_key]
-        target_values = T.clip(target_values, 1e-6, 1.)
         network_predictions, target_values = lasagne.layers.merge.autocrop([network_predictions, target_values], [None, 'center', 'center', 'center'])
         y_true_f = target_values
         y_pred_f = network_predictions

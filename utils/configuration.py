@@ -20,6 +20,13 @@ def path_to_importable_string(path):
         pass
     return path
 
+# does not set the global config but returns the loaded config instead
+def get_configuration(configuration):
+    """Initialises and returns the configuration."""
+    config_name = path_to_importable_string(configuration)
+    config = importlib.import_module(config_name)
+    return config, config_name
+
 def set_configuration(configuration):
     """Imports and initialises the configuration module."""
     global _config, _configuration_name

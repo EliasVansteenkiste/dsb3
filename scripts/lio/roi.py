@@ -175,6 +175,7 @@ def extract_rois(expid):
             if config.plot:
                 plot_segmentation_and_nodules(patches, rois, pred, patient_id)
 
+    for job in jobs: job.join()
     return
 
 
@@ -182,7 +183,7 @@ def plot_segmentation_and_nodules(patches, rois, pred, patient_id):
     dir_path = paths.ANALYSIS_PATH + expid
     if not os.path.exists(dir_path): os.mkdir(dir_path)
     for i, patch in enumerate(patches):
-        patches[i] = patch[10:-10, 10:-10, 10:-10]
+        patches[i] = patch[10:-10, 10:-10, 10:-10] # hard coded (wont work well for other networks)
     dat = glue_patches(patches)
     roi_vol = np.zeros_like(dat)
     if rois is not None:
