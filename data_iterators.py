@@ -1,6 +1,7 @@
 import numpy as np
 import utils_lung
 import pathfinder
+import utils
 
 
 class LunaDataGenerator(object):
@@ -430,11 +431,11 @@ class DSBScanLungMaskDataGenerator(object):
 
 
 class CandidatesDSBDataGenerator(object):
-    def __init__(self, data_path, transform_params, id2candidates, data_prep_fun, **kwargs):
+    def __init__(self, data_path, transform_params, id2candidates_path, data_prep_fun, **kwargs):
 
-        self.id2candidates = id2candidates
+        self.id2candidates_path = id2candidates_path
         self.id2patient_path = {}
-        for pid in id2candidates.keys():
+        for pid in id2candidates_path.keys():
             self.id2patient_path[pid] = data_path + '/' + pid
 
         self.nsamples = len(self.id2patient_path)
@@ -444,12 +445,15 @@ class CandidatesDSBDataGenerator(object):
 
     def generate(self):
 
-        for pid in self.id2candidates.iterkeys():
-
+        for pid in self.id2candidates_path.iterkeys():
             patient_path = self.id2patient_path[pid]
+            print pid, patient_path
             img, pixel_spacing = utils_lung.read_dicom_scan(patient_path)
 
-            for candidate in self.id2candidates[pid]:
+            print self.id2candidates_path[pid]
+            candidates = utils.load_pkl(self.id2candidates_path[pid])
+            print candidates.shape
+            for candidate in candidates:
                 y_batch = np.array(candidate, dtype='float32')
                 patch_center = candidate[:3]
                 x_batch = np.float32(self.data_prep_fun(data=img,
@@ -460,19 +464,18 @@ class CandidatesDSBDataGenerator(object):
 
 
 class DSBPatientsDataGenerator(object):
-    def __init__(self, data_path, transform_params, id2candidates, data_prep_fun,
+    def __init__(self, data_path, transform_params, id2candidates_path, data_prep_fun,
                  n_candidates_per_patient, rng, random, infinite, patient_ids=None, **kwargs):
 
         self.id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
-        self.id2candidates = id2candidates
+        self.id2candidates_path = id2candidates_path
         self.patient_paths = []
         if patient_ids is not None:
             for pid in patient_ids:
-                self.patient_paths.append(data_path + '/' + pid)
-        else:
-            for pid in self.id2candidates.iterkeys():
-                if pid in self.id2label.keys():  # TODO remove
+                if pid in self.id2candidates_path:  # TODO
                     self.patient_paths.append(data_path + '/' + pid)
+        else:
+            raise ValueError('provide patient ids')
 
         self.nsamples = len(self.patient_paths)
         self.data_path = data_path
@@ -497,7 +500,7 @@ class DSBPatientsDataGenerator(object):
 
                 img, pixel_spacing = utils_lung.read_dicom_scan(patient_path)
 
-                all_candidates = self.id2candidates[pid]
+                all_candidates = utils.load_pkl(self.id2candidates_path[pid])
                 # all_candidates = np.asarray(sorted(all_candidates, key=lambda x: x[-1],
                 #                                    reverse=True))
                 top_candidates = all_candidates[:self.n_candidates_per_patient]

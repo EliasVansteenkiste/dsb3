@@ -61,14 +61,13 @@ def extract_pid_filename(file_path, replace_str='.mhd'):
     return os.path.basename(file_path).replace(replace_str, '').replace('.pkl', '')
 
 
-def load_pkl_candidates(path):
-    id2candidates = {}
+def get_candidates_paths(path):
+    id2candidates_path = {}
     file_paths = sorted(glob.glob(path + '/*.pkl'))
     for p in file_paths:
         pid = extract_pid_filename(p, '.pkl')
-        blobs = utils.load_pkl(p)
-        id2candidates[pid] = blobs
-    return id2candidates
+        id2candidates_path[pid] = p
+    return id2candidates_path
 
 
 def get_patient_data(patient_data_path):
@@ -84,8 +83,8 @@ def get_patient_data(patient_data_path):
 
 
 def ct2HU(x, metadata):
-    x[x < 0.] = 0.
     x = metadata['RescaleSlope'] * x + metadata['RescaleIntercept']
+    x[x < -1000] = -1000
     return x
 
 

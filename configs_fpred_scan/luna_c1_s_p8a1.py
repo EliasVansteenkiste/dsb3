@@ -25,7 +25,7 @@ rng = patch_class_config.rng
 # candidates after segmentations path
 predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
 segmentation_outputs_path = predictions_dir + '/%s' % seg_config_name
-id2candidates = utils_lung.load_pkl_candidates(segmentation_outputs_path)
+id2candidates = utils_lung.get_candidates_paths(segmentation_outputs_path)
 
 data_iterator = data_iterators.FixedCandidatesLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                 transform_params=p_transform,

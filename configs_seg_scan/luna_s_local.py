@@ -55,7 +55,7 @@ def data_prep_function(data, luna_annotations, pixel_spacing, luna_origin,
                                                                                    p_transform_augment=None,
                                                                                    luna_origin=luna_origin,
                                                                                    lung_mask=lung_mask)
-    x = data_transforms.pixelnormHU(x)
+    # x = data_transforms.pixelnormHU(x)
     y = data_transforms.make_3d_mask_from_annotations(img_shape=x.shape, annotations=annotations_tf, shape='sphere')
     return x, y, lung_mask_out, annotations_tf, tf_matrix
 

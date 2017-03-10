@@ -18,7 +18,7 @@ exclude_pids = []
 if os.path.isdir(outputs_path):
     exclude_pids = os.listdir(outputs_path)
     exclude_pids = [utils_lung.extract_pid_filename(p) for p in exclude_pids]
-exclude_pids.append('b8bb02d229361a623a4dc57aa0e5c485') # TODO hack here!
+exclude_pids.append('b8bb02d229361a623a4dc57aa0e5c485')  # TODO hack here!
 
 # calculate the following things correctly!
 p_transform = {'patch_size': (416, 416, 416),
