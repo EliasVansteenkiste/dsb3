@@ -1,7 +1,7 @@
 import numpy as np
 import utils_lung
-import pathfinder
 import utils
+import pathfinder
 
 
 class LunaDataGenerator(object):
@@ -446,6 +446,7 @@ class CandidatesDSBDataGenerator(object):
     def generate(self):
 
         for pid in self.id2candidates_path.iterkeys():
+
             patient_path = self.id2patient_path[pid]
             print pid, patient_path
             img, pixel_spacing = utils_lung.read_dicom_scan(patient_path)
@@ -511,6 +512,94 @@ class DSBPatientsDataGenerator(object):
                                                   pixel_spacing=pixel_spacing))[:, None, :, :, :]
 
                 yield x, y, pid
+
+            if not self.infinite:
+                break
+
+
+class DSBPatientsBatchBalancedDataGenerator(object):
+    def __init__(self, data_path, batch_size, transform_params, id2candidates_path, data_prep_fun,
+                 n_candidates_per_patient, rng, random, infinite, patient_ids=None, **kwargs):
+
+        self.id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
+        self.id2candidates_path = id2candidates_path
+
+        self.pos_patient_paths = {}
+        self.neg_patient_paths = {}
+        if patient_ids is not None:
+            for pid in patient_ids:
+                if pid not in self.id2candidates_path:
+                    print 'pid not in id2candidates_path', pid
+                elif pid not in self.id2label:
+                    print 'pid not in id2label' , pid
+                else:
+                    if self.id2label[pid]:
+                        self.pos_patient_paths[pid] = data_path + '/' + pid
+                    else:
+                        self.neg_patient_paths[pid] = data_path + '/' + pid
+        else:
+            raise ValueError('provide patient ids')
+
+        self.nsamples = len(self.pos_patient_paths) + len(self.neg_patient_paths)
+        self.data_path = data_path
+        self.data_prep_fun = data_prep_fun
+        self.transform_params = transform_params
+        self.n_candidates_per_patient = n_candidates_per_patient
+        self.rng = rng
+        self.random = random
+        self.infinite = infinite
+        self.batch_size = batch_size
+
+    def generate(self):
+
+        while True:
+            pos_pids = list(self.pos_patient_paths.keys())
+            neg_pids = list(self.neg_patient_paths.keys())
+            if self.random:
+                self.rng.shuffle(pos_pids)
+                self.rng.shuffle(neg_pids)
+            min_pos_neg = min(len(self.pos_patient_paths),len(self.neg_patient_paths))
+            for pos in xrange(0, min_pos_neg, self.batch_size/2):
+                pos_pids_batch = pos_pids[pos:pos + self.batch_size/2]
+                neg_pids_batch = neg_pids[pos:pos + self.batch_size/2]
+                nb = len(pos_pids_batch)+len(neg_pids_batch)
+
+                # allocate batches
+                x_batch = np.zeros((nb, self.n_candidates_per_patient) + self.transform_params['patch_size'], dtype='float32')
+                y_batch = np.zeros((nb, 1), dtype='float32')
+
+
+                for b_idx, pid in enumerate(pos_pids_batch):
+                    y_batch[b_idx] = 1.
+
+                    patient_path = self.pos_patient_paths[pid]
+                    img, pixel_spacing = utils_lung.read_dicom_scan(patient_path)
+
+                    all_candidates = utils.load_pkl(self.id2candidates_path[pid])
+                    top_candidates = all_candidates[:self.n_candidates_per_patient]
+
+                    x_batch[b_idx] = np.float32(self.data_prep_fun(data=img,
+                                                      patch_centers=top_candidates,
+                                                      pixel_spacing=pixel_spacing))
+
+                
+
+                for b_idx, pid in enumerate(neg_pids_batch):
+                    b_idx = b_idx + len(pos_pids_batch)
+                    y_batch[b_idx] = 0.
+
+                    patient_path = self.neg_patient_paths[pid]
+                    img, pixel_spacing = utils_lung.read_dicom_scan(patient_path)
+
+                    all_candidates = utils.load_pkl(self.id2candidates_path[pid])
+                    top_candidates = all_candidates[:self.n_candidates_per_patient]
+
+                    x_batch[b_idx] = np.float32(self.data_prep_fun(data=img,
+                                                      patch_centers=top_candidates,
+                                                      pixel_spacing=pixel_spacing))
+
+
+                yield x_batch, y_batch, pos_pids_batch+neg_pids_batch
 
             if not self.infinite:
                 break

@@ -117,6 +117,7 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
 
     # load chunk to GPU
     x_shared.set_value(x_chunk_train)
+    print y_chunk_train
     y_shared.set_value(y_chunk_train)
 
     # make nbatches_chunk iterations
