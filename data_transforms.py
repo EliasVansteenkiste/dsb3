@@ -9,32 +9,6 @@ MIN_HU = -1000.
 rng = np.random.RandomState(317070)
 
 
-def ct2normHU(x, metadata):
-    """
-    modifies input data
-    :param x:
-    :param metadata:
-    :return:
-    """
-    x[x < 0.] = 0.
-    x = metadata['RescaleSlope'] * x + metadata['RescaleIntercept']
-    x = (x - MIN_HU) / (MAX_HU - MIN_HU)
-    x = np.clip(x, 0., 1., out=x)
-    return x
-
-
-def ct2HU(x, metadata):
-    """
-    modifies input data
-    :param x:
-    :param metadata:
-    :return:
-    """
-    x[x < 0.] = 0.
-    x = metadata['RescaleSlope'] * x + metadata['RescaleIntercept']
-    return x
-
-
 def hu2normHU(x):
     """
     Modifies input data

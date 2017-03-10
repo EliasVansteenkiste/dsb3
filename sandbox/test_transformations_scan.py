@@ -120,31 +120,32 @@ def count_proportion():
         print 'black', n_black
 
 
-def test_kaggle3d():
+def test_dsb():
     image_dir = utils.get_dir_path('analysis', pathfinder.METADATA_PATH)
     image_dir = image_dir + '/test_1/'
     utils.auto_make_dir(image_dir)
 
     patient_data_paths = utils_lung.get_patient_data_paths(pathfinder.DATA_PATH)
     print len(patient_data_paths)
+    # patient_data_paths = [pathfinder.DATA_PATH + '/64a5a866461a3b6006efb0075e04dffe']
 
     for k, p in enumerate(patient_data_paths):
         pid = utils_lung.extract_pid_dir(p)
-        sid2data, sid2metadata = utils_lung.get_patient_data(p)
-        sids_sorted = utils_lung.sort_sids_by_position(sid2metadata)
-        sids_sorted_jonas = utils_lung.sort_slices_jonas(sid2metadata)
-        sid2position = utils_lung.slice_location_finder(sid2metadata)
-
-        jonas_slicethick = []
-        for i in xrange(len(sids_sorted_jonas) - 1):
-            s = np.abs(sid2position[sids_sorted_jonas[i + 1]] - sid2position[sids_sorted_jonas[i]])
-            jonas_slicethick.append(s)
-
-        img = np.stack([data_transforms.ct2HU(sid2data[sid], sid2metadata[sid]) for sid in sids_sorted])
-        xx = (jonas_slicethick[0],
-              sid2metadata[sids_sorted[0]]['PixelSpacing'][0],
-              sid2metadata[sids_sorted[0]]['PixelSpacing'][1])
-        pixel_spacing = np.asarray(xx)
+        # sid2data, sid2metadata = utils_lung.get_patient_data(p)
+        # sids_sorted = utils_lung.sort_sids_by_position(sid2metadata)
+        # sids_sorted_jonas = utils_lung.sort_slices_jonas(sid2metadata)
+        # sid2position = utils_lung.slice_location_finder(sid2metadata)
+        #
+        # jonas_slicethick = []
+        # for i in xrange(len(sids_sorted_jonas) - 1):
+        #     s = np.abs(sid2position[sids_sorted_jonas[i + 1]] - sid2position[sids_sorted_jonas[i]])
+        #     jonas_slicethick.append(s)
+        #
+        # img = np.stack([data_transforms.ct2HU(sid2data[sid], sid2metadata[sid]) for sid in sids_sorted])
+        # xx = (jonas_slicethick[0],
+        #       sid2metadata[sids_sorted[0]]['PixelSpacing'][0],
+        #       sid2metadata[sids_sorted[0]]['PixelSpacing'][1])
+        # pixel_spacing = np.asarray(xx)
 
         img, pixel_spacing = utils_lung.read_dicom_scan(p)
         mask = lung_segmentation.segment_HU_scan(img)
@@ -158,12 +159,11 @@ def test_kaggle3d():
                                                                                p_transform_augment=None,
                                                                                lung_mask=mask)
 
-        plot_slice_3d_2(mask_out, img_out, 0, pid, idx=np.array(img_out.shape) / 2)
-        plot_slice_3d_2(mask_out, img_out, 0, pid, idx=np.array(img_out.shape) / 4)
-        plot_slice_3d_2(mask_out, img_out, 0, pid, idx=np.array(img_out.shape) / 8)
-        # plot_slice_3d_2(img_out, img_out, 1, pid)
-        # plot_slice_3d_2(img_out, img_out, 2, pid)
+        plot_slice_3d_2(img_out, mask_out, 0, pid, idx=np.array(img_out.shape) / 2)
+        # plot_slice_3d_2(mask_out, img_out, 0, pid, idx=np.array(img_out.shape) / 4)
+        # plot_slice_3d_2(mask_out, img_out, 0, pid, idx=np.array(img_out.shape) / 8)
 
 
 if __name__ == '__main__':
-    test_luna3d()
+    # test_luna3d()
+    test_dsb()

@@ -1,6 +1,7 @@
 # TODO
 
-- make validation split for dsb
+- find out what's wrong with 137 patients, who don't have any blobs!!!
+- data iterator for DSB with batch size > 1  
 - filter blobs that are too close to each other 
 
 

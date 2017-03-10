@@ -6,6 +6,7 @@ import string
 import numpy as np
 import lasagne as nn
 import utils_lung
+import os
 
 # TODO: IMPORT A CORRECT PATCH CLASSIFICATION MODEL HERE
 seg_config_name = 'dsb_s2_p8a1'
@@ -26,13 +27,22 @@ rng = patch_class_config.rng
 # candidates after segmentations path
 predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
 segmentation_outputs_path = predictions_dir + '/%s' % seg_config_name
-id2candidates = utils_lung.load_pkl_candidates(segmentation_outputs_path)
-print id2candidates.keys()
+id2candidates_path = utils_lung.get_candidates_paths(segmentation_outputs_path)
+
+# filter our those, who are already generated
+predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
+outputs_path = predictions_dir + '/dsb_c3_s2_p8a1'  # TODO write it here correctly
+exclude_pids = []
+if os.path.isdir(outputs_path):
+    exclude_pids = os.listdir(outputs_path)
+    exclude_pids = [utils_lung.extract_pid_filename(p) for p in exclude_pids]
+    for pid in exclude_pids:
+        id2candidates_path.pop(pid, None)
 
 data_iterator = data_iterators.CandidatesDSBDataGenerator(data_path=pathfinder.DATA_PATH,
                                                           transform_params=p_transform,
                                                           data_prep_fun=data_prep_function,
-                                                          id2candidates=id2candidates)
+                                                          id2candidates_path=id2candidates_path)
 
 
 def build_model():

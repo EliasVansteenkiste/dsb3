@@ -19,6 +19,7 @@ def extract_candidates(predictions_scan, tf_matrix, pid, outputs_path):
     start_time = time.time()
     blobs = blobs_detection.blob_dog(predictions_scan[0, 0], min_sigma=1, max_sigma=15, threshold=0.1)
     print 'blobs computation time:', (time.time() - start_time) / 60.
+    print 'n blobs detected:', blobs.shape[0]
 
     blobs_original_voxel_coords = []
     for j in xrange(blobs.shape[0]):
@@ -27,6 +28,7 @@ def extract_candidates(predictions_scan, tf_matrix, pid, outputs_path):
         blobs_original_voxel_coords.append(blob_j_original)
 
     blobs = np.asarray(blobs_original_voxel_coords)
+    print blobs.shape
     utils.save_pkl(blobs, outputs_path + '/%s.pkl' % pid)
 
 
