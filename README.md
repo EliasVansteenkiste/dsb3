@@ -1,8 +1,8 @@
 # TODO
 
-- save scan segmentations together with pixel_spacing and origin 0 in .npz files?
-- pixelshuffle layer 
-- ordering of slices for kaggle data (Jonas)
+- make validation split for dsb
+- filter blobs that are too close to each other 
+
 
 
 ssh -X -p 10001 ikorshun@localhost
@@ -24,3 +24,26 @@ max yx: (u'1.3.6.1.4.1.14519.5.2.1.6279.6001.202811684116768680758082619196', ar
 (u'1.3.6.1.4.1.14519.5.2.1.6279.6001.234400932423244218697302970157', array([ 357.5       ,  499.99975586,  499.99975586]))
 (u'1.3.6.1.4.1.14519.5.2.1.6279.6001.803808126682275425758092691689', array([ 311.25      ,  493.00018311,  493.00018311]))
 (u'1.3.6.1.4.1.14519.5.2.1.6279.6001.250863365157630276148828903732', array([ 371.25      ,  486.00012207,  486.00012207]))
+
+
+## NEED TO CHECK
+LUNA, strange image border: 1-1.3.6.1.4.1.14519.5.2.1.6279.6001.249530219848512542668813996730 
+LUNA 0-1.3.6.1.4.1.14519.5.2.1.6279.6001.233001470265230594739708503198
+
+
+
+## LUNA
+generate blobs: test_seg_scan.py  
+probabilities for blobs (fpred): test_fpred_scan.py
+stats over segmentation blobs: evaluate_luna_seg_scan.py
+stats over fpred: evaluate_luna_fpred_scan.py
+
+
+## DSB
+
+generate blobs: test_seg_scan_dsb.py
+fpred: test_fpred_scan_dsb.py
+plot rois as in the final data iterator: plot_dsb_roi.py
+
+
+

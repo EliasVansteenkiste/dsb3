@@ -52,10 +52,10 @@ def test1():
     print len(patient_data_paths)
 
     for k, p in enumerate(patient_data_paths):
-        pid = utils_lung.extract_pid(p)
+        pid = utils_lung.extract_pid_dir(p)
         try:
             sid2data, sid2metadata = utils_lung.get_patient_data(p)
-            sids_sorted = utils_lung.sort_slices_plane(sid2metadata)
+            sids_sorted = utils_lung.sort_sids_by_position(sid2metadata)
             sids_sorted_jonas = utils_lung.sort_slices_jonas(sid2metadata)
             sid2position = utils_lung.slice_location_finder(sid2metadata)
 
@@ -99,7 +99,7 @@ def test2():
     n_slices = []
 
     for k, p in enumerate(patient_data_paths):
-        pid = utils_lung.extract_pid(p)
+        pid = utils_lung.extract_pid_dir(p)
         sid2data, sid2metadata = utils_lung.get_patient_data(p)
         mtd = sid2metadata.itervalues().next()
 

@@ -81,7 +81,49 @@ def plot_slice_3d_3(input, mask, prediction, axis, pid, img_dir=None, idx=None):
         ax[1, 0].imshow(input[:, :, idx[2]], cmap=plt.cm.gray)
         ax[0, 1].imshow(mask[:, :, idx[2]], cmap=plt.cm.gray)
     if img_dir is not None:
-        fig.savefig(img_dir + '/%s%s.png' % (pid, axis), bbox_inches='tight')
+        fig.savefig(img_dir + '/%s-%s.png' % (pid, axis), bbox_inches='tight')
+    else:
+        plt.show()
+    fig.clf()
+    plt.close('all')
+
+
+def plot_slice_3d_4(input, mask, prediction, lung_mask, axis, pid, img_dir=None, idx=None):
+    # to convert cuda arrays to numpy array
+    input = np.asarray(input)
+    mask = np.asarray(mask)
+    prediction = np.asarray(prediction)
+
+    fig, ax = plt.subplots(2, 2, figsize=[8, 8])
+    fig.canvas.set_window_title(pid)
+    if idx is None:
+        roi_idxs = np.where(mask > 0)
+        if len(roi_idxs[0]) > 0:
+            idx = (int(np.mean(roi_idxs[0])),
+                   int(np.mean(roi_idxs[1])),
+                   int(np.mean(roi_idxs[2])))
+        else:
+            print 'No nodules'
+            idx = np.array(input.shape) / 2
+    else:
+        idx = idx.astype(int)
+    if axis == 0:  # sax
+        ax[0, 0].imshow(prediction[idx[0], :, :], cmap=plt.cm.gray)
+        ax[1, 0].imshow(input[idx[0], :, :], cmap=plt.cm.gray)
+        ax[0, 1].imshow(mask[idx[0], :, :], cmap=plt.cm.gray)
+        ax[1, 1].imshow(lung_mask[idx[0], :, :], cmap=plt.cm.gray)
+    if axis == 1:  # 2 lungs
+        ax[0, 0].imshow(prediction[:, idx[1], :], cmap=plt.cm.gray)
+        ax[1, 0].imshow(input[:, idx[1], :], cmap=plt.cm.gray)
+        ax[0, 1].imshow(mask[:, idx[1], :], cmap=plt.cm.gray)
+        ax[1, 1].imshow(lung_mask[:, idx[1], :], cmap=plt.cm.gray)
+    if axis == 2:  # side view
+        ax[0, 0].imshow(prediction[:, :, idx[2]], cmap=plt.cm.gray)
+        ax[1, 0].imshow(input[:, :, idx[2]], cmap=plt.cm.gray)
+        ax[0, 1].imshow(mask[:, :, idx[2]], cmap=plt.cm.gray)
+        ax[1, 1].imshow(lung_mask[:, :, idx[2]], cmap=plt.cm.gray)
+    if img_dir is not None:
+        fig.savefig(img_dir + '/%s-%s.png' % (pid, axis), bbox_inches='tight')
     else:
         plt.show()
     fig.clf()

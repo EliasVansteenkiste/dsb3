@@ -1,4 +1,3 @@
-import cPickle
 import platform
 import pwd
 import subprocess
@@ -6,7 +5,7 @@ import time
 import numpy as np
 import glob
 import os
-import pickle
+import cPickle as pickle
 
 maxfloat = np.finfo(np.float32).max
 
@@ -75,9 +74,9 @@ def get_git_revision_hash():
         return 0
 
 
-def save_pkl(obj, path, protocol=cPickle.HIGHEST_PROTOCOL):
+def save_pkl(obj, path):
     with open(path, 'wb') as f:
-        pickle.dump(obj, f, protocol=protocol)
+        pickle.dump(obj, f)
 
 
 def load_pkl(path):
@@ -109,3 +108,7 @@ def current_learning_rate(schedule, idx):
             current_lr = schedule[i]
 
     return current_lr
+
+
+def get_script_name(file_path):
+    return os.path.basename(file_path).replace('.py', '')

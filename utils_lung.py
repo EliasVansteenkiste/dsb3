@@ -60,6 +60,7 @@ def read_dicom(path):
     try:
         metadata['SliceLocation'] = np.float32(metadata['SliceLocation'])
     except:
+        print 'Warning: Could not cast SliceLocation', metadata['SliceLocation']
         metadata['SliceLocation'] = None
     metadata['ImagePositionPatient'] = np.float32(metadata['ImagePositionPatient'])
     metadata['Rows'] = int(metadata['Rows'])

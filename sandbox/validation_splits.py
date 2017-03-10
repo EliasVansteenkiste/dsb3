@@ -17,7 +17,7 @@ def make_luna_validation_split():
     luna_path = pathfinder.LUNA_DATA_PATH
     file_list = sorted(glob.glob(luna_path + "/*.mhd"))
     random.seed(317070)
-    all_pids = [utils_lung.luna_extract_pid(f) for f in file_list]
+    all_pids = [utils_lung.extract_pid_filename(f) for f in file_list]
     validation_pids = random.sample(all_pids, int(VALIDATION_SET_SIZE * len(file_list)))
     train_pids = list(set(all_pids) - set(validation_pids))
     d = {}
