@@ -87,3 +87,41 @@ def segment_HU_scan_fred(x):
 
 
     return mask
+
+def segment_HU_scan_greyvalued_original_image(x):
+
+
+    mask = np.copy(x)
+
+    for iz in xrange(mask.shape[0]):
+
+        binary_part = mask[iz] > -350
+
+        # fill the body part
+        filled = scipy.ndimage.binary_fill_holes(binary_part) # fill body
+        selem = skimage.morphology.disk(8) # clear details outside of major body part
+        filled_borders_mask = skimage.morphology.binary_erosion(filled, selem)
+        filled_borders_mask = np.asarray(1 - filled_borders_mask,dtype=np.bool) # flip mask
+
+
+        # set outside to grey
+        filled_borders = mask[iz]
+        filled_borders[filled_borders_mask]=0
+
+        # finally do the normal segmentation operations
+
+        # change the disk value of this operation to make it less aggressive
+
+        # reduce the noise first
+        selem = skimage.morphology.disk(2)
+        closed = skimage.morphology.closing(filled_borders, selem)
+        # aggressive erosion
+        selem = skimage.morphology.disk(13)
+        eroded = skimage.morphology.erosion(closed, selem)
+
+
+        # # threshold grey values
+        t = -350
+        mask[iz] = eroded < t
+
+    return mask
