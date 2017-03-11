@@ -34,6 +34,9 @@ print 'validation errors'
 print validation_errors
 print validation_idcs
 
+print 'min training error', np.amin(np.array(training_errors)), 'at', np.argmin(np.array(training_errors))
+print 'min validation error', np.amin(np.array(validation_errors)), 'at', np.argmin(np.array(validation_errors))
+
 plt.plot(training_errors, label='training errors')
 plt.plot(validation_errors, label='validation errors')
 plt.legend(loc="upper right")
