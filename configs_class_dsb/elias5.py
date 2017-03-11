@@ -175,34 +175,33 @@ def build_model():
     l_target = nn.layers.InputLayer((None, 1))
 
     l = nn.layers.ReshapeLayer(l_in, (-1, 1) + p_transform['patch_size'])
+    print l.output_shape
 
 
 
-    l = conv3d(l, num_filters=128)
-    l = conv3d(l, num_filters=128)
+    l = conv3d(l, 128)
+    l = conv3d(l, 128)
+
+    l = max_pool3d(l)
+    
+    l = conv3d(l, 128)
+    l = conv3d(l, 128)
+
+    l = max_pool3d(l)
+    
+    l = conv3d(l, 256)
+    l = conv3d(l, 256)
+    l = conv3d(l, 256)
 
     l = max_pool3d(l)
 
-    l = conv3d(l, num_filters=128)
-    l = conv3d(l, num_filters=128)
-
-    l = max_pool3d(l)
-
-    l = conv3d(l, num_filters=256)
-    l = conv3d(l, num_filters=256)
-    l = conv3d(l, num_filters=256)
-
-    l = max_pool3d(l)
-
-    l_d01 = nn.layers.DenseLayer(l, num_units=256, W=nn.init.Orthogonal(),
+    l = nn.layers.DenseLayer(l, num_units=256, W=nn.init.Orthogonal(),
                                  b=nn.init.Constant(0.01), nonlinearity=nn.nonlinearities.very_leaky_rectify)
-
-
-    l = nn.layers.ReshapeLayer(l, (-1, n_candidates_per_patient, 2))
+    l = nn.layers.ReshapeLayer(l, (-1, n_candidates_per_patient, 256))
 
     l = dense(drop(l), 1024)
 
-    l_out = dense(drop(l), 2, nonlinearity=nn.nonlinearities.softmax)
+    l_out = dense(l, 2, nonlinearity=nn.nonlinearities.softmax)
 
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 
