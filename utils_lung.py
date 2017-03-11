@@ -10,6 +10,7 @@ from PIL import Image
 from collections import defaultdict
 import time
 import cPickle as pickle
+import glob
 
 def read_mhd(path):
     lock_file = '/home/eavsteen/._SimpleITK_lock'
@@ -60,7 +61,6 @@ def read_dicom(path):
     try:
         metadata['SliceLocation'] = np.float32(metadata['SliceLocation'])
     except:
-        print 'Warning: Could not cast SliceLocation', metadata['SliceLocation']
         metadata['SliceLocation'] = None
     metadata['ImagePositionPatient'] = np.float32(metadata['ImagePositionPatient'])
     metadata['Rows'] = int(metadata['Rows'])
@@ -73,6 +73,8 @@ def read_dicom(path):
 def extract_pid(patient_data_path):
     return patient_data_path.split('/')[-1]
 
+def extract_pid_dir(patient_data_path):
+    return patient_data_path.split('/')[-1]
 
 def luna_extract_pid(patient_data_path, replace_str):
     return os.path.basename(patient_data_path).replace(replace_str, '')
@@ -134,11 +136,11 @@ def read_dicom_scan(patient_data_path):
 
 
 def sort_slices_position(patient_data):
-    return sorted(patient_data, key=lambda x: thru_plane_position(x['metadata']))
+    return sorted(patient_data, key=lambda x: get_slice_position(x['metadata']))
 
 
 def sort_slices_plane(sid2metadata):
-    return sorted(sid2metadata.keys(), key=lambda x: thru_plane_position(sid2metadata[x]))
+    return sorted(sid2metadata.keys(), key=lambda x: get_slice_position(sid2metadata[x]))
 
 
 def sort_slices_jonas(sid2metadata):
@@ -146,7 +148,7 @@ def sort_slices_jonas(sid2metadata):
     return sorted(sid2metadata.keys(), key=lambda x: sid2position[x])
 
 
-def thru_plane_position(slice_metadata):
+def get_slice_position(slice_metadata):
     """
     https://www.kaggle.com/rmchamberlain/data-science-bowl-2017/dicom-to-3d-numpy-arrays
     """

@@ -36,7 +36,7 @@ p_transform_augment = {
     'rotation_range_y': [-180, 180],
     'rotation_range_x': [-180, 180]
 }
-n_candidates_per_patient = 12
+n_candidates_per_patient = 10
 
 
 def data_prep_function(data, patch_centers, pixel_spacing, p_transform,
@@ -56,7 +56,7 @@ data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
                                    p_transform=p_transform)
 
 # data iterators
-batch_size = 16
+batch_size = 4
 
 train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
 train_pids, valid_pids = train_valid_ids['training'], train_valid_ids['validation']
