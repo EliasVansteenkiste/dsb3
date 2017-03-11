@@ -15,7 +15,7 @@ import utils_lung
 # TODO: import correct config here
 candidates_config = 'dsb_c3_s2_p8a1'
 
-restart_from_save = None  
+restart_from_save = None
 rng = np.random.RandomState(42)
 
 #predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
@@ -36,7 +36,7 @@ p_transform_augment = {
     'rotation_range_y': [-180, 180],
     'rotation_range_x': [-180, 180]
 }
-n_candidates_per_patient = 10
+n_candidates_per_patient = 8
 
 
 def data_prep_function(data, patch_centers, pixel_spacing, p_transform,
@@ -184,10 +184,12 @@ def build_model():
     l = inrn_v2_red(l)
     l = inrn_v2_red(l)
 
-    l = dense(drop(l), 128)
-    l = nn.layers.ReshapeLayer(l, (-1, n_candidates_per_patient, 128))
-
     l = dense(drop(l), 256)
+    l = dense(l, 2, nonlinearity=nn.nonlinearities.softmax)
+
+    l = nn.layers.ReshapeLayer(l, (-1, n_candidates_per_patient, 2))
+
+    l = dense(drop(l), 64)
 
     l_out = dense(drop(l), 2, nonlinearity=nn.nonlinearities.softmax)
 
