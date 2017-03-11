@@ -12,6 +12,7 @@ import utils_lung
 
 # TODO: import correct config here
 candidates_config = 'dsb_c3_s2_p8a1'
+import configs_seg_patch.luna_p8a1 as patch_segmentation_config
 
 restart_from_save = None
 rng = np.random.RandomState(42)
@@ -105,33 +106,27 @@ def dense_prelu_layer(l_in, num_units):
     return l
 
 
+def build_segmentation_model(l_in):
+    metadata_dir = utils.get_dir_path('models', pathfinder.METADATA_PATH)
+    metadata_path = utils.find_model_metadata(metadata_dir, patch_segmentation_config.__name__.split('.')[-1])
+    metadata = utils.load_pkl(metadata_path)
+
+    model = patch_segmentation_config.build_model(l_in=l_in, patch_size=p_transform['patch_size'])
+    nn.layers.set_all_param_values(model.l_out, metadata['param_values'])
+    return model
+
+
 def build_model():
     l_in = nn.layers.InputLayer((None, n_candidates_per_patient, 1,) + p_transform['patch_size'])
     l_in_rshp = nn.layers.ReshapeLayer(l_in, (-1, 1,) + p_transform['patch_size'])
     l_target = nn.layers.InputLayer((batch_size,))
 
-    l = conv3(l_in_rshp, num_filters=128)
-    l = conv3(l, num_filters=128)
+    segmentation_model = build_segmentation_model(l_in_rshp)
+    segmentation_out_shape = nn.layers.get_output_shape(segmentation_model.l_out,
+                                                        input_shapes=(1, 1,) + p_transform['patch_size'])[2:]
 
-    l = max_pool(l)
-
-    l = conv3(l, num_filters=128)
-    l = conv3(l, num_filters=128)
-
-    l = max_pool(l)
-
-    l = conv3(l, num_filters=256)
-    l = conv3(l, num_filters=256)
-    l = conv3(l, num_filters=256)
-
-    num_units_dense = 512
-    l_d01 = dense_prelu_layer(l, num_units=512)
-    l_d01 = nn.layers.ReshapeLayer(l_d01, (-1, n_candidates_per_patient, num_units_dense))
-    l_d02 = dense_prelu_layer(l_d01, num_units=512)
-    l_out = nn.layers.DenseLayer(l_d02, num_units=2,
-                                 W=nn.init.Constant(0.),
-                                 b=np.array([np.log((1397. - 362) / 1398), np.log(362. / 1397)], dtype='float32'),
-                                 nonlinearity=nn.nonlinearities.softmax)
+    l_out = nn.layers.ReshapeLayer(segmentation_model.l_out,
+                                   (-1, n_candidates_per_patient, 1,) + segmentation_out_shape)
 
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 

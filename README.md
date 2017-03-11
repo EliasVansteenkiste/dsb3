@@ -1,9 +1,7 @@
 # TODO
 
-- frederic lung segmentation
-- plot roi dsb fix for batch size
+- random order of top N in the dsb data iterator or aggrgation layer, which is not dependent on the order
 - filter blobs that are too close to each other 
-
 
 
 ssh -X -p 10001 ikorshun@localhost

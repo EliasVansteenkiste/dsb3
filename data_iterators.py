@@ -344,12 +344,12 @@ class CandidatesLunaValidDataGenerator(object):
 
 
 class FixedCandidatesLunaDataGenerator(object):
-    def __init__(self, data_path, transform_params, id2candidates, data_prep_fun, **kwargs):
+    def __init__(self, data_path, transform_params, id2candidates_path, data_prep_fun):
 
         self.file_extension = '.pkl' if 'pkl' in data_path else '.mhd'
-        self.id2candidates = id2candidates
+        self.id2candidates_path = id2candidates_path
         self.id2patient_path = {}
-        for pid in id2candidates.keys():
+        for pid in id2candidates_path.keys():
             self.id2patient_path[pid] = data_path + '/' + pid + self.file_extension
 
         self.nsamples = len(self.id2patient_path)
@@ -359,15 +359,16 @@ class FixedCandidatesLunaDataGenerator(object):
 
     def generate(self):
 
-        for pid in self.id2candidates.iterkeys():
+        for pid in self.id2candidates_path.iterkeys():
             patient_path = self.id2patient_path[pid]
             print 'PATIENT', pid
-            print 'n blobs', len(self.id2candidates[pid])
+            candidates = utils.load_pkl(self.id2candidates_path[pid])
+            print 'n blobs', len(candidates)
 
             img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
                 if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
 
-            for candidate in self.id2candidates[pid]:
+            for candidate in candidates:
                 y_batch = np.array(candidate, dtype='float32')
                 patch_center = candidate[:3]
                 x_batch = np.float32(self.data_prep_fun(data=img,
