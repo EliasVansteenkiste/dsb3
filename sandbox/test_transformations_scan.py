@@ -165,5 +165,5 @@ def test_dsb():
 
 
 if __name__ == '__main__':
-    # test_luna3d()
-    test_dsb()
+    test_luna3d()
+    # test_dsb()

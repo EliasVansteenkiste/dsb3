@@ -360,9 +360,6 @@ class FixedCandidatesLunaDataGenerator(object):
     def generate(self):
 
         for pid in self.id2candidates.iterkeys():
-            # for pid in ['1.3.6.1.4.1.14519.5.2.1.6279.6001.247060297988514823071467295949',
-            #             '1.3.6.1.4.1.14519.5.2.1.6279.6001.295420274214095686326263147663',
-            #             '1.3.6.1.4.1.14519.5.2.1.6279.6001.143412474064515942785157561636']:
             patient_path = self.id2patient_path[pid]
             print 'PATIENT', pid
             print 'n blobs', len(self.id2candidates[pid])
@@ -464,8 +461,8 @@ class CandidatesDSBDataGenerator(object):
 
 
 class DSBPatientsDataGenerator(object):
-    def __init__(self, data_path, transform_params, id2candidates_path, data_prep_fun,
-                 n_candidates_per_patient, rng, random, infinite, patient_ids=None, **kwargs):
+    def __init__(self, data_path, batch_size, transform_params, id2candidates_path, data_prep_fun,
+                 n_candidates_per_patient, rng, random, infinite, patient_ids=None):
 
         self.id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
         self.id2candidates_path = id2candidates_path
@@ -480,6 +477,7 @@ class DSBPatientsDataGenerator(object):
         self.nsamples = len(self.patient_paths)
         self.data_path = data_path
         self.data_prep_fun = data_prep_fun
+        self.batch_size = batch_size
         self.transform_params = transform_params
         self.n_candidates_per_patient = n_candidates_per_patient
         self.rng = rng
@@ -491,26 +489,32 @@ class DSBPatientsDataGenerator(object):
             rand_idxs = np.arange(self.nsamples)
             if self.random:
                 self.rng.shuffle(rand_idxs)
-            for pos in xrange(0, len(rand_idxs)):
-                idx = rand_idxs[pos]
 
-                patient_path = self.patient_paths[idx]
-                pid = utils_lung.extract_pid_dir(patient_path)
-                y = np.array([self.id2label[pid]], dtype='float32')
+            for pos in xrange(0, len(rand_idxs), self.batch_size):
+                idxs_batch = rand_idxs[pos:pos + self.batch_size]
 
-                img, pixel_spacing = utils_lung.read_dicom_scan(patient_path)
+                x_batch = np.zeros((self.batch_size, self.n_candidates_per_patient, 1,)
+                                   + self.transform_params['patch_size'], dtype='float32')
+                y_batch = np.zeros((self.batch_size,), dtype='float32')
+                pids_batch = []
 
-                all_candidates = utils.load_pkl(self.id2candidates_path[pid])
-                # all_candidates = np.asarray(sorted(all_candidates, key=lambda x: x[-1],
-                #                                    reverse=True))
-                top_candidates = all_candidates[:self.n_candidates_per_patient]
-                # print top_candidates
+                for i, idx in enumerate(idxs_batch):
+                    patient_path = self.patient_paths[idx]
+                    pid = utils_lung.extract_pid_dir(patient_path)
 
-                x = np.float32(self.data_prep_fun(data=img,
-                                                  patch_centers=top_candidates,
-                                                  pixel_spacing=pixel_spacing))[:, None, :, :, :]
+                    img, pixel_spacing = utils_lung.read_dicom_scan(patient_path)
 
-                yield x, y, pid
+                    all_candidates = utils.load_pkl(self.id2candidates_path[pid])
+                    top_candidates = all_candidates[:self.n_candidates_per_patient]
+
+                    x_batch[i] = np.float32(self.data_prep_fun(data=img,
+                                                               patch_centers=top_candidates,
+                                                               pixel_spacing=pixel_spacing))[:, None, :, :, :]
+                    y_batch[i] = self.id2label[pid]
+                    pids_batch.append(pid)
+
+                if len(idxs_batch) == self.batch_size:
+                    yield x_batch, y_batch, pids_batch
 
             if not self.infinite:
                 break
