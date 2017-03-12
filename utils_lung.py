@@ -257,6 +257,34 @@ def write_submission(patient_predictions, submission_path):
     f.close()
 
 
+def filter_close_neighbors(candidates, min_dist=16):
+    #TODO pixelspacing should be added to 
+    candidates_wo_dupes = set()
+    no_pairs = 0
+    for can1 in candidates:
+        found_close_candidate = False
+        swap_candidate = None
+        for can2 in candidates_wo_dupes:
+            if (can1 == can2).all():
+                raise "Candidate should not be in the target array yet"
+            else:
+                v = can1[:3] - can2[:3]
+                dist = np.sum(v**2)**(1./2)
+                if dist<min_dist:
+                    no_pairs += 1
+                    print 'Warning: there is a pair nodules close together',  can1[:3], can2[:3]
+                    found_close_candidate = True
+                    if can1[4]>can2[4]:
+                        swap_candidate = can2
+                    break
+        if not found_close_candidate:
+            candidates_wo_dupes.add(tuple(can1))
+        elif swap_candidate:
+            candidates_wo_dupes.remove(swap_candidate)
+            candidates_wo_dupes.add(tuple(can1))
+    print 'n candidates filtered out', no_pairs
+    return candidates_wo_dupes
+
 def dice_index(predictions, targets, epsilon=1e-12):
     predictions = np.asarray(predictions).flatten()
     targets = np.asarray(targets).flatten()

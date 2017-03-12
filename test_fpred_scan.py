@@ -60,12 +60,15 @@ for n, (x, candidate_zyxd, id) in enumerate(data_iterator.generate()):
     nblob2label[n] = label
     candidate_zyxdp = np.append(candidate_zyxd, [[p1]])
     pid2candidates[pid].append(candidate_zyxdp)
+    
 
 for k in pid2candidates.iterkeys():
     print '----------------------------------------'
     print k
     candidates = np.asarray(pid2candidates[k])
-    a = np.asarray(sorted(candidates, key=lambda x: x[-1], reverse=True))
+    candidates_wo_dupes = utils_lung.filter_close_neighbors(candidates)
+
+    a = np.asarray(sorted(candidates_wo_dupes, key=lambda x: x[-1], reverse=True))
     pid2candidates[k] = a
     print a[:10]
 
