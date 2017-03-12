@@ -62,11 +62,6 @@ for n, (x, candidate_zyxd, id) in enumerate(data_iterator.generate()):
     pid2candidates[pid].append(candidate_zyxdp)
 
 for k in pid2candidates.iterkeys():
-    print '----------------------------------------'
-    print k
     candidates = np.asarray(pid2candidates[k])
     a = np.asarray(sorted(candidates, key=lambda x: x[-1], reverse=True))
-    pid2candidates[k] = a
-    print a[:10]
-
-utils.save_pkl(pid2candidates, outputs_path + '/candidates.pkl')
+    utils.save_pkl(a, outputs_path + '/%s.pkl' % k)

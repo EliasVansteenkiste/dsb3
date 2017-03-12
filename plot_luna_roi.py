@@ -37,20 +37,25 @@ id2candidates_path = utils_lung.get_candidates_paths(segmentation_outputs_path)
 data_iterator = data_iterators.FixedCandidatesLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                 transform_params=config().p_transform,
                                                                 data_prep_fun=config().data_prep_function,
-                                                                id2candidates_path=id2candidates_path)
+                                                                id2candidates_path=id2candidates_path,
+                                                                top_n=4)
 
 print
 print 'Data'
 print 'n samples: %d' % data_iterator.nsamples
 
+prev_pid = None
+i = 0
 for (x_chunk_train, y_chunk_train, id_train) in data_iterator.generate():
     print id_train
-    print x_chunk_train.shape
+    pid = id_train[0]
+    if pid == prev_pid:
+        i += 1
+    else:
+        i = 0
 
-    for i in xrange(x_chunk_train.shape[0]):
-        pid = id_train[i]
-        for j in xrange(x_chunk_train.shape[1]):
-            utils_plots.plot_slice_3d_3axis(input=x_chunk_train[i, j, 0],
-                                            pid='-'.join([str(pid), str(j)]),
-                                            img_dir=outputs_path,
-                                            idx=np.array(x_chunk_train[i, j, 0].shape) / 2)
+    utils_plots.plot_slice_3d_3axis(input=x_chunk_train[0, 0],
+                                    pid='-'.join([str(pid), str(i)]),
+                                    img_dir=outputs_path,
+                                    idx=np.array(x_chunk_train[0, 0].shape) / 2)
+    prev_pid = pid
