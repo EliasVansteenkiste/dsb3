@@ -463,7 +463,7 @@ class CandidatesDSBDataGenerator(object):
 
 class DSBPatientsDataGenerator(object):
     def __init__(self, data_path, batch_size, transform_params, id2candidates_path, data_prep_fun,
-                 n_candidates_per_patient, rng, random, infinite, patient_ids=None):
+                 n_candidates_per_patient, rng, random, infinite, shuffle_top_n=False, patient_ids=None):
 
         self.id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
         self.id2candidates_path = id2candidates_path
@@ -484,6 +484,7 @@ class DSBPatientsDataGenerator(object):
         self.rng = rng
         self.random = random
         self.infinite = infinite
+        self.shuffle_top_n = shuffle_top_n
 
     def generate(self):
         while True:
@@ -507,6 +508,8 @@ class DSBPatientsDataGenerator(object):
 
                     all_candidates = utils.load_pkl(self.id2candidates_path[pid])
                     top_candidates = all_candidates[:self.n_candidates_per_patient]
+                    if self.shuffle_top_n:
+                        self.rng.shuffle(top_candidates)
 
                     x_batch[i] = np.float32(self.data_prep_fun(data=img,
                                                                patch_centers=top_candidates,
