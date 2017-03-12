@@ -465,7 +465,7 @@ class CandidatesDSBDataGenerator(object):
 
 class DSBPatientsDataGenerator(object):
     def __init__(self, data_path, transform_params, id2candidates_path, data_prep_fun,
-                 n_candidates_per_patient, rng, random, infinite, patient_ids=None, **kwargs):
+                 n_candidates_per_patient, rng, random, infinite,batch_size, patient_ids=None, **kwargs):
 
         self.id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
         self.id2candidates_path = id2candidates_path
@@ -485,17 +485,35 @@ class DSBPatientsDataGenerator(object):
         self.rng = rng
         self.random = random
         self.infinite = infinite
+        self.batch_size=batch_size
+
+    # just patch the corresponding elements together
+    # introduce member batch size
+    # create an np-array having the corresponding first two dimensions
+    # patch together n-d arrays of the correct size
+    # use a for loop to assemble a numpy array that can be set into a tensor later
+
 
     def generate(self):
         while True:
             rand_idxs = np.arange(self.nsamples)
             if self.random:
                 self.rng.shuffle(rand_idxs)
-            for pos in xrange(0, len(rand_idxs)):
+            
+            batch_idx=0
+            # TODO: configs?
+            batch_x=np.empty((self.batch_size,self.n_candidates_per_patient)+self.transform_params['patch_size'], dtype='float32')
+            batch_y=np.empty((self.batch_size), dtype='float32')
+
+      
+
+            for pos in xrange(0, len(rand_idxs)):                
+
                 idx = rand_idxs[pos]
 
                 patient_path = self.patient_paths[idx]
                 pid = utils_lung.extract_pid_dir(patient_path)
+      
                 y = np.array([self.id2label[pid]], dtype='float32')
 
                 img, pixel_spacing = utils_lung.read_dicom_scan(patient_path)
@@ -508,9 +526,30 @@ class DSBPatientsDataGenerator(object):
 
                 x = np.float32(self.data_prep_fun(data=img,
                                                   patch_centers=top_candidates,
-                                                  pixel_spacing=pixel_spacing))[:, None, :, :, :]
+                                                  pixel_spacing=pixel_spacing))#[:, :, :, :]
 
-                yield x, y, pid
+                batch_x[batch_idx,:,:,:,:] = x
+                batch_y[batch_idx]=y
+
+                batch_idx=batch_idx+1
+
+                #yield x, y, pid
+                if batch_idx >= (self.batch_size):
+                    
+                    batch_idx=0
+                    # not necessary, but that way we'll notice it easier if something goes wrong..
+
+                    batch_x_ret=batch_x.copy()
+                    batch_y_ret=batch_y.copy()
+
+
+                    batch_x=np.empty((self.batch_size,self.n_candidates_per_patient)+self.transform_params['patch_size'], dtype='float32')
+                    batch_y=np.empty((self.batch_size), dtype='float32')
+
+      
+                    print "batch shape: {}".format(batch_x.shape)
+
+                    yield batch_x_ret, batch_y_ret, pid
 
             if not self.infinite:
                 break

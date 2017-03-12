@@ -55,7 +55,7 @@ data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
                                    p_transform=p_transform)
 
 # data iterators
-batch_size = 1
+batch_size = 20
 
 train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
 train_pids, valid_pids = train_valid_ids['training'], train_valid_ids['validation']
@@ -67,7 +67,9 @@ train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               id2candidates_path=id2candidates_path,
                                                               rng=rng,
                                                               patient_ids=train_pids,
-                                                              random=True, infinite=True)
+                                                              random=True, 
+                                                              infinite=True,
+                                                              batch_size=batch_size)
 
 valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
                                                               transform_params=p_transform,
@@ -76,7 +78,9 @@ valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               id2candidates_path=id2candidates_path,
                                                               rng=rng,
                                                               patient_ids=valid_pids,
-                                                              random=True, infinite=False)
+                                                              random=True, 
+                                                              infinite=False,
+                                                              batch_size=batch_size)
 
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size
 max_nchunks = nchunks_per_epoch * 100
@@ -112,6 +116,42 @@ dense = partial(lasagne.layers.DenseLayer,
 
 
 def build_model():
+    l_in = nn.layers.InputLayer((None,n_candidates_per_patient) + p_transform['patch_size'])
+    l_target = nn.layers.InputLayer((None,))
+
+    l = conv3(l_in, num_filters=128)
+    l = conv3(l, num_filters=128)
+
+    l = max_pool(l)
+
+    l = conv3(l, num_filters=128)
+    l = conv3(l, num_filters=128)
+
+    l = max_pool(l)
+
+    l = conv3(l, num_filters=256)
+    l = conv3(l, num_filters=256)
+    l = conv3(l, num_filters=256)
+
+    l = max_pool(l)
+
+    #l_d01 = nn.layers.DenseLayer(l, num_units=256, W=nn.init.Orthogonal(),
+      #                           b=nn.init.Constant(0.01), nonlinearity=nn.nonlinearities.very_leaky_rectify)
+
+    #l_d01 = nn.layers.ReshapeLayer(l_d01, (1, -1))
+
+    l_d02 = nn.layers.DenseLayer(l, num_units=1024, W=nn.init.Orthogonal(),
+                                 b=nn.init.Constant(0.01), nonlinearity=nn.nonlinearities.very_leaky_rectify)
+
+    l_out = nn.layers.DenseLayer(l_d02, num_units=2,
+                                 W=nn.init.Constant(0.),
+                                 nonlinearity=nn.nonlinearities.softmax)
+
+    return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
+
+
+
+def build_model_1():
     l_in = nn.layers.InputLayer((n_candidates_per_patient, 1,) + p_transform['patch_size'])
     l_target = nn.layers.InputLayer((None,))
 
