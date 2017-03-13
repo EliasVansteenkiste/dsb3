@@ -17,7 +17,11 @@ set_configuration('configs_fpred_scan', config_name)
 # predictions path
 predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
 outputs_path = predictions_dir + '/%s' % config_name
-pid2candidates = utils.load_pkl(outputs_path + '/candidates.pkl')
+pid2candidates_path = utils_lung.get_candidates_paths(outputs_path)
+pid2candidates = {}
+for k, v in pid2candidates_path.iteritems():
+    pid2candidates[k] = utils.load_pkl(v)
+
 pid2annotations = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
 
 n_top = 10

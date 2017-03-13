@@ -258,6 +258,64 @@ def plot_2d_animation(input, mask, predictions):
     except AttributeError:
         pass
 
+def plot_all_slices(input, pid, img_dir=None):
+    # to convert cuda arrays to numpy array
+    input = np.asarray(input)
+
+    for idx in range(0, input.shape[0]-3, 4):
+        fig, ax = plt.subplots(2, 2, figsize=[8, 8])
+        fig.canvas.set_window_title(pid)
+        ax[0, 0].imshow(input[idx, :, :], cmap=plt.cm.gray)
+        ax[1, 0].imshow(input[idx+1, :, :], cmap=plt.cm.gray)
+        ax[0, 1].imshow(input[idx+2, :, :], cmap=plt.cm.gray)
+        ax[1, 1].imshow(input[idx+3, :, :], cmap=plt.cm.gray)
+
+        if img_dir is not None:
+            fig.savefig(img_dir + '_' + str(pid) + '_' + str(idx) + '.png' , bbox_inches='tight')
+        else:
+            plt.show()
+        fig.clf()
+        plt.close('all')
+
+
+def plot_all_slices(ct_scan, mask, pid, img_dir=None):
+    # to convert cuda arrays to numpy array
+    ct_scan = np.asarray(ct_scan)
+    mask = np.asarray(mask)
+
+    for idx in range(0, mask.shape[0]-3, 2):
+        fig, ax = plt.subplots(2, 2, figsize=[8, 8])
+        fig.canvas.set_window_title(pid)
+        ax[0, 0].imshow(mask[idx, :, :], cmap=plt.cm.gray)
+        ax[1, 0].imshow(ct_scan[idx+1, :, :], cmap=plt.cm.gray)
+        ax[0, 1].imshow(mask[idx+2, :, :], cmap=plt.cm.gray)
+        ax[1, 1].imshow(ct_scan[idx+3, :, :], cmap=plt.cm.gray)
+
+        if img_dir is not None:
+            fig.savefig(img_dir + '_' + str(pid) + '_' + str(idx) + '.png' , bbox_inches='tight')
+        else:
+            plt.show()
+        fig.clf()
+        plt.close('all')
+
+def plot_4_slices(input, pid, img_dir=None, idx=None):
+    # to convert cuda arrays to numpy array
+    input = np.asarray(input)
+
+    fig, ax = plt.subplots(2, 2, figsize=[8, 8])
+    fig.canvas.set_window_title(pid)
+    ax[0, 0].imshow(input[idx[0], :, :], cmap=plt.cm.gray)
+    ax[1, 0].imshow(input[:, idx[1], :], cmap=plt.cm.gray)
+    ax[0, 1].imshow(input[:, :, idx[2]], cmap=plt.cm.gray)
+    ax[1, 1].imshow(input[:, :, idx[2]], cmap=plt.cm.gray)
+
+    if img_dir is not None:
+        fig.savefig(img_dir + '/%s.png' % (pid), bbox_inches='tight')
+    else:
+        plt.show()
+    fig.clf()
+    plt.close('all')
+
 
 def plot_learning_curves(train_losses, valid_losses, expid, img_dir):
     fig = plt.figure()

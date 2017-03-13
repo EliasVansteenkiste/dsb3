@@ -344,7 +344,7 @@ class CandidatesLunaValidDataGenerator(object):
 
 
 class FixedCandidatesLunaDataGenerator(object):
-    def __init__(self, data_path, transform_params, id2candidates_path, data_prep_fun):
+    def __init__(self, data_path, transform_params, id2candidates_path, data_prep_fun, top_n=None):
 
         self.file_extension = '.pkl' if 'pkl' in data_path else '.mhd'
         self.id2candidates_path = id2candidates_path
@@ -356,6 +356,7 @@ class FixedCandidatesLunaDataGenerator(object):
         self.data_path = data_path
         self.data_prep_fun = data_prep_fun
         self.transform_params = transform_params
+        self.top_n = top_n
 
     def generate(self):
 
@@ -363,6 +364,9 @@ class FixedCandidatesLunaDataGenerator(object):
             patient_path = self.id2patient_path[pid]
             print 'PATIENT', pid
             candidates = utils.load_pkl(self.id2candidates_path[pid])
+            if self.top_n is not None:
+                candidates = candidates[:self.top_n]
+                print candidates
             print 'n blobs', len(candidates)
 
             img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \

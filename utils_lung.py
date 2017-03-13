@@ -258,7 +258,7 @@ def write_submission(patient_predictions, submission_path):
 
 
 def filter_close_neighbors(candidates, min_dist=16):
-    #TODO pixelspacing should be added to 
+    #TODO pixelspacing should be added , it is now hardcoded 
     candidates_wo_dupes = set()
     no_pairs = 0
     for can1 in candidates:
@@ -268,8 +268,9 @@ def filter_close_neighbors(candidates, min_dist=16):
             if (can1 == can2).all():
                 raise "Candidate should not be in the target array yet"
             else:
-                v = can1[:3] - can2[:3]
-                dist = np.sum(v**2)**(1./2)
+                delta = can1[:3] - can2[:3]
+                delta[0] = 2.5*delta[0] #zyx coos
+                dist = np.sum(delta**2)**(1./2)
                 if dist<min_dist:
                     no_pairs += 1
                     print 'Warning: there is a pair nodules close together',  can1[:3], can2[:3]
