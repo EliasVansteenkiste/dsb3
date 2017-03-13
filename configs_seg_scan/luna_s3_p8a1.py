@@ -1,33 +1,17 @@
 import data_transforms
 import data_iterators
 import pathfinder
-import configs_seg_patch.luna_p_local as patch_config
+import utils
+import string
+import numpy as np
+import lasagne as nn
 import lung_segmentation
+# TODO: IMPORT A CORRECT PATCH MODEL HERE
+import configs_seg_patch.luna_p8a1 as patch_config
 
-# rng = patch_config.rng
-# p_transform_patch = patch_config.p_transform
-#
-# p_transform = {'patch_size': (416, 416, 416),
-#                'mm_patch_size': (416, 416, 416),
-#                'pixel_spacing': patch_config.p_transform['pixel_spacing']
-#                }
-#
-#
-# def data_prep_function(data, pixel_spacing, p_transform=p_transform):
-#     # MAKE SURE THAT DATA IS PREPROCESSED THE SAME WAY
-#     x, tf_matrix = data_transforms.transform_scan3d(data=data,
-#                                                     pixel_spacing=pixel_spacing,
-#                                                     p_transform=p_transform,
-#                                                     p_transform_augment=None)
-#     x = data_transforms.pixelnormHU(x)
-#     return x, tf_matrix
-#
-#
-# data_iterator = data_iterators.DSBScanDataGenerator(data_path=pathfinder.DATA_PATH,
-#                                                     transform_params=p_transform,
-#                                                     data_prep_fun=data_prep_function)
-
-
+# print utils.get_script_name(__file__).split('_')[-1]
+# print patch_config.__name__.split('.')[-1]
+# assert utils.get_script_name(__file__).replace('_s*_', '_') == patch_config.__name__.split('.')[-1]
 
 rng = patch_config.rng
 
@@ -55,7 +39,7 @@ def data_prep_function(data, luna_annotations, pixel_spacing, luna_origin,
                                                                                    p_transform_augment=None,
                                                                                    luna_origin=luna_origin,
                                                                                    lung_mask=lung_mask)
-    # x = data_transforms.pixelnormHU(x)
+    x = data_transforms.pixelnormHU(x)
     y = data_transforms.make_3d_mask_from_annotations(img_shape=x.shape, annotations=annotations_tf, shape='sphere')
     return x, y, lung_mask_out, annotations_tf, tf_matrix
 
@@ -68,3 +52,26 @@ valid_data_iterator = data_iterators.LunaScanPositiveLungMaskDataGenerator(data_
                                                                            patient_ids=valid_pids,
                                                                            full_batch=True,
                                                                            random=False, infinite=False)
+
+
+def build_model():
+    metadata_dir = utils.get_dir_path('models', pathfinder.METADATA_PATH)
+    metadata_path = utils.find_model_metadata(metadata_dir, patch_config.__name__.split('.')[-1])
+    metadata = utils.load_pkl(metadata_path)
+
+    print 'Build model'
+    model = patch_config.build_model(patch_size=(window_size, window_size, window_size))
+    all_layers = nn.layers.get_all_layers(model.l_out)
+    num_params = nn.layers.count_params(model.l_out)
+    print '  number of parameters: %d' % num_params
+    print string.ljust('  layer output shapes:', 36),
+    print string.ljust('#params:', 10),
+    print 'output shape:'
+    for layer in all_layers:
+        name = string.ljust(layer.__class__.__name__, 32)
+        num_param = sum([np.prod(p.get_value().shape) for p in layer.get_params()])
+        num_param = string.ljust(num_param.__str__(), 10)
+        print '    %s %s %s' % (name, num_param, layer.output_shape)
+
+    nn.layers.set_all_param_values(model.l_out, metadata['param_values'])
+    return model

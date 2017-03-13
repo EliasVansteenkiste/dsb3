@@ -61,17 +61,7 @@ for n, (x, candidate_zyxd, id) in enumerate(data_iterator.generate()):
     candidate_zyxdp = np.append(candidate_zyxd, [[p1]])
     pid2candidates[pid].append(candidate_zyxdp)
 
-    # if p1 > 0.9 or label == 1:
-    #     plot_slice_3d_3(input=x[0, 0], mask=x[0, 0], prediction=x[0, 0],
-    #                     axis=0, pid='-'.join([str(id[0]), str(label), str(p1)]),
-    #                     img_dir=outputs_path, idx=np.array(x[0, 0].shape) / 2)
-
 for k in pid2candidates.iterkeys():
-    print '----------------------------------------'
-    print k
     candidates = np.asarray(pid2candidates[k])
     a = np.asarray(sorted(candidates, key=lambda x: x[-1], reverse=True))
-    pid2candidates[k] = a
-    print a[:10]
-
-utils.save_pkl(pid2candidates, outputs_path + '/candidates.pkl')
+    utils.save_pkl(a, outputs_path + '/%s.pkl' % k)

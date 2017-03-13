@@ -8,7 +8,7 @@ import lasagne as nn
 import utils_lung
 
 # TODO: IMPORT A CORRECT PATCH CLASSIFICATION MODEL HERE
-seg_config_name = 'luna_s2_p8a1'
+seg_config_name = 'luna_s3_p8a1'
 
 # TODO: IMPORT A CORRECT PATCH CLASSIFICATION MODEL HERE
 import configs_fpred_patch.luna_c3 as patch_class_config

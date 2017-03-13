@@ -70,7 +70,7 @@ givens_valid[model.l_target.input_var] = y_shared
 
 # theano functions
 iter_train = theano.function([], train_loss, givens=givens_train, updates=updates)
-iter_validate = theano.function([], valid_loss, givens=givens_valid)
+iter_validate = theano.function([], nn.layers.get_output(model.l_out), givens=givens_valid, on_unused_input='ignore')
 
 if config().restart_from_save:
     print 'Load model parameters for resuming'
@@ -107,14 +107,10 @@ prev_time = start_time
 tmp_losses_train = []
 losses_train_print = []
 
-for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buffering.buffered_gen_threaded(
-        train_data_iterator.generate())):
-    if chunk_idx in learning_rate_schedule:
-        lr = np.float32(learning_rate_schedule[chunk_idx])
-        print '  setting learning rate to %.7f' % lr
-        print
-        learning_rate.set_value(lr)
+print 'Training'
 
+for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(range(5), buffering.buffered_gen_threaded(
+        train_data_iterator.generate())):
     # load chunk to GPU
     x_shared.set_value(x_chunk_train)
     y_shared.set_value(y_chunk_train)
@@ -126,60 +122,28 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
     tmp_losses_train.append(loss)
     losses_train_print.append(loss)
 
-    if (chunk_idx + 1) % 10 == 0:
-        print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks), np.mean(losses_train_print)
-        losses_train_print = []
+print 'Validating'
 
-    if ((chunk_idx + 1) % config().validate_every) == 0:
-        print
-        print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks)
-        # calculate mean train loss since the last validation phase
-        mean_train_loss = np.mean(tmp_losses_train)
-        print 'Mean train loss: %7f' % mean_train_loss
-        losses_eval_train.append(mean_train_loss)
-        tmp_losses_train = []
-
-        # load validation data to GPU
-        tmp_losses_valid = []
-        for i, (x_chunk_valid, y_chunk_valid, ids_batch) in enumerate(
-                buffering.buffered_gen_threaded(valid_data_iterator.generate(),
-                                                buffer_size=2)):
-            x_shared.set_value(x_chunk_valid)
-            y_shared.set_value(y_chunk_valid)
-            l_valid = iter_validate()
-            print i, l_valid, y_chunk_valid, ids_batch
-            tmp_losses_valid.append(l_valid)
-
-        # calculate validation loss across validation set
-        valid_loss = np.mean(tmp_losses_valid)
-        print 'Validation loss: ', valid_loss
-        losses_eval_valid.append(valid_loss)
-
-        now = time.time()
-        time_since_start = now - start_time
-        time_since_prev = now - prev_time
-        prev_time = now
-        est_time_left = time_since_start * (config().max_nchunks - chunk_idx + 1.) / (chunk_idx + 1. - start_chunk_idx)
-        eta = datetime.now() + timedelta(seconds=est_time_left)
-        eta_str = eta.strftime("%c")
-        print "  %s since start (%.2f s)" % (utils.hms(time_since_start), time_since_prev)
-        print "  estimated %s to go (ETA: %s)" % (utils.hms(est_time_left), eta_str)
-        print
-
-    if ((chunk_idx + 1) % config().save_every) == 0:
-        print
-        print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks)
-        print 'Saving metadata, parameters'
-
-        with open(metadata_path, 'w') as f:
-            pickle.dump({
-                'configuration_file': config_name,
-                'git_revision_hash': utils.get_git_revision_hash(),
-                'experiment_id': expid,
-                'chunks_since_start': chunk_idx,
-                'losses_eval_train': losses_eval_train,
-                'losses_eval_valid': losses_eval_valid,
-                'param_values': nn.layers.get_all_param_values(model.l_out)
-            }, f, pickle.HIGHEST_PROTOCOL)
-            print '  saved to %s' % metadata_path
-            print
+for i, (x_chunk_valid, y_chunk_valid, ids_batch) in enumerate(
+        # buffering.buffered_gen_threaded(
+        valid_data_iterator.generate()):
+    x_shared.set_value(x_chunk_valid)
+    y_shared.set_value(y_chunk_valid)
+    predictions = iter_validate()
+    print i
+    for j in xrange(predictions.shape[0]):
+        print j, predictions[j], y_chunk_valid[j], ids_batch[j]
+    if i > 10:
+        break
+print '==========================================================='
+for i, (x_chunk_valid, y_chunk_valid, ids_batch) in enumerate(
+        # buffering.buffered_gen_threaded(
+        config().valid_data_iterator2.generate()):
+    x_shared.set_value(x_chunk_valid)
+    y_shared.set_value(y_chunk_valid)
+    predictions = iter_validate()
+    print i
+    for j in xrange(predictions.shape[0]):
+        print j, predictions[j], y_chunk_valid[j], ids_batch[j]
+    if i > 10:
+        break

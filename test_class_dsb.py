@@ -13,6 +13,7 @@ import theano.tensor as T
 import buffering
 from configuration import config, set_configuration
 import pathfinder
+import utils_plots
 
 theano.config.warn_float64 = 'raise'
 
@@ -25,6 +26,10 @@ expid = utils.generate_expid(config_name)
 print
 print "Experiment ID: %s" % expid
 print
+
+predictions_dir = utils.get_dir_path('analysis', pathfinder.METADATA_PATH)
+outputs_path = predictions_dir + '/%s' % config_name
+utils.auto_make_dir(outputs_path)
 
 # metadata
 metadata_dir = utils.get_dir_path('models', pathfinder.METADATA_PATH)
@@ -70,7 +75,8 @@ givens_valid[model.l_target.input_var] = y_shared
 
 # theano functions
 iter_train = theano.function([], train_loss, givens=givens_train, updates=updates)
-iter_validate = theano.function([], valid_loss, givens=givens_valid)
+iter_validate = theano.function([], nn.layers.get_output(model.l_out, deterministic=True), givens=givens_valid,
+                                on_unused_input='ignore')
 
 if config().restart_from_save:
     print 'Load model parameters for resuming'
@@ -108,7 +114,7 @@ tmp_losses_train = []
 losses_train_print = []
 
 for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buffering.buffered_gen_threaded(
-        train_data_iterator.generate())):
+        valid_data_iterator.generate())):
     if chunk_idx in learning_rate_schedule:
         lr = np.float32(learning_rate_schedule[chunk_idx])
         print '  setting learning rate to %.7f' % lr
@@ -119,67 +125,21 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
     x_shared.set_value(x_chunk_train)
     y_shared.set_value(y_chunk_train)
 
-    # make nbatches_chunk iterations
+    predictions = iter_validate()
+    print predictions.shape
 
-    loss = iter_train()
-    # print loss, y_chunk_train, id_train
-    tmp_losses_train.append(loss)
-    losses_train_print.append(loss)
+    if predictions.shape != x_chunk_train.shape:
+        pad_width = (np.asarray(x_chunk_train.shape) - np.asarray(predictions.shape)) / 2
+        pad_width = [(p, p) for p in pad_width]
+        predictions = np.pad(predictions, pad_width=pad_width, mode='constant')
 
-    if (chunk_idx + 1) % 10 == 0:
-        print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks), np.mean(losses_train_print)
-        losses_train_print = []
-
-    if ((chunk_idx + 1) % config().validate_every) == 0:
-        print
-        print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks)
-        # calculate mean train loss since the last validation phase
-        mean_train_loss = np.mean(tmp_losses_train)
-        print 'Mean train loss: %7f' % mean_train_loss
-        losses_eval_train.append(mean_train_loss)
-        tmp_losses_train = []
-
-        # load validation data to GPU
-        tmp_losses_valid = []
-        for i, (x_chunk_valid, y_chunk_valid, ids_batch) in enumerate(
-                buffering.buffered_gen_threaded(valid_data_iterator.generate(),
-                                                buffer_size=2)):
-            x_shared.set_value(x_chunk_valid)
-            y_shared.set_value(y_chunk_valid)
-            l_valid = iter_validate()
-            print i, l_valid, y_chunk_valid, ids_batch
-            tmp_losses_valid.append(l_valid)
-
-        # calculate validation loss across validation set
-        valid_loss = np.mean(tmp_losses_valid)
-        print 'Validation loss: ', valid_loss
-        losses_eval_valid.append(valid_loss)
-
-        now = time.time()
-        time_since_start = now - start_time
-        time_since_prev = now - prev_time
-        prev_time = now
-        est_time_left = time_since_start * (config().max_nchunks - chunk_idx + 1.) / (chunk_idx + 1. - start_chunk_idx)
-        eta = datetime.now() + timedelta(seconds=est_time_left)
-        eta_str = eta.strftime("%c")
-        print "  %s since start (%.2f s)" % (utils.hms(time_since_start), time_since_prev)
-        print "  estimated %s to go (ETA: %s)" % (utils.hms(est_time_left), eta_str)
-        print
-
-    if ((chunk_idx + 1) % config().save_every) == 0:
-        print
-        print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks)
-        print 'Saving metadata, parameters'
-
-        with open(metadata_path, 'w') as f:
-            pickle.dump({
-                'configuration_file': config_name,
-                'git_revision_hash': utils.get_git_revision_hash(),
-                'experiment_id': expid,
-                'chunks_since_start': chunk_idx,
-                'losses_eval_train': losses_eval_train,
-                'losses_eval_valid': losses_eval_valid,
-                'param_values': nn.layers.get_all_param_values(model.l_out)
-            }, f, pickle.HIGHEST_PROTOCOL)
-            print '  saved to %s' % metadata_path
-            print
+    for i in xrange(x_chunk_train.shape[0]):
+        pid = id_train[i]
+        for j in xrange(x_chunk_train.shape[1]):
+            utils_plots.plot_slice_3d_3(input=x_chunk_train[i, j, 0],
+                                        mask=predictions[i, j, 0],
+                                        prediction=predictions[i, j, 0],
+                                        pid='-'.join([str(pid), str(j)]),
+                                        img_dir=outputs_path,
+                                        idx=np.array(x_chunk_train[i, j, 0].shape) / 2,
+                                        axis=0)

@@ -88,6 +88,24 @@ def plot_slice_3d_3(input, mask, prediction, axis, pid, img_dir=None, idx=None):
     plt.close('all')
 
 
+def plot_slice_3d_3axis(input, pid, img_dir=None, idx=None):
+    # to convert cuda arrays to numpy array
+    input = np.asarray(input)
+
+    fig, ax = plt.subplots(2, 2, figsize=[8, 8])
+    fig.canvas.set_window_title(pid)
+    ax[0, 0].imshow(input[idx[0], :, :], cmap=plt.cm.gray)
+    ax[1, 0].imshow(input[:, idx[1], :], cmap=plt.cm.gray)
+    ax[0, 1].imshow(input[:, :, idx[2]], cmap=plt.cm.gray)
+
+    if img_dir is not None:
+        fig.savefig(img_dir + '/%s.png' % (pid), bbox_inches='tight')
+    else:
+        plt.show()
+    fig.clf()
+    plt.close('all')
+
+
 def plot_slice_3d_4(input, mask, prediction, lung_mask, axis, pid, img_dir=None, idx=None):
     # to convert cuda arrays to numpy array
     input = np.asarray(input)

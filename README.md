@@ -1,9 +1,8 @@
 # TODO
 
-- find out what's wrong with 137 patients, who don't have any blobs!!!
-- data iterator for DSB with batch size > 1  
 - filter blobs that are too close to each other 
-
+- remove strange regions from ROI!!!!
+- implement test_dsb script
 
 
 ssh -X -p 10001 ikorshun@localhost
@@ -45,6 +44,7 @@ stats over fpred: evaluate_luna_fpred_scan.py
 generate blobs: test_seg_scan_dsb.py
 fpred: test_fpred_scan_dsb.py
 plot rois as in the final data iterator: plot_dsb_roi.py
+train classifier: train_class_dsb.py 
 
 
 
