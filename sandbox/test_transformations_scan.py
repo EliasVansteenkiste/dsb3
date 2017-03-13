@@ -62,11 +62,11 @@ def test_luna3d():
     luna_data_paths = utils_lung.get_patient_data_paths(pathfinder.LUNA_DATA_PATH)
     luna_data_paths = [p for p in luna_data_paths if '.mhd' in p]
 
-    # luna_data_paths = [pathfinder.LUNA_DATA_PATH + '/1.3.6.1.4.1.14519.5.2.1.6279.6001.223098610241551815995595311693.mhd']
-    # luna_data_paths = [pathfinder.LUNA_DATA_PATH + '/1.3.6.1.4.1.14519.5.2.1.6279.6001.202811684116768680758082619196.mhd']
-    # luna_data_paths = [pathfinder.LUNA_DATA_PATH + '/1.3.6.1.4.1.14519.5.2.1.6279.6001.174168737938619557573021395302.mhd']
+    # luna_data_paths = [
+    #     pathfinder.LUNA_DATA_PATH + '/1.3.6.1.4.1.14519.5.2.1.6279.6001.287966244644280690737019247886.mhd']
+
     luna_data_paths = [
-        pathfinder.LUNA_DATA_PATH + '/1.3.6.1.4.1.14519.5.2.1.6279.6001.287966244644280690737019247886.mhd']
+        '/mnt/sda3/data/kaggle-lung/luna_test_patient/1.3.6.1.4.1.14519.5.2.1.6279.6001.943403138251347598519939390311.mhd']
     for k, p in enumerate(luna_data_paths):
         img, origin, pixel_spacing = utils_lung.read_mhd(p)
         id = os.path.basename(p).replace('.mhd', '')
@@ -76,7 +76,7 @@ def test_luna3d():
 
         img_out, mask, annotations_out = config().data_prep_function(img,
                                                                      pixel_spacing=pixel_spacing,
-                                                                     luna_annotations=None,
+                                                                     luna_annotations=annotations,
                                                                      luna_origin=origin)
 
         mask[mask == 0.] = 0.1

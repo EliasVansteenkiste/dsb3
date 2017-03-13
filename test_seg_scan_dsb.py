@@ -5,7 +5,6 @@ import theano
 import pathfinder
 import utils
 from configuration import config, set_configuration
-from utils_plots import plot_slice_3d_3
 import theano.tensor as T
 import blobs_detection
 import logger

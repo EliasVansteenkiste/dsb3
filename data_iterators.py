@@ -404,7 +404,7 @@ class DSBScanDataGenerator(object):
 
 
 class DSBScanLungMaskDataGenerator(object):
-    def __init__(self, data_path, transform_params, data_prep_fun, exclude_pids=None, **kwargs):
+    def __init__(self, data_path, transform_params, data_prep_fun, exclude_pids=None, include_pids=None, **kwargs):
         self.patient_paths = utils_lung.get_patient_data_paths(data_path)
 
         if exclude_pids is not None:
@@ -413,6 +413,9 @@ class DSBScanLungMaskDataGenerator(object):
                     if ep in self.patient_paths[i]:
                         self.patient_paths.pop(i)
                         break
+
+        if include_pids is not None:
+            self.patient_paths = [data_path + '/' + p for p in include_pids]
 
         self.nsamples = len(self.patient_paths)
         self.data_path = data_path
@@ -433,7 +436,10 @@ class DSBScanLungMaskDataGenerator(object):
 
 
 class CandidatesDSBDataGenerator(object):
-    def __init__(self, data_path, transform_params, id2candidates_path, data_prep_fun, **kwargs):
+    def __init__(self, data_path, transform_params, id2candidates_path, data_prep_fun, exclude_pids=None):
+        if exclude_pids is not None:
+            for p in exclude_pids:
+                id2candidates_path.pop(p, None)
 
         self.id2candidates_path = id2candidates_path
         self.id2patient_path = {}
@@ -474,7 +480,7 @@ class DSBPatientsDataGenerator(object):
         self.patient_paths = []
         if patient_ids is not None:
             for pid in patient_ids:
-                if pid in self.id2candidates_path:  # TODO
+                if pid in self.id2candidates_path:  # TODO: this should be redundant if fpr and segemntation are correctly generated
                     self.patient_paths.append(data_path + '/' + pid)
         else:
             raise ValueError('provide patient ids')

@@ -9,10 +9,6 @@ import lung_segmentation
 # TODO: IMPORT A CORRECT PATCH MODEL HERE
 import configs_seg_patch.luna_p8a1 as patch_config
 
-# print utils.get_script_name(__file__).split('_')[-1]
-# print patch_config.__name__.split('.')[-1]
-# assert utils.get_script_name(__file__).replace('_s*_', '_') == patch_config.__name__.split('.')[-1]
-
 rng = patch_config.rng
 
 # calculate the following things correctly!

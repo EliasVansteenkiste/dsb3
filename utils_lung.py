@@ -99,7 +99,19 @@ def read_dicom_scan(patient_data_path):
     for s1, s2 in zip(sids_sorted[1:], sids_sorted[:-1]):
         z_pixel_spacing.append(sid2position[s1] - sid2position[s2])
     z_pixel_spacing = np.array(z_pixel_spacing)
-    assert np.all((z_pixel_spacing - z_pixel_spacing[0]) < 0.01)
+    try:
+        assert np.all((z_pixel_spacing - z_pixel_spacing[0]) < 0.01)
+    except:
+        print 'This patient has multiple series, we will remove one'
+        sids_sorted_2 = []
+        for i in np.where(z_pixel_spacing != 0)[0]:
+            sids_sorted_2.append(sids_sorted[i])
+        sids_sorted = sids_sorted_2
+        z_pixel_spacing = []
+        for s1, s2 in zip(sids_sorted[1:], sids_sorted[:-1]):
+            z_pixel_spacing.append(sid2position[s1] - sid2position[s2])
+        z_pixel_spacing = np.array(z_pixel_spacing)
+        assert np.all((z_pixel_spacing - z_pixel_spacing[0]) < 0.01)
 
     pixel_spacing = np.array((z_pixel_spacing[0],
                               sid2metadata[sids_sorted[0]]['PixelSpacing'][0],
@@ -270,3 +282,11 @@ def cross_entropy(predictions, targets, epsilon=1e-12):
     targets = np.asarray(targets).flatten()
     ce = np.mean(np.log(predictions) * targets + np.log(1 - predictions) * (1. - targets))
     return ce
+
+
+def get_generated_pids(predictions_dir):
+    pids = []
+    if os.path.isdir(predictions_dir):
+        pids = os.listdir(predictions_dir)
+        pids = [extract_pid_filename(p) for p in pids]
+    return pids
