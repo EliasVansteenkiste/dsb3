@@ -131,16 +131,22 @@ def build_model():
     l_d01 = dense_prelu_layer(l, num_units=512)
     l_d01 = nn.layers.ReshapeLayer(l_d01, (-1, n_candidates_per_patient, num_units_dense))
     l_d02 = dense_prelu_layer(l_d01, num_units=512)
-    l_out = nn.layers.DenseLayer(l_d02, num_units=2,
+    l_out = nn.layers.DenseLayer(l_d02, num_units=n_candidates_per_patient,
                                  W=nn.init.Constant(0.),
-                                 b=np.array([np.log((1397. - 362) / 1398), np.log(362. / 1397)], dtype='float32'),
-                                 nonlinearity=nn.nonlinearities.softmax)
-
+                                 b=nn.init.Constant(0.),
+                                 nonlinearity=nn.nonlinearities.rectify)
+                                 
+                                 
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 
 
 def build_objective(model, deterministic=False, epsilon=1e-12):
-    predictions = nn.layers.get_output(model.l_out, deterministic=deterministic)
+    
+    neg_log_probs = nn.layers.get_output(model.l_out, deterministic=deterministic)
+    neg_log_probs_sum = T.sum(neg_log_probs,axis=1,keepdims=True)
+    probs_benign=T.exp(-neg_log_probs_sum)
+    probs_malignant=1 - probs_benign
+    predictions=T.concatenate([probs_benign,probs_malignant],axis=1)
     targets = T.cast(T.flatten(nn.layers.get_output(model.l_target)), 'int32')
     p = predictions[T.arange(predictions.shape[0]), targets]
     p = T.clip(p, epsilon, 1.)
