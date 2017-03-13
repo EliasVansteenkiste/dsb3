@@ -104,8 +104,11 @@ def read_dicom_scan(patient_data_path):
     except:
         print 'This patient has multiple series, we will remove one'
         sids_sorted_2 = []
-        for i in np.where(z_pixel_spacing != 0)[0]:
-            sids_sorted_2.append(sids_sorted[i])
+        for s1, s2 in zip(sids_sorted[::2], sids_sorted[1::2]):
+            if sid2metadata[s1]["InstanceNumber"] > sid2metadata[s2]["InstanceNumber"]:
+                sids_sorted_2.append(s1)
+            else:
+                sids_sorted_2.append(s2)
         sids_sorted = sids_sorted_2
         z_pixel_spacing = []
         for s1, s2 in zip(sids_sorted[1:], sids_sorted[:-1]):

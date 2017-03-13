@@ -127,7 +127,7 @@ def test_dsb():
 
     patient_data_paths = utils_lung.get_patient_data_paths(pathfinder.DATA_PATH)
     print len(patient_data_paths)
-    # patient_data_paths = [pathfinder.DATA_PATH + '/64a5a866461a3b6006efb0075e04dffe']
+    patient_data_paths = [pathfinder.DATA_PATH + '/b8bb02d229361a623a4dc57aa0e5c485']
 
     for k, p in enumerate(patient_data_paths):
         pid = utils_lung.extract_pid_dir(p)
@@ -160,10 +160,10 @@ def test_dsb():
                                                                                lung_mask=mask)
 
         plot_slice_3d_2(img_out, mask_out, 0, pid, idx=np.array(img_out.shape) / 2)
-        # plot_slice_3d_2(mask_out, img_out, 0, pid, idx=np.array(img_out.shape) / 4)
-        # plot_slice_3d_2(mask_out, img_out, 0, pid, idx=np.array(img_out.shape) / 8)
+        plot_slice_3d_2(mask_out, img_out, 0, pid, idx=np.array(img_out.shape) / 4)
+        plot_slice_3d_2(mask_out, img_out, 0, pid, idx=np.array(img_out.shape) / 8)
 
 
 if __name__ == '__main__':
-    test_luna3d()
-    # test_dsb()
+    # test_luna3d()
+    test_dsb()
