@@ -37,7 +37,6 @@ def data_prep_function(data, pixel_spacing, p_transform=p_transform):
 predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH) + \
                   '/' + utils.get_script_name(__file__)
 exclude_pids = utils_lung.get_generated_pids(predictions_dir)
-include_pids = ['b8bb02d229361a623a4dc57aa0e5c485']  # TODO
 
 data_iterator = data_iterators.DSBScanLungMaskDataGenerator(data_path=pathfinder.DATA_PATH,
                                                             transform_params=p_transform,
