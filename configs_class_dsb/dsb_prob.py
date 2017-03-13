@@ -128,15 +128,16 @@ def build_model():
     l = conv3(l, num_filters=256)
 
     prior_benign=(1397. - 362) / 1398
+    prior_benign_single=np.power(prior_benign,1/n_candidates_per_patient)
     num_units_dense = 512
     l_d01 = dense_prelu_layer(l, num_units=512)
     l_d01 = nn.layers.ReshapeLayer(l_d01, (-1, n_candidates_per_patient, num_units_dense))
     l_d02 = dense_prelu_layer(l_d01, num_units=512)
     l_out = nn.layers.DenseLayer(l_d02, num_units=n_candidates_per_patient,
                                  W=nn.init.Constant(0.),
-                                 b=nn.init.Constant(-np.log(np.power(prior_benign,1./n_candidates_per_patient))),
+                                 b=nn.init.Constant(-np.log((1/prior_benign_single)-1)),
                                  #b=nn.init.Constant(0.),
-                                 nonlinearity=nn.nonlinearities.rectify)
+                                 nonlinearity=nn.nonlinearities.sigmoid)
                                  
                                  
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
@@ -144,9 +145,9 @@ def build_model():
 
 def build_objective(model, deterministic=False, epsilon=1e-12):
     
-    neg_log_probs = nn.layers.get_output(model.l_out, deterministic=deterministic)
-    neg_log_probs_sum = T.sum(neg_log_probs,axis=1,keepdims=True)
-    probs_benign=T.exp(-neg_log_probs_sum)
+    probs = nn.layers.get_output(model.l_out, deterministic=deterministic)
+    
+    probs_benign=T.prod(neg_log_probs,axis=1,keepdims=True)
     probs_malignant=1 - probs_benign
     predictions=T.concatenate([probs_benign,probs_malignant],axis=1)
     targets = T.cast(T.flatten(nn.layers.get_output(model.l_target)), 'int32')
