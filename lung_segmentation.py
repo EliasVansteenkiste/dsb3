@@ -81,25 +81,21 @@ def segment_HU_scan_ira2(x, threshold=-350):
     sorted_regions = sorted(region_props, key=lambda x: x.area, reverse=True)
     print len(sorted_regions)
 
-    remove_r = []
     for r in sorted_regions[1:]:
         print r.centroid, r.area, r.label
-        if r.area > 3:
+        if r.area > 10:
             # make an image only containing that region
             label_image_r = label_image == r.label
-            # grow the mask ?? TODO: check here
+            # grow the mask
             label_image_r = scipy.ndimage.binary_dilation(label_image_r,
                                                           structure=scipy.ndimage.generate_binary_structure(3, 2))
             # compute the overlap with true lungs
             overlap = label_image_r * lung_mask
-            if np.sum(overlap) == 0:
+            if not np.any(overlap):
                 print 'REMOVE'
-                remove_r.append(r)
-            print '------------------------------'
-
-    for region in remove_r:
-        print region.centroid, region.area
-        for coordinates in region.coords:
-            lung_mask_convex[coordinates[0], coordinates[1], coordinates[2]] = 0
+                for i in range(label_image_r.shape[0]):
+                    if np.any(label_image_r[i]):
+                        label_image_r[i] = skimage.morphology.convex_hull_image(label_image_r[i])
+                lung_mask_convex *= 1 - label_image_r
 
     return lung_mask_convex

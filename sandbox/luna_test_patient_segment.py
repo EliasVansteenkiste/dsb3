@@ -40,6 +40,7 @@ def test_luna3d():
         print id
         img, origin, pixel_spacing = utils_lung.read_mhd(p)
         lung_mask = lung_segmentation.segment_HU_scan_ira2(img)
+        print np.min(lung_mask), np.max(lung_mask)
         x, annotations_tf, tf_matrix, lung_mask_out = data_transforms.transform_scan3d(data=img,
                                                                                        pixel_spacing=pixel_spacing,
                                                                                        p_transform=p_transform,
@@ -49,20 +50,20 @@ def test_luna3d():
                                                                                        lung_mask=lung_mask,
                                                                                        world_coord_system=False)
 
-        plot_slice_3d_2(x, lung_mask_out, 0, id,
-                        idx=np.array([174, 301, 232]))
-        plot_slice_3d_2(x, lung_mask_out, 1, id,
-                        idx=np.array([174, 301, 232]))
-        plot_slice_3d_2(x, lung_mask_out, 2, id,
-                        idx=np.array([174, 301, 232]))
-        for zyxd in annotations_tf:
-            plot_slice_3d_2(x, lung_mask_out, 0, id, idx=zyxd)
-            plot_slice_3d_2(x, lung_mask_out, 1, id, idx=zyxd)
-            plot_slice_3d_2(x, lung_mask_out, 2, id, idx=zyxd)
+        print np.min(lung_mask_out), np.max(lung_mask_out)
 
-            # for i in xrange(136, x.shape[1]):
-            #     plot_slice_3d_2(x, lung_mask_out, 1, str(id) + str(i), idx=np.array([200, i, 200]))
-            #
+        plot_slice_3d_2(x, lung_mask_out, 0, id)
+        plot_slice_3d_2(x, lung_mask_out, 1, id)
+        plot_slice_3d_2(x, lung_mask_out, 2, id)
+
+        # for zyxd in annotations_tf:
+        #     plot_slice_3d_2(x, lung_mask_out, 0, id, idx=zyxd)
+        #     plot_slice_3d_2(x, lung_mask_out, 1, id, idx=zyxd)
+        #     plot_slice_3d_2(x, lung_mask_out, 2, id, idx=zyxd)
+
+        for i in xrange(136, x.shape[1]):
+            plot_slice_3d_2(x, lung_mask_out, 1, str(id) + str(i), idx=np.array([200, i, 200]))
+
             # plot_slice_3d_2(x, lung_mask_out, 0, id, idx=np.array(x.shape) / 2)
             # plot_slice_3d_2(x, lung_mask_out, 1, id, idx=np.array(x.shape) / 2)
             # plot_slice_3d_2(x, lung_mask_out, 2, id, idx=np.array(x.shape) / 2)

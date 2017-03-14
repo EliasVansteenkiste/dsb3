@@ -127,7 +127,7 @@ def test_dsb():
 
     patient_data_paths = utils_lung.get_patient_data_paths(pathfinder.DATA_PATH)
     print len(patient_data_paths)
-    patient_data_paths = [pathfinder.DATA_PATH + '/b8bb02d229361a623a4dc57aa0e5c485']
+    patient_data_paths = [pathfinder.DATA_PATH + '/1b7ca8dad5c36feb0a6abf8079173e22']
 
     for k, p in enumerate(patient_data_paths):
         pid = utils_lung.extract_pid_dir(p)
@@ -148,7 +148,7 @@ def test_dsb():
         # pixel_spacing = np.asarray(xx)
 
         img, pixel_spacing = utils_lung.read_dicom_scan(p)
-        mask = lung_segmentation.segment_HU_scan(img)
+        mask = lung_segmentation.segment_HU_scan_ira2(img)
         print pid
         print pixel_spacing
         print '===================================='
@@ -158,6 +158,9 @@ def test_dsb():
                                                                                p_transform=config().p_transform,
                                                                                p_transform_augment=None,
                                                                                lung_mask=mask)
+
+        for i in xrange(100, img_out.shape[0]):
+            plot_slice_3d_2(img_out, mask_out, 0, str(id) + str(i), idx=np.array([i, 200, 200]))
 
         plot_slice_3d_2(img_out, mask_out, 0, pid, idx=np.array(img_out.shape) / 2)
         plot_slice_3d_2(mask_out, img_out, 0, pid, idx=np.array(img_out.shape) / 4)
