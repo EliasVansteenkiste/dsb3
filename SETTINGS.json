@@ -1,13 +1,13 @@
 {
-  "DATA_PATH": "/data/dsb3/stage1/",
-  "LABELS_PATH": "/mnt/storage/data/dsb3/stage1_labels.csv",
-  "METADATA_PATH": "/mnt/storage/metadata/dsb3/",
-  "SAMPLE_SUBMISSION_PATH": "/mnt/storage/data/dsb3/stage1_sample_submission.csv",
-  "VALIDATION_SPLIT_PATH": "/mnt/storage/data/dsb3/dsb_validation_split.pkl",
-  "LUNA_DATA_PATH": "/data/dsb3/luna/dataset/",
-  "LUNA_LABELS_PATH": "/mnt/storage/data/dsb3/luna/annotations.csv",
-  "LUNA_CANDIDATES_PATH": "/mnt/storage/data/dsb3/luna/candidates_V2.csv",
-  "LUNA_VALIDATION_SPLIT_PATH": "/mnt/storage/data/dsb3/luna/validation_split.pkl"
+  "DATA_PATH": "/home/frederic/kaggle-dsb3/data/stage1/",
+  "LABELS_PATH": "/home/frederic/kaggle-dsb3/data/stage1_labels.csv",
+  "METADATA_PATH": "/home/frederic/kaggle-dsb3/metadata",
+  "SAMPLE_SUBMISSION_PATH": "/home/frederic/kaggle-dsb3/data/stage1_sample_submission.csv",
+  "VALIDATION_SPLIT_PATH": "/home/frederic/kaggle-dsb3/data/dsb_validation_split.pkl",
+  "LUNA_DATA_PATH": "/home/frederic/kaggle-dsb3/data/luna/dataset/",
+  "LUNA_LABELS_PATH": "/home/frederic/kaggle-dsb3/data/luna/annotations.csv",
+  "LUNA_VALIDATION_SPLIT_PATH": "/home/frederic/kaggle-dsb3/data/luna/validation_split.pkl",
+  "LUNA_CANDIDATES_PATH": "/home/frederic/kaggle-dsb3/data/luna/candidates_V2.csv"
 }
 
 
