@@ -36,7 +36,7 @@ def segment_HU_scan_frederic(x, threshold=-350):
     return mask
 
 
-def segment_HU_scan_v3(x, threshold=-350):
+def segment_HU_scan_ira(x, threshold=-350):
     mask = np.asarray(x < threshold, dtype='int8')
 
     for zi in xrange(mask.shape[0]):
@@ -45,13 +45,12 @@ def segment_HU_scan_v3(x, threshold=-350):
     label_image = skimage.measure.label(mask)
     region_props = skimage.measure.regionprops(label_image)
     sorted_regions = sorted(region_props, key=lambda x: x.area, reverse=True)
-    for r in sorted_regions:
-        print r.centroid, r.area, r.label
-    print '-----------------------'
-    if len(sorted_regions) > 1:
-        for region in sorted_regions[1:]:
-            for coordinates in region.coords:
-                label_image[coordinates[0], coordinates[1], coordinates[2]] = 0
+    lung_label = sorted_regions[0].label
+    label_image = (label_image == lung_label)
+    mask = np.asarray(label_image, dtype='int8')
 
-    mask = label_image > 0
+    for i in range(mask.shape[2]):
+        if np.any(mask[:, :, i]):
+            mask[:, :, i] = skimage.morphology.convex_hull_image(mask[:, :, i])
+
     return mask
