@@ -404,7 +404,7 @@ class DSBScanDataGenerator(object):
 
 
 class DSBScanLungMaskDataGenerator(object):
-    def __init__(self, data_path, transform_params, data_prep_fun, exclude_pids=None, **kwargs):
+    def __init__(self, data_path, transform_params, data_prep_fun, exclude_pids=None, start_index=0, stop_index=-1, **kwargs):
         self.patient_paths = utils_lung.get_patient_data_paths(data_path)
 
         if exclude_pids is not None:
@@ -418,18 +418,33 @@ class DSBScanLungMaskDataGenerator(object):
         self.data_path = data_path
         self.data_prep_fun = data_prep_fun
         self.transform_params = transform_params
+        self.start_index = start_index
+        if stop_index<0:
+            self.stop_index = len(self.patient_paths)
+        else:
+            self.stop_index = stop_index
+
+        print 'patient_paths', len(self.patient_paths)
+        self.patient_paths.sort()
+        print self.patient_paths 
+
 
     def generate(self):
-        for p in self.patient_paths:
-            pid = utils_lung.extract_pid_dir(p)
-
-            img, pixel_spacing = utils_lung.read_dicom_scan(p)
-
-            x, lung_mask, tf_matrix = self.data_prep_fun(data=img, pixel_spacing=pixel_spacing)
-
-            x = np.float32(x)[None, None, :, :, :]
-            lung_mask = np.float32(lung_mask)[None, None, :, :, :]
-            yield x, lung_mask, tf_matrix, pid
+        print 'start_index', str(self.start_index), '/', str(len(self.patient_paths))
+        for idx, p in enumerate(self.patient_paths):
+            if idx < self.start_index:
+                continue
+            elif idx >= self.stop_index:
+                print 'stopped before idx', idx 
+                break
+            else:
+                print 'idx', str(idx), '/', str(len(self.patient_paths))
+                pid = utils_lung.extract_pid_dir(p)
+                img, pixel_spacing = utils_lung.read_dicom_scan(p)
+                x, lung_mask, tf_matrix = self.data_prep_fun(data=img, pixel_spacing=pixel_spacing)
+                x = np.float32(x)[None, None, :, :, :]
+                lung_mask = np.float32(lung_mask)[None, None, :, :, :]
+                yield x, lung_mask, tf_matrix, pid
 
 
 class CandidatesDSBDataGenerator(object):
