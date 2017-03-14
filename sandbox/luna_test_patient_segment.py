@@ -39,7 +39,7 @@ def test_luna3d():
         id = os.path.basename(p).replace('.mhd', '')
         print id
         img, origin, pixel_spacing = utils_lung.read_mhd(p)
-        lung_mask = lung_segmentation.segment_HU_scan_v3(img)
+        lung_mask = lung_segmentation.segment_HU_scan_ira2(img)
         x, annotations_tf, tf_matrix, lung_mask_out = data_transforms.transform_scan3d(data=img,
                                                                                        pixel_spacing=pixel_spacing,
                                                                                        p_transform=p_transform,
@@ -49,6 +49,12 @@ def test_luna3d():
                                                                                        lung_mask=lung_mask,
                                                                                        world_coord_system=False)
 
+        plot_slice_3d_2(x, lung_mask_out, 0, id,
+                        idx=np.array([174, 301, 232]))
+        plot_slice_3d_2(x, lung_mask_out, 1, id,
+                        idx=np.array([174, 301, 232]))
+        plot_slice_3d_2(x, lung_mask_out, 2, id,
+                        idx=np.array([174, 301, 232]))
         for zyxd in annotations_tf:
             plot_slice_3d_2(x, lung_mask_out, 0, id, idx=zyxd)
             plot_slice_3d_2(x, lung_mask_out, 1, id, idx=zyxd)
