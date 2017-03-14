@@ -138,7 +138,7 @@ def build_model():
                                  b=nn.init.Constant(-np.log((1./prior_benign_single)-1)),
                                  #b=nn.init.Constant(0.),
                                  nonlinearity=nn.nonlinearities.sigmoid)
-    l_d01 = nn.layers.ReshapeLayer(l_out, (-1, n_candidates_per_patient))                             
+    l_out = nn.layers.ReshapeLayer(l_out, (-1, n_candidates_per_patient))                             
                                  
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 
