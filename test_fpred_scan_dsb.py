@@ -2,6 +2,8 @@ import sys
 import lasagne as nn
 import numpy as np
 import theano
+import os
+
 import pathfinder
 import utils
 from configuration import config, set_configuration
@@ -43,6 +45,9 @@ get_predictions_patch = theano.function([],
                                         on_unused_input='ignore')
 
 data_iterator = config().data_iterator
+
+#existing_preds = [f.rsplit('.') for f in os.listdir(outputs_path)]
+#print existing_preds
 
 print
 print 'Data'
