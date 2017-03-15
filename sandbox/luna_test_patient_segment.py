@@ -39,7 +39,7 @@ def test_luna3d():
         id = os.path.basename(p).replace('.mhd', '')
         print id
         img, origin, pixel_spacing = utils_lung.read_mhd(p)
-        lung_mask = lung_segmentation.segment_HU_scan_ira2(img)
+        lung_mask = lung_segmentation.segment_HU_scan_ira(img)
         print np.min(lung_mask), np.max(lung_mask)
         x, annotations_tf, tf_matrix, lung_mask_out = data_transforms.transform_scan3d(data=img,
                                                                                        pixel_spacing=pixel_spacing,

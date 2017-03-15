@@ -207,7 +207,7 @@ def slice_location_finder(sid2metadata):
 
 
 def get_patient_data_paths(data_dir):
-    pids = os.listdir(data_dir)
+    pids = sorted(os.listdir(data_dir))
     return [data_dir + '/' + p for p in pids]
 
 

@@ -404,8 +404,19 @@ class DSBScanDataGenerator(object):
 
 
 class DSBScanLungMaskDataGenerator(object):
-    def __init__(self, data_path, transform_params, data_prep_fun, exclude_pids=None, include_pids=None, **kwargs):
+    def __init__(self, data_path, transform_params, data_prep_fun, exclude_pids=None,
+                 include_pids=None, part_out_of=(1, 1)):
+
         self.patient_paths = utils_lung.get_patient_data_paths(data_path)
+
+        this_part = part_out_of[0]
+        all_parts = part_out_of[1]
+        part_lenght = int(len(self.patient_paths) / all_parts)
+
+        if this_part == all_parts:
+            self.patient_paths = self.patient_paths[part_lenght * (this_part - 1):]
+        else:
+            self.patient_paths = self.patient_paths[part_lenght * (this_part - 1): part_lenght * this_part]
 
         if exclude_pids is not None:
             for ep in exclude_pids:

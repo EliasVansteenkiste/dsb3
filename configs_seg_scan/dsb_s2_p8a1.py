@@ -41,8 +41,34 @@ exclude_pids = utils_lung.get_generated_pids(predictions_dir)
 data_iterator = data_iterators.DSBScanLungMaskDataGenerator(data_path=pathfinder.DATA_PATH,
                                                             transform_params=p_transform,
                                                             data_prep_fun=data_prep_function,
-                                                            exclude_pids=exclude_pids,
-                                                            include_pids=include_pids)
+                                                            exclude_pids=exclude_pids)
+
+# create 4 data iterators with different indices to process
+data_iterator0 = data_iterators.DSBScanLungMaskDataGenerator(data_path=pathfinder.DATA_PATH,
+                                                             transform_params=p_transform,
+                                                             data_prep_fun=data_prep_function,
+                                                             exclude_pids=exclude_pids,
+                                                             part_out_of=(1, 4))
+
+data_iterator1 = data_iterators.DSBScanLungMaskDataGenerator(data_path=pathfinder.DATA_PATH,
+                                                             transform_params=p_transform,
+                                                             data_prep_fun=data_prep_function,
+                                                             exclude_pids=exclude_pids,
+                                                             part_out_of=(2, 4))
+
+data_iterator2 = data_iterators.DSBScanLungMaskDataGenerator(data_path=pathfinder.DATA_PATH,
+                                                             transform_params=p_transform,
+                                                             data_prep_fun=data_prep_function,
+                                                             exclude_pids=exclude_pids,
+                                                             part_out_of=(3, 4))
+
+data_iterator3 = data_iterators.DSBScanLungMaskDataGenerator(data_path=pathfinder.DATA_PATH,
+                                                             transform_params=p_transform,
+                                                             data_prep_fun=data_prep_function,
+                                                             exclude_pids=exclude_pids,
+                                                             part_out_of=(4, 4))
+
+data_iterators = [data_iterator0, data_iterator1, data_iterator2, data_iterator3]
 
 
 def build_model():
