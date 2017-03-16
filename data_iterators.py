@@ -432,11 +432,6 @@ class DSBScanLungMaskDataGenerator(object):
         self.data_path = data_path
         self.data_prep_fun = data_prep_fun
         self.transform_params = transform_params
-        self.start_index = start_index
-        if stop_index<0:
-            self.stop_index = len(self.patient_paths)
-        else:
-            self.stop_index = stop_index
 
         print 'patient_paths', len(self.patient_paths)
         self.patient_paths.sort()
