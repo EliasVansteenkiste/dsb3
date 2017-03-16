@@ -34,11 +34,14 @@ def extract_candidates(predictions_scan, tf_matrix, pid, outputs_path):
 jobs = []
 theano.config.warn_float64 = 'raise'
 
-if len(sys.argv) < 2:
-    sys.exit("Usage: test_luna_scan.py <configuration_name>")
+if len(sys.argv) < 3:
+    sys.exit("Usage: test_seg_scan_dsb.py <configuration_name> <data_iterator_part>")
 
 config_name = sys.argv[1]
 set_configuration('configs_seg_scan', config_name)
+
+data_iterator_part = int(sys.argv[2])  # start from 0
+assert data_iterator_part < len(config().data_iterators)
 
 # predictions path
 predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
@@ -70,7 +73,7 @@ get_predictions_patch = theano.function([],
                                         givens=givens,
                                         on_unused_input='ignore')
 
-data_iterator = config().data_iterator
+data_iterator = config().data_iterators[data_iterator_part]
 
 print
 print 'Data'

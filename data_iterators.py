@@ -404,8 +404,19 @@ class DSBScanDataGenerator(object):
 
 
 class DSBScanLungMaskDataGenerator(object):
-    def __init__(self, data_path, transform_params, data_prep_fun, exclude_pids=None, start_index=0, stop_index=-1, **kwargs):
+    def __init__(self, data_path, transform_params, data_prep_fun, exclude_pids=None,
+                 include_pids=None, part_out_of=(1, 1)):
+
         self.patient_paths = utils_lung.get_patient_data_paths(data_path)
+
+        this_part = part_out_of[0]
+        all_parts = part_out_of[1]
+        part_lenght = int(len(self.patient_paths) / all_parts)
+
+        if this_part == all_parts:
+            self.patient_paths = self.patient_paths[part_lenght * (this_part - 1):]
+        else:
+            self.patient_paths = self.patient_paths[part_lenght * (this_part - 1): part_lenght * this_part]
 
         if exclude_pids is not None:
             for ep in exclude_pids:
@@ -413,6 +424,9 @@ class DSBScanLungMaskDataGenerator(object):
                     if ep in self.patient_paths[i]:
                         self.patient_paths.pop(i)
                         break
+
+        if include_pids is not None:
+            self.patient_paths = [data_path + '/' + p for p in include_pids]
 
         self.nsamples = len(self.patient_paths)
         self.data_path = data_path
@@ -448,7 +462,10 @@ class DSBScanLungMaskDataGenerator(object):
 
 
 class CandidatesDSBDataGenerator(object):
-    def __init__(self, data_path, transform_params, id2candidates_path, data_prep_fun, **kwargs):
+    def __init__(self, data_path, transform_params, id2candidates_path, data_prep_fun, exclude_pids=None):
+        if exclude_pids is not None:
+            for p in exclude_pids:
+                id2candidates_path.pop(p, None)
 
         self.id2candidates_path = id2candidates_path
         self.id2patient_path = {}
@@ -489,7 +506,7 @@ class DSBPatientsDataGenerator(object):
         self.patient_paths = []
         if patient_ids is not None:
             for pid in patient_ids:
-                if pid in self.id2candidates_path:  # TODO
+                if pid in self.id2candidates_path:  # TODO: this should be redundant if fpr and segemntation are correctly generated
                     self.patient_paths.append(data_path + '/' + pid)
         else:
             raise ValueError('provide patient ids')
@@ -533,7 +550,7 @@ class DSBPatientsDataGenerator(object):
                     x_batch[i] = np.float32(self.data_prep_fun(data=img,
                                                                patch_centers=top_candidates,
                                                                pixel_spacing=pixel_spacing))[:, None, :, :, :]
-                    y_batch[i] = self.id2label[pid]
+                    y_batch[i] = self.id2label.get(pid)
                     pids_batch.append(pid)
 
                 if len(idxs_batch) == self.batch_size:

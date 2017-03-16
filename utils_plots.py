@@ -16,9 +16,7 @@ anim_running = True
 def plot_slice_3d_2(image3d, mask, axis, pid, img_dir=None, idx=None):
     fig, ax = plt.subplots(2, 2, figsize=[8, 8])
     fig.canvas.set_window_title(pid)
-    mask_smoothed = np.copy(mask)
-    mask_smoothed[mask == 0] = 0.1
-    masked_image = image3d * mask_smoothed
+    masked_image = image3d * mask
     if idx is None:
         roi_idxs = np.where(mask == 1.)
         if len(roi_idxs[0]) > 0:
