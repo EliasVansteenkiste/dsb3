@@ -15,10 +15,12 @@ import evaluate_submission
 theano.config.warn_float64 = 'raise'
 
 if len(sys.argv) < 2:
-    sys.exit("Usage: test_class_dsb.py <configuration_name>")
+    sys.exit("Usage: test_class_dsb.py <configuration_name> <valid|test>")
 
 config_name = sys.argv[1]
 set_configuration('configs_class_dsb', config_name)
+
+set = sys.argv[2] if len(sys.argv) == 3 else 'test'
 
 # metadata
 metadata_dir = utils.get_dir_path('models', pathfinder.METADATA_PATH)
@@ -36,8 +38,8 @@ sys.stderr = sys.stdout
 predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
 outputs_path = predictions_dir + '/' + expid
 utils.auto_make_dir(outputs_path)
-output_pkl_file = outputs_path + '/%s-%s' % (expid, 'public_LB.pkl')
-output_csv_file = outputs_path + '/%s-%s' % (expid, 'public_LB.csv')
+output_pkl_file = outputs_path + '/%s-%s.pkl' % (expid, set)
+output_csv_file = outputs_path + '/%s-%s.csv' % (expid, set)
 
 # if os.path.isfile(output_pkl_file):
 #     pid2prediction = utils.load_pkl(output_pkl_file)
@@ -63,29 +65,52 @@ for layer in all_layers:
 
 nn.layers.set_all_param_values(model.l_out, metadata['param_values'])
 
-x_shared = nn.utils.shared_empty(dim=len(model.l_in.shape))
-
 # theano functions
 iter_test = theano.function([model.l_in.input_var], nn.layers.get_output(model.l_out, deterministic=True))
+iter_valid = theano.function([model.l_in.input_var], nn.layers.get_output(model.l_out, deterministic=True))
 
-test_data_iterator = config().test_data_iterator
+if set == 'test':
+    data_iterator = config().test_data_iterator
 
-print
-print 'Data'
-print 'n test: %d' % test_data_iterator.nsamples
+    print
+    print 'Data'
+    print 'n test: %d' % data_iterator.nsamples
 
-pid2prediction = {}
-for i, (x_chunk_test, _, id_test) in enumerate(buffering.buffered_gen_threaded(
-        test_data_iterator.generate())):
-    predictions = iter_test(x_chunk_test)
-    pid = id_test[0]
-    pid2prediction[pid] = predictions[0, 1]
-    print i, pid, predictions
+    pid2prediction = {}
+    for i, (x_test, _, id_test) in enumerate(buffering.buffered_gen_threaded(
+            data_iterator.generate())):
+        predictions = iter_test(x_test)
+        pid = id_test[0]
+        pid2prediction[pid] = predictions[0, 1]
+        print i, pid, predictions
 
-utils.save_pkl(pid2prediction, output_pkl_file)
-print 'Saved predictions into pkl'
+    utils.save_pkl(pid2prediction, output_pkl_file)
+    print 'Saved validation predictions into pkl', os.path.basename(output_pkl_file)
 
-utils_lung.write_submission(pid2prediction, output_csv_file)
-print 'Saved predictions into csv'
-loss = evaluate_submission.leaderboard_performance(output_csv_file)
-print loss
+    utils_lung.write_submission(pid2prediction, output_csv_file)
+    print 'Saved predictions into csv'
+    loss = evaluate_submission.leaderboard_performance(output_csv_file)
+    print loss
+
+elif set == 'valid':
+    data_iterator = config().valid_data_iterator
+
+    print
+    print 'Data'
+    print 'n valid: %d' % data_iterator.nsamples
+
+    pid2prediction, pid2label = {}, {}
+    for i, (x_test, y_test, id_test) in enumerate(buffering.buffered_gen_threaded(
+            data_iterator.generate())):
+        predictions = iter_valid(x_test)
+        pid = id_test[0]
+        pid2prediction[pid] = predictions[0, 1]
+        pid2label[pid] = y_test[0]
+        print i, pid, predictions
+
+    utils.save_pkl(pid2prediction, output_pkl_file)
+    print 'Saved validation predictions into pkl', os.path.basename(output_pkl_file)
+    valid_loss = utils_lung.evaluate_log_loss(pid2prediction, pid2label)
+    print 'Validation loss', valid_loss
+else:
+    raise ValueError()

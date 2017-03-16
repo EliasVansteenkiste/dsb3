@@ -16,7 +16,7 @@ def leaderboard_performance(submission_file_path):
 
     check_validity(real, pred)
 
-    return log_loss(real.values(), pred.values())
+    return utils_lung.log_loss(real.values(), pred.values())
 
 
 def parse_predictions(submission_file_path):
@@ -43,13 +43,6 @@ def check_validity(real, pred):
         raise ValueError(
             'The patients in the test set does not match with the patients in the predictions'
         )
-
-
-def log_loss(y_real, y_pred, eps=1e-15):
-    y_pred = np.clip(y_pred, eps, 1 - eps)
-    y_real = np.array(y_real)
-    losses = y_real * np.log(y_pred) + (1 - y_real) * np.log(1 - y_pred)
-    return - np.average(losses)
 
 
 if __name__ == '__main__':
