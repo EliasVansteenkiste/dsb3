@@ -16,7 +16,7 @@ from deep_learning.prob_initializers import NodulePriorSigmoid
 
 
 # TODO: import correct config here
-candidates_config = 'dsb_a5_c3_s2_p8a1_ls_elias'
+candidates_config = 'dsb_c3_s2_p8a1_ls_elias'
 
 restart_from_save = None
 rng = np.random.RandomState(42)
