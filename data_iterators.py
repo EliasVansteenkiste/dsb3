@@ -535,7 +535,7 @@ class DSBPatientsDataGenerator(object):
                     x_batch[i] = np.float32(self.data_prep_fun(data=img,
                                                                patch_centers=top_candidates,
                                                                pixel_spacing=pixel_spacing))[:, None, :, :, :]
-                    y_batch[i] = self.id2label[pid]
+                    y_batch[i] = self.id2label.get(pid)
                     pids_batch.append(pid)
 
                 if len(idxs_batch) == self.batch_size:

@@ -24,8 +24,9 @@ for k, v in pid2candidates_path.iteritems():
 
 pid2annotations = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
 
-n_top = 10
+n_top = 1
 tp_top_n = 0
+fp_top_n = 0
 tp = 0
 n_pos = 0
 idx1 = []
@@ -33,9 +34,10 @@ for k in pid2candidates.iterkeys():
     print '----------------------------------------'
     print k
     n_true = len(pid2annotations[k])
-    n_det_top = int(np.sum(pid2candidates[k][:n_top][:, 3]))
+    n_det_top = int(np.sum(pid2candidates[k][:n_top, 3]))
+    n_fp_top = int(n_top - np.sum(pid2candidates[k][:n_top, 3]))
     n_det = int(np.sum(pid2candidates[k][:, 3]))
-    i1 = np.where(pid2candidates[k][:, 3] == 1)[0]
+    i1 = np.where(pid2candidates[k][:n_top, 3] == 1)[0]
     idx1.extend(pid2candidates[k][i1, -1])
     print 'n nodules', n_true
     print 'n nodules in top n', n_det_top
@@ -43,9 +45,10 @@ for k in pid2candidates.iterkeys():
 
     tp += n_det
     tp_top_n += n_det_top
+    fp_top_n += n_fp_top
     n_pos += n_true
 
 print 'TP', tp
-print 'TP in top n', tp_top_n
 print 'n pos', n_pos
-print np.sum(idx1) / n_pos
+print 'TP in top %s:' % n_top, tp_top_n
+print 'FP in top %s:' % n_top, fp_top_n
