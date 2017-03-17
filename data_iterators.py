@@ -433,27 +433,17 @@ class DSBScanLungMaskDataGenerator(object):
         self.data_prep_fun = data_prep_fun
         self.transform_params = transform_params
 
-        print 'patient_paths', len(self.patient_paths)
-        self.patient_paths.sort()
-        print self.patient_paths 
-
-
     def generate(self):
-        print 'start_index', str(self.start_index), '/', str(len(self.patient_paths))
-        for idx, p in enumerate(self.patient_paths):
-            if idx < self.start_index:
-                continue
-            elif idx >= self.stop_index:
-                print 'stopped before idx', idx 
-                break
-            else:
-                print 'idx', str(idx), '/', str(len(self.patient_paths))
-                pid = utils_lung.extract_pid_dir(p)
-                img, pixel_spacing = utils_lung.read_dicom_scan(p)
-                x, lung_mask, tf_matrix = self.data_prep_fun(data=img, pixel_spacing=pixel_spacing)
-                x = np.float32(x)[None, None, :, :, :]
-                lung_mask = np.float32(lung_mask)[None, None, :, :, :]
-                yield x, lung_mask, tf_matrix, pid
+        for p in self.patient_paths:
+            pid = utils_lung.extract_pid_dir(p)
+
+            img, pixel_spacing = utils_lung.read_dicom_scan(p)
+
+            x, lung_mask, tf_matrix = self.data_prep_fun(data=img, pixel_spacing=pixel_spacing)
+
+            x = np.float32(x)[None, None, :, :, :]
+            lung_mask = np.float32(lung_mask)[None, None, :, :, :]
+            yield x, lung_mask, tf_matrix, pid
 
 
 class CandidatesDSBDataGenerator(object):
@@ -553,3 +543,84 @@ class DSBPatientsDataGenerator(object):
 
             if not self.infinite:
                 break
+
+
+class BalancedDSBPatientsDataGenerator(object):
+    def __init__(self, data_path, batch_size, transform_params, id2candidates_path, data_prep_fun,
+                 n_candidates_per_patient, rng, random, infinite, shuffle_top_n=False, patient_ids=None):
+
+        self.id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
+        self.id2candidates_path = id2candidates_path
+        self.patient_paths = []
+        if patient_ids is not None:
+            for pid in patient_ids:
+                if pid in self.id2candidates_path:  # TODO: this should be redundant if fpr and segemntation are correctly generated
+                    self.patient_paths.append(data_path + '/' + pid)
+        else:
+            raise ValueError('provide patient ids')
+        self.pos_ids = []
+        self.neg_ids = []
+        for pid in patient_ids:
+            if self.id2label[pid]:
+                self.pos_ids.append(pid)
+            else:
+                self.neg_ids.append(pid)
+        self.n_pos_ids = len(self.pos_ids)
+        self.n_neg_ids = len(self.neg_ids)
+        print 'n positive ids', self.n_pos_ids
+        print 'n negative ids', self.n_neg_ids
+        self.all_pids = patient_ids
+        self.nsamples = len(self.all_pids)
+
+        self.data_path = data_path
+        self.data_prep_fun = data_prep_fun
+        self.batch_size = batch_size
+        self.transform_params = transform_params
+        self.n_candidates_per_patient = n_candidates_per_patient
+        self.rng = rng
+        self.random = random
+        self.infinite = infinite
+        self.shuffle_top_n = shuffle_top_n
+
+    def generate(self):
+        while True:
+            neg_rand_idxs = np.arange(self.n_neg_ids)
+            if self.random:
+                self.rng.shuffle(neg_rand_idxs)
+            neg_rand_idxs_ptr = 0
+            batch_pids = []
+            while(neg_rand_idxs_ptr<self.n_neg_ids):               
+                if self.rng.randint(2):
+                    #take a cancerous patient
+                    pos_pid = self.rng.choice(self.pos_ids)
+                    batch_pids.append(pos_pid)
+                else:
+                    neg_pid = self.neg_ids[neg_rand_idxs[neg_rand_idxs_ptr]] 
+                    batch_pids.append(neg_pid)
+                    neg_rand_idxs_ptr += 1
+                if len(batch_pids)==self.batch_size:
+                    yield self.prepare_batch(batch_pids)
+                    batch_pids = []
+            # yield the half filled batch
+            if len(batch_pids) > 0:
+                yield self.prepare_batch(batch_pids)
+
+            if not self.infinite:
+                break
+
+    def prepare_batch(self, batch_pids):
+        x_batch = np.zeros((len(batch_pids), self.n_candidates_per_patient, 1,)
+                               + self.transform_params['patch_size'], dtype='float32')
+        y_batch = np.zeros((len(batch_pids),), dtype='float32')
+        for i, pid in enumerate(batch_pids):
+            patient_path = self.data_path + '/' + str(pid)
+            img, pixel_spacing = utils_lung.read_dicom_scan(patient_path)  
+            all_candidates = utils.load_pkl(self.id2candidates_path[pid])
+            top_candidates = all_candidates[:self.n_candidates_per_patient]                       
+            if self.shuffle_top_n:
+                self.rng.shuffle(top_candidates)
+            x_batch[i] = np.float32(self.data_prep_fun(data=img,
+                                                   patch_centers=top_candidates,
+                                                   pixel_spacing=pixel_spacing))[:, None, :, :, :]
+            y_batch[i] = self.id2label.get(pid) 
+        return x_batch, y_batch, batch_pids
