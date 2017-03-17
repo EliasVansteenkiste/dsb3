@@ -8,6 +8,7 @@ MAX_HU = 400.
 MIN_HU = -1000.
 rng = np.random.RandomState(317070)
 
+def bernoulli(p): return random.random() < p  #range [0.0, 1.0)
 
 def hu2normHU(x):
     """
@@ -37,7 +38,13 @@ def sample_augmentation_parameters(transformation):
     rotation_x = rng.uniform(*transformation.get('rotation_range_x', [0., 0.]))
     rotation = (rotation_z, rotation_y, rotation_x)
 
-    return namedtuple('Params', ['translation', 'rotation'])(translation, rotation)
+    reflection_z = bernoulli(*transformation.get('reflection_prob_z', [0.]))
+    reflection_y = bernoulli(*transformation.get('reflection_prob_y', [0.]))
+    reflection_x = bernoulli(*transformation.get('reflection_prob_x', [0.]))
+    reflection = (reflection_z, reflection_y, reflection_x)
+
+
+    return namedtuple('Params', ['translation', 'rotation','reflection'])(translation, rotation,reflection)
 
 
 def transform_scan3d(data, pixel_spacing, p_transform,
@@ -66,7 +73,8 @@ def transform_scan3d(data, pixel_spacing, p_transform,
     if p_transform_augment:
         augment_params_sample = sample_augmentation_parameters(p_transform_augment)
         tf_augment = affine_transform(translation=augment_params_sample.translation,
-                                      rotation=augment_params_sample.rotation)
+                                      rotation=augment_params_sample.rotation,
+                                       reflection=augment_params_sample.reflection)
         tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_augment).dot(tf_shift_uncenter).dot(tf_output_scale)
     else:
         tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_shift_uncenter).dot(tf_output_scale)
@@ -249,7 +257,7 @@ def zmuv(x, mean, std):
         return x
 
 
-def affine_transform(scale=None, rotation=None, translation=None):
+def affine_transform(scale=None, rotation=None, translation=None,reflection=None):
     """
     rotation and shear in degrees
     """
@@ -258,8 +266,15 @@ def affine_transform(scale=None, rotation=None, translation=None):
     if translation is not None:
         matrix[:3, 3] = -np.asarray(translation, np.float)
 
+    if not reflection is None:
+        reflection = -np.asarray(reflection, np.float)*2+1
+        if scale is None: scale = 1.
+
     if scale is not None:
-        matrix[0, 0] = 1. / scale[0]
+
+        if reflection is None: reflection = 1.
+        scale = reflection*np.asarray(scale, np.float)
+        matrix[0, 0] = 1./ scale[0]
         matrix[1, 1] = 1. / scale[1]
         matrix[2, 2] = 1. / scale[2]
 
