@@ -34,15 +34,16 @@ n_candidates_per_patient = 4
 
 
 p_transform_augment = {
+
     'translation_range_z': [-12, 12],
     'translation_range_y': [-12, 12],
     'translation_range_x': [-12, 12],
     'rotation_range_z': [-180, 180],
     'rotation_range_y': [-180, 180],
     'rotation_range_x': [-180, 180],
-    'reflection_prob_x': [0.5],
+    'reflection_prob_z': [0.5],
     'reflection_prob_y': [0.5],
-    'reflection_prob_z': [0.5]
+    'reflection_prob_x': [0.5]
 
 }
 

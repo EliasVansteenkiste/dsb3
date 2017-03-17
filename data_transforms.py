@@ -271,10 +271,9 @@ def affine_transform(scale=None, rotation=None, translation=None,reflection=None
         if scale is None: scale = 1.
 
     if scale is not None:
-
         if reflection is None: reflection = 1.
         scale = reflection*np.asarray(scale, np.float)
-        matrix[0, 0] = 1./ scale[0]
+        matrix[0, 0] = 1. / scale[0]
         matrix[1, 1] = 1. / scale[1]
         matrix[2, 2] = 1. / scale[2]
 
