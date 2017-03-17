@@ -69,6 +69,7 @@ nn.layers.set_all_param_values(model.l_out, metadata['param_values'])
 iter_test = theano.function([model.l_in.input_var], nn.layers.get_output(model.l_out, deterministic=True))
 iter_valid = theano.function([model.l_in.input_var], nn.layers.get_output(model.l_out, deterministic=True))
 
+pid2label = utils_lung.read_test_labels(pathfinder.TEST_LABELS_PATH)
 if set == 'test':
     data_iterator = config().test_data_iterator
 
@@ -82,10 +83,13 @@ if set == 'test':
         predictions = iter_test(x_test)
         pid = id_test[0]
         pid2prediction[pid] = predictions[0, 1]
-        print i, pid, predictions
+        print i, pid, predictions, pid2label[pid]
 
     utils.save_pkl(pid2prediction, output_pkl_file)
     print 'Saved validation predictions into pkl', os.path.basename(output_pkl_file)
+
+    test_loss = utils_lung.evaluate_log_loss(pid2prediction, pid2label)
+    print 'Test loss', test_loss
 
     utils_lung.write_submission(pid2prediction, output_csv_file)
     print 'Saved predictions into csv'
@@ -106,11 +110,11 @@ elif set == 'valid':
         pid = id_test[0]
         pid2prediction[pid] = predictions[0, 1]
         pid2label[pid] = y_test[0]
-        print i, pid, predictions
+        print i, pid, predictions, pid2label[pid]
 
     utils.save_pkl(pid2prediction, output_pkl_file)
     print 'Saved validation predictions into pkl', os.path.basename(output_pkl_file)
     valid_loss = utils_lung.evaluate_log_loss(pid2prediction, pid2label)
     print 'Validation loss', valid_loss
 else:
-    raise ValueError()
+    raise ValueError('wrong set argument')

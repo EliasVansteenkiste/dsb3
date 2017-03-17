@@ -491,8 +491,7 @@ class DSBPatientsDataGenerator(object):
         self.patient_paths = []
         if patient_ids is not None:
             for pid in patient_ids:
-                if pid in self.id2candidates_path:  # TODO: this should be redundant if fpr and segemntation are correctly generated
-                    self.patient_paths.append(data_path + '/' + pid)
+                self.patient_paths.append(data_path + '/' + pid)
         else:
             raise ValueError('provide patient ids')
 
