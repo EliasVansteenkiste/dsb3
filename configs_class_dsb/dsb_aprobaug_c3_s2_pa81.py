@@ -61,7 +61,7 @@ def data_prep_function(data, patch_centers, pixel_spacing, p_transform,
     return x
 
 
-data_prep_function_train = partial(data_prep_function, p_transform_augment=None,
+data_prep_function_train = partial(data_prep_function, p_transform_augment=p_transform_augment,
                                    p_transform=p_transform)
 data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
                                    p_transform=p_transform)

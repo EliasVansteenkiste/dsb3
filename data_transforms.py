@@ -3,6 +3,7 @@ import numpy as np
 import scipy.ndimage
 import math
 import utils_lung
+import random
 
 MAX_HU = 400.
 MIN_HU = -1000.
@@ -139,7 +140,8 @@ def transform_patch3d(data, pixel_spacing, p_transform,
         augment_params_sample = sample_augmentation_parameters(p_transform_augment)
         # print 'augmentation parameters', augment_params_sample
         tf_augment = affine_transform(translation=augment_params_sample.translation,
-                                      rotation=augment_params_sample.rotation)
+                                      rotation=augment_params_sample.rotation,
+                                      reflection=augment_params_sample.reflection)
         tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_augment).dot(tf_shift_uncenter).dot(tf_output_scale)
     else:
         tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_shift_uncenter).dot(tf_output_scale)
@@ -193,7 +195,8 @@ def transform_dsb_candidates(data, patch_centers, pixel_spacing, p_transform,
         if p_transform_augment:
             augment_params_sample = sample_augmentation_parameters(p_transform_augment)
             tf_augment = affine_transform(translation=augment_params_sample.translation,
-                                          rotation=augment_params_sample.rotation)
+                                          rotation=augment_params_sample.rotation,
+                                          reflection=augment_params_sample.reflection)
             tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_augment).dot(tf_shift_uncenter).dot(tf_output_scale)
         else:
             tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_shift_uncenter).dot(tf_output_scale)
