@@ -15,7 +15,7 @@ import utils_lung
 # TODO: import correct config here
 candidates_config = 'dsb_c3_s2_p8a1_ls_elias' 
 
-restart_from_save = None
+restart_from_save =  '/home/eavsteen/dsb3/storage/metadata/dsb3/models/eavsteen/dsb_a_eliasv9_c3_s2_p8a1-20170316-112742.pkl' 
 rng = np.random.RandomState(42)
 
 predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
