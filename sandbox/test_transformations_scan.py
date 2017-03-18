@@ -148,7 +148,7 @@ def test_dsb():
         # pixel_spacing = np.asarray(xx)
 
         img, pixel_spacing = utils_lung.read_dicom_scan(p)
-        mask = lung_segmentation.segment_HU_scan_ira(img)
+        mask = lung_segmentation.segment_HU_scan_ira_v2(img)
         print pid
         print pixel_spacing
         print '===================================='

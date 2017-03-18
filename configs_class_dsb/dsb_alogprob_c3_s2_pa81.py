@@ -10,8 +10,11 @@ import theano.tensor as T
 import utils
 import utils_lung
 
+from deep_learning.prob_nonlinearities import logprob_nonlinearity
+from deep_learning.prob_initializers import NodulePriorRectifier
+
 # TODO: import correct config here
-candidates_config = 'dsb_c3_s2_p8a1'
+candidates_config = 'dsb_c3_s2_p8a1_ls_elias'
 
 restart_from_save = None
 rng = np.random.RandomState(42)
@@ -49,7 +52,7 @@ batch_size = 4
 
 
 train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
-train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
+train_pids, valid_pids = train_valid_ids['training'], train_valid_ids['validation']
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
 
@@ -73,16 +76,6 @@ valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               rng=rng,
                                                               patient_ids=valid_pids,
                                                               random=False, infinite=False)
-
-test_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
-                                                             batch_size=1,
-                                                             transform_params=p_transform,
-                                                             n_candidates_per_patient=n_candidates_per_patient,
-                                                             data_prep_fun=data_prep_function_valid,
-                                                             id2candidates_path=id2candidates_path,
-                                                             rng=rng,
-                                                             patient_ids=test_pids,
-                                                             random=False, infinite=False)
 
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size
 max_nchunks = nchunks_per_epoch * 10
@@ -137,20 +130,29 @@ def build_model():
     l = conv3(l, num_filters=256)
     l = conv3(l, num_filters=256)
 
+    prior_benign=(1397. - 362) / 1398
+    prior_benign_single=np.power(prior_benign,1./n_candidates_per_patient)
     num_units_dense = 512
     l_d01 = dense_prelu_layer(l, num_units=512)
-    l_d01 = nn.layers.ReshapeLayer(l_d01, (-1, n_candidates_per_patient, num_units_dense))
+    
     l_d02 = dense_prelu_layer(l_d01, num_units=512)
-    l_out = nn.layers.DenseLayer(l_d02, num_units=2,
-                                 W=nn.init.Constant(0.),
-                                 b=np.array([np.log((1397. - 362) / 1398), np.log(362. / 1397)], dtype='float32'),
-                                 nonlinearity=nn.nonlinearities.softmax)
 
+    l_out = nn.layers.DenseLayer(l_d02, num_units=1,
+                                 W=nn.init.Constant(0.),
+                                 b=NodulePriorRectifier((1397. - 362) / 1398,n_candidates_per_patient),
+                                 #b=nn.init.Constant(0.),
+                                 nonlinearity=nn.nonlinearities.rectify)
+    l_out = nn.layers.ReshapeLayer(l_out, (-1, n_candidates_per_patient))
+    l_out = nn.layers.NonlinearityLayer(l_out, nonlinearity=logprob_nonlinearity)                       
+    
+                                 
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 
 
 def build_objective(model, deterministic=False, epsilon=1e-12):
+    
     predictions = nn.layers.get_output(model.l_out, deterministic=deterministic)
+    
     targets = T.cast(T.flatten(nn.layers.get_output(model.l_target)), 'int32')
     p = predictions[T.arange(predictions.shape[0]), targets]
     p = T.clip(p, epsilon, 1.)
