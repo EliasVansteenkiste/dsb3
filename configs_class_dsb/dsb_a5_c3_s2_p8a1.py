@@ -49,7 +49,7 @@ batch_size = 4
 
 
 train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
-train_pids, valid_pids = train_valid_ids['training'], train_valid_ids['validation']
+train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
 
@@ -73,6 +73,16 @@ valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               rng=rng,
                                                               patient_ids=valid_pids,
                                                               random=False, infinite=False)
+
+test_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
+                                                             batch_size=1,
+                                                             transform_params=p_transform,
+                                                             n_candidates_per_patient=n_candidates_per_patient,
+                                                             data_prep_fun=data_prep_function_valid,
+                                                             id2candidates_path=id2candidates_path,
+                                                             rng=rng,
+                                                             patient_ids=test_pids,
+                                                             random=False, infinite=False)
 
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size
 max_nchunks = nchunks_per_epoch * 10

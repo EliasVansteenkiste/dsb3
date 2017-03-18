@@ -11,15 +11,6 @@ import utils_lung
 # TODO: IMPORT A CORRECT PATCH MODEL HERE
 import configs_seg_patch.luna_p8a1 as patch_config
 
-# check if some predictions were generated
-predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
-outputs_path = predictions_dir + '/dsb_s2_p8a1'  # TODO write it here correctly
-exclude_pids = []
-if os.path.isdir(outputs_path):
-    exclude_pids = os.listdir(outputs_path)
-    exclude_pids = [utils_lung.extract_pid_filename(p) for p in exclude_pids]
-exclude_pids.append('b8bb02d229361a623a4dc57aa0e5c485')  # TODO hack here!
-
 # calculate the following things correctly!
 p_transform = {'patch_size': (416, 416, 416),
                'mm_patch_size': (416, 416, 416),
@@ -42,10 +33,42 @@ def data_prep_function(data, pixel_spacing, p_transform=p_transform):
     return x, lung_mask_out, tf_matrix
 
 
+# check if some predictions were generated
+predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH) + \
+                  '/' + utils.get_script_name(__file__)
+exclude_pids = utils_lung.get_generated_pids(predictions_dir)
+
 data_iterator = data_iterators.DSBScanLungMaskDataGenerator(data_path=pathfinder.DATA_PATH,
                                                             transform_params=p_transform,
                                                             data_prep_fun=data_prep_function,
                                                             exclude_pids=exclude_pids)
+
+# create 4 data iterators with different indices to process
+data_iterator0 = data_iterators.DSBScanLungMaskDataGenerator(data_path=pathfinder.DATA_PATH,
+                                                             transform_params=p_transform,
+                                                             data_prep_fun=data_prep_function,
+                                                             exclude_pids=exclude_pids,
+                                                             part_out_of=(1, 4))
+
+data_iterator1 = data_iterators.DSBScanLungMaskDataGenerator(data_path=pathfinder.DATA_PATH,
+                                                             transform_params=p_transform,
+                                                             data_prep_fun=data_prep_function,
+                                                             exclude_pids=exclude_pids,
+                                                             part_out_of=(2, 4))
+
+data_iterator2 = data_iterators.DSBScanLungMaskDataGenerator(data_path=pathfinder.DATA_PATH,
+                                                             transform_params=p_transform,
+                                                             data_prep_fun=data_prep_function,
+                                                             exclude_pids=exclude_pids,
+                                                             part_out_of=(3, 4))
+
+data_iterator3 = data_iterators.DSBScanLungMaskDataGenerator(data_path=pathfinder.DATA_PATH,
+                                                             transform_params=p_transform,
+                                                             data_prep_fun=data_prep_function,
+                                                             exclude_pids=exclude_pids,
+                                                             part_out_of=(4, 4))
+
+data_iterators = [data_iterator0, data_iterator1, data_iterator2, data_iterator3]
 
 
 def build_model():

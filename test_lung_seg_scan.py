@@ -51,6 +51,8 @@ for n, (x, y, lung_mask, annotations, tf_matrix, pid) in enumerate(data_iterator
             n_pid_tp += 1
     tp += n_pid_tp
     print annotations.shape[0], n_pid_tp
+    if annotations.shape[0] > n_pid_tp:
+        print '----HERE-----!!!!!'
 
 print 'total', n_pos
 print 'detected', tp

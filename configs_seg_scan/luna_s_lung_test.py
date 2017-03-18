@@ -19,7 +19,7 @@ def data_prep_function(data, luna_annotations, pixel_spacing, luna_origin,
                        p_transform=p_transform,
                        p_transform_augment=None):
     # make sure the data is processed the same way
-    lung_mask = lung_segmentation.segment_HU_scan(data)
+    lung_mask = lung_segmentation.segment_HU_scan_ira(data)
 
     annotatations_out = []
     for zyxd in luna_annotations:
