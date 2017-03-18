@@ -124,3 +124,56 @@ def segment_HU_scan_ira(x, threshold=-350, min_area=300):
                 lung_mask_convex *= 1 - label_image_r
 
     return lung_mask_convex
+
+
+def segment_HU_scan_ira_v2(x, threshold=-350, min_area=10):
+    mask = np.asarray(x < threshold, dtype='int8')
+
+    # noise reduction
+    mask = skimage.morphology.binary_opening(mask, skimage.morphology.cube(3))
+    mask = np.asarray(mask, dtype='int8')
+
+    # label regions
+    label_image = skimage.measure.label(mask)
+    region_props = skimage.measure.regionprops(label_image)
+    sorted_regions = sorted(region_props, key=lambda x: x.area, reverse=True)
+
+    # select left lung patch from medium slice
+    medium_slice_patch = label_image[label_image.shape[0] / 2,
+                         label_image.shape[1] / 2 - 50:label_image.shape[1] / 2 + 50,
+                         label_image.shape[2] / 4 - 50:label_image.shape[2] / 4 + 50]
+    for region in sorted_regions:
+        if np.any(medium_slice_patch == region.label):
+            lung_label = region.label
+            break
+    lung_mask = np.asarray((label_image == lung_label), dtype='int8')
+
+    # convex hull mask
+    lung_mask_convex = np.zeros_like(lung_mask)
+    for i in range(lung_mask.shape[2]):
+        if np.any(lung_mask[:, :, i]):
+            lung_mask_convex[:, :, i] = skimage.morphology.convex_hull_image(lung_mask[:, :, i])
+
+    # old mask inside the convex hull
+    mask *= lung_mask_convex
+    label_image = skimage.measure.label(mask)
+    region_props = skimage.measure.regionprops(label_image)
+    sorted_regions = sorted(region_props, key=lambda x: x.area, reverse=True)
+    print len(sorted_regions)
+    for r in sorted_regions[1:]:
+        print r.area, r.label
+        if r.area > min_area:
+            # make an image only containing that region
+            label_image_r = label_image == r.label
+            # grow the mask
+            label_image_r = scipy.ndimage.binary_dilation(label_image_r,
+                                                          structure=scipy.ndimage.generate_binary_structure(3, 2))
+            # compute the overlap with true lungs
+            overlap = label_image_r * lung_mask
+            if not np.any(overlap):
+                print 'REMOVE'
+                for i in range(label_image_r.shape[0]):
+                    if np.any(label_image_r[i]):
+                        label_image_r[i] = skimage.morphology.convex_hull_image(label_image_r[i])
+                lung_mask_convex *= 1 - label_image_r
+    return lung_mask_convex

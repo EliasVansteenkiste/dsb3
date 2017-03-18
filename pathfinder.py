@@ -47,3 +47,7 @@ if not os.path.isfile(LUNA_CANDIDATES_PATH):
 LUNA_VALIDATION_SPLIT_PATH = paths["LUNA_VALIDATION_SPLIT_PATH"]
 if not os.path.isfile(LUNA_VALIDATION_SPLIT_PATH):
     raise ValueError('no LUNA validation split file')
+
+LUNA_LUNG_SEG_PATH = paths["LUNA_LUNG_SEG_PATH"]
+if not os.path.isfile(LUNA_LUNG_SEG_PATH):
+    raise ValueError('no LUNA lung segmnetations masks')
