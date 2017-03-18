@@ -73,6 +73,10 @@ def extract_pid_dir(patient_data_path):
     return patient_data_path.split('/')[-1]
 
 
+def extract_pid_dir_aapm(patient_data_path):
+    return patient_data_path.split('/')[-3]
+
+
 def extract_pid_filename(file_path, replace_str='.mhd'):
     return os.path.basename(file_path).replace(replace_str, '').replace('.pkl', '')
 
@@ -84,18 +88,6 @@ def get_candidates_paths(path):
         pid = extract_pid_filename(p, '.pkl')
         id2candidates_path[pid] = p
     return id2candidates_path
-
-
-def get_patient_data(patient_data_path):
-    slice_paths = os.listdir(patient_data_path)
-    sid2data = {}
-    sid2metadata = {}
-    for s in slice_paths:
-        slice_id = s.split('.')[0]
-        data, metadata = read_dicom(patient_data_path + '/' + s)
-        sid2data[slice_id] = data
-        sid2metadata[slice_id] = metadata
-    return sid2data, sid2metadata
 
 
 def ct2HU(x, metadata):
@@ -139,6 +131,60 @@ def read_dicom_scan(patient_data_path):
     img = np.stack([ct2HU(sid2data[sid], sid2metadata[sid]) for sid in sids_sorted])
 
     return img, pixel_spacing
+
+
+
+
+def get_patient_data(patient_data_path):
+    slice_paths = os.listdir(patient_data_path)
+    sid2data = {}
+    sid2metadata = {}
+    for s in slice_paths:
+        slice_id = s.split('.')[0]
+        data, metadata = read_dicom(patient_data_path + '/' + s)
+        sid2data[slice_id] = data
+        sid2metadata[slice_id] = metadata
+    return sid2data, sid2metadata
+
+
+
+def read_dicom_scan_aap(patient_data_path):
+    sid2data, sid2metadata = get_patient_data(patient_data_path)
+    sid2position = {}
+    for sid in sid2data.keys():
+        sid2position[sid] = get_slice_position(sid2metadata[sid])
+    sids_sorted = sorted(sid2position.items(), key=lambda x: x[1])
+    sids_sorted = [s[0] for s in sids_sorted]
+    z_pixel_spacing = []
+    for s1, s2 in zip(sids_sorted[1:], sids_sorted[:-1]):
+        z_pixel_spacing.append(sid2position[s1] - sid2position[s2])
+    z_pixel_spacing = np.array(z_pixel_spacing)
+    try:
+        assert np.all((z_pixel_spacing - z_pixel_spacing[0]) < 0.01)
+    except:
+        print 'This patient has multiple series, we will remove one'
+        sids_sorted_2 = []
+        for s1, s2 in zip(sids_sorted[::2], sids_sorted[1::2]):
+            if sid2metadata[s1]["InstanceNumber"] > sid2metadata[s2]["InstanceNumber"]:
+                sids_sorted_2.append(s1)
+            else:
+                sids_sorted_2.append(s2)
+        sids_sorted = sids_sorted_2
+        z_pixel_spacing = []
+        for s1, s2 in zip(sids_sorted[1:], sids_sorted[:-1]):
+            z_pixel_spacing.append(sid2position[s1] - sid2position[s2])
+        z_pixel_spacing = np.array(z_pixel_spacing)
+        assert np.all((z_pixel_spacing - z_pixel_spacing[0]) < 0.01)
+
+    pixel_spacing = np.array((z_pixel_spacing[0],
+                              sid2metadata[sids_sorted[0]]['PixelSpacing'][0],
+                              sid2metadata[sids_sorted[0]]['PixelSpacing'][1]))
+
+    img = np.stack([ct2HU(sid2data[sid], sid2metadata[sid]) for sid in sids_sorted])
+
+    return img, pixel_spacing
+
+
 
 
 def sort_slices_position(patient_data):
@@ -225,6 +271,22 @@ def slice_location_finder(sid2metadata):
 def get_patient_data_paths(data_dir):
     pids = sorted(os.listdir(data_dir))
     return [data_dir + '/' + p for p in pids]
+
+
+def get_patient_data_paths_aapm(data_dir):
+
+    pids = sorted(os.listdir(data_dir))
+    output=[]
+
+    for pid in pids:
+         patient_path = data_dir + pid + '/'
+         patient_studies=[ patient_path + study + '/' for study in os.listdir(patient_path)]
+         patient_series=[current_study + series +'/' for current_study in patient_studies for series in os.listdir(current_study)]
+         output.append(patient_series[0])
+         #patient_files=[current_file for current_series in patient_series for current_file in glob(current_series+'/*.dcm')]
+    
+
+    return output#[data_dir + '/' + p for p in pids]
 
 
 def read_labels(file_path):
