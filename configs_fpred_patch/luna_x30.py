@@ -14,8 +14,8 @@ restart_from_save = None
 rng = np.random.RandomState(33)
 
 # transformations
-p_transform = {'patch_size': (32, 32, 32),
-               'mm_patch_size': (32, 32, 32),
+p_transform = {'patch_size': (48, 48, 48),
+               'mm_patch_size': (48, 48, 48),
                'pixel_spacing': (1., 1., 1.)
                }
 p_transform_augment = {
@@ -74,7 +74,7 @@ nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
 max_nchunks = nchunks_per_epoch * 100
 
 validate_every = int(5. * nchunks_per_epoch)
-save_every = int(1. * nchunks_per_epoch)
+save_every = int(5. * nchunks_per_epoch)
 
 learning_rate_schedule = {
     0: 5e-4,
