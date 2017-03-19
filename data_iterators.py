@@ -701,6 +701,80 @@ class DSBPatientsDataGenerator(object):
                 break
 
 
+class DSBPatientsDataGeneratorRandomSelectionNonCancerous(object):
+    def __init__(self, data_path, batch_size, transform_params, id2candidates_path, data_prep_fun,
+                 n_candidates_per_patient, rng, random, infinite, top_true=10, top_false=16, shuffle_top_n=False, patient_ids=None):
+
+        self.id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
+        self.id2candidates_path = id2candidates_path
+        self.patient_paths = []
+        if patient_ids is not None:
+            for pid in patient_ids:
+                if pid in self.id2candidates_path:  # TODO: this should be redundant if fpr and segemntation are correctly generated
+                    self.patient_paths.append(data_path + '/' + pid)
+        else:
+            raise ValueError('provide patient ids')
+
+        self.nsamples = len(self.patient_paths)
+        self.data_path = data_path
+        self.data_prep_fun = data_prep_fun
+        self.batch_size = batch_size
+        self.transform_params = transform_params
+        self.n_candidates_per_patient = n_candidates_per_patient
+        self.rng = rng
+        self.random = random
+        self.infinite = infinite
+        self.shuffle_top_n = shuffle_top_n
+        self.top_true = top_true
+        self.top_false = top_false  
+
+    def generate(self):
+        while True:
+            rand_idxs = np.arange(self.nsamples)
+            if self.random:
+                self.rng.shuffle(rand_idxs)
+
+            for pos in xrange(0, len(rand_idxs), self.batch_size):
+                idxs_batch = rand_idxs[pos:pos + self.batch_size]
+
+                x_batch = np.zeros((self.batch_size, self.n_candidates_per_patient, 1,)
+                                   + self.transform_params['patch_size'], dtype='float32')
+                y_batch = np.zeros((self.batch_size,), dtype='float32')
+                pids_batch = []
+
+                for i, idx in enumerate(idxs_batch):
+                    patient_path = self.patient_paths[idx]
+                    pid = utils_lung.extract_pid_dir(patient_path)
+
+                    img, pixel_spacing = utils_lung.read_dicom_scan(patient_path)
+                    all_candidates = utils.load_pkl(self.id2candidates_path[pid])
+
+                    label = self.id2label.get(pid)
+                    if label:
+                        top_candidates = all_candidates[:self.n_candidates_per_patient]
+                    else:
+                        selection = np.arange(self.top_false)
+                        self.rng.shuffle(selection)
+                        selection = selection[:self.n_candidates_per_patient]
+                        top_candidates = all_candidates[selection]
+
+                    
+                    if self.shuffle_top_n:
+                        self.rng.shuffle(top_candidates)
+
+                    x_batch[i] = np.float32(self.data_prep_fun(data=img,
+                                                               patch_centers=top_candidates,
+                                                               pixel_spacing=pixel_spacing))[:, None, :, :, :]
+                    y_batch[i] = label
+                    pids_batch.append(pid)
+
+                if len(idxs_batch) == self.batch_size:
+                    yield x_batch, y_batch, pids_batch
+
+            if not self.infinite:
+                break
+
+#balance between patients with and without cancer
 class BalancedDSBPatientsDataGenerator(object):
     def __init__(self, data_path, batch_size, transform_params, id2candidates_path, data_prep_fun,
                  n_candidates_per_patient, rng, random, infinite, shuffle_top_n=False, patient_ids=None):
