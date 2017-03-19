@@ -8,6 +8,7 @@ class LunaDataGenerator(object):
     def __init__(self, data_path, transform_params, data_prep_fun, rng,
                  random, infinite, patient_ids=None, **kwargs):
 
+        self.patient_ids = patient_ids
         if patient_ids:
             self.patient_paths = [data_path + '/' + p + '.mhd' for p in patient_ids]
         else:
@@ -61,7 +62,7 @@ class LunaScanPositiveDataGenerator(LunaDataGenerator):
         self.nsamples = len(self.patient_paths)
 
 
-class LunaScanPositiveLungMaskDataGenerator(LunaScanPositiveDataGenerator):
+class LunaScanPositiveLungMaskDataGenerator(LunaDataGenerator):
     def __init__(self, data_path, batch_size, transform_params, data_prep_fun, rng,
                  full_batch, random, infinite, patient_ids=None, **kwargs):
         super(LunaScanPositiveLungMaskDataGenerator, self).__init__(data_path, transform_params,
@@ -94,6 +95,160 @@ class LunaScanPositiveLungMaskDataGenerator(LunaScanPositiveDataGenerator):
 
             if not self.infinite:
                 break
+
+
+
+class LunaScanMaskPositiveDataGenerator(LunaDataGenerator):
+    def __init__(self, data_path, seg_data_path, batch_size, transform_params, data_prep_fun, rng,
+                 full_batch, random, infinite, patient_ids=None, **kwargs):
+        super(LunaScanMaskPositiveDataGenerator, self).__init__(data_path, transform_params,
+                                                                    data_prep_fun, rng,
+                                                                    random, infinite, patient_ids, **kwargs)
+        self.seg_data_path = seg_data_path
+        self.mask_paths = [seg_data_path + '/' + p + '.mhd' for p in self.patient_ids]
+
+    def generate(self):
+        while True:
+            rand_idxs = np.arange(self.nsamples)
+            if self.random:
+                self.rng.shuffle(rand_idxs)
+            for pos in xrange(0, len(rand_idxs)):
+                idx = rand_idxs[pos]
+
+                ct_scan_path = self.patient_paths[idx]
+                mask_path = self.mask_paths[idx]
+
+                pid = utils_lung.extract_pid_filename(ct_scan_path)
+
+                ct_scan, ct_origin, ct_pixel_spacing = utils_lung.read_mhd(ct_scan_path)
+                mask, mask_origin, mask_pixel_spacing = utils_lung.read_mhd(mask_path)
+
+                assert(sum(abs(ct_origin-mask_origin)) < 1e-9)
+                assert(sum(abs(ct_pixel_spacing-mask_pixel_spacing)) < 1e-9)
+
+                ct, lung_mask, annotations, tf_matrix = self.data_prep_fun(ct_scan=ct_scan, mask=mask,
+                                                                             pixel_spacing=ct_pixel_spacing,
+                                                                             luna_annotations=
+                                                                             self.id2annotations[pid],
+                                                                             luna_origin=ct_origin)
+
+                ct = np.float32(ct)[None, None, :, :, :]
+                lung_mask = np.float32(lung_mask)[None, None, :, :, :]
+
+                yield ct, lung_mask, annotations, tf_matrix, pid
+
+            if not self.infinite:
+                break
+
+
+#for lung segmentation, does not work yet
+class PatchLunaDataGenerator(object):
+    def __init__(self, ct_data_path, seg_data_path, batch_size, transform_params, data_prep_fun, rng,
+                 full_batch, random, infinite, patient_ids=None, **kwargs):
+
+        if patient_ids:
+            self.patient_ids = patient_ids
+            #self.patient_paths = [data_path + '/' + p + '.mhd' for p in patient_ids]
+        else:
+            patient_paths = utils_lung.get_patient_data_paths(data_path)
+            #self.patient_paths = [p for p in patient_paths if '.mhd' in p]
+            self.patient_ids = [utils_lung.extract_pid_filename(p) for p in self.patient_paths]\
+
+        self.nsamples = len(self.patient_ids)
+        self.ct_data_path = ct_data_path
+        self.seg_data_path = seg_data_path
+        self.rng = rng
+        self.random = random
+        self.infinite = infinite
+        self.data_prep_fun = data_prep_fun
+        self.transform_params = transform_params
+        self.batch_size = batch_size
+        self.full_batch = full_batch
+
+    def generate(self):
+        while True:
+            rand_idxs = np.arange(self.nsamples)
+            if self.random:
+                self.rng.shuffle(rand_idxs)
+            for pos in xrange(0, len(rand_idxs), self.batch_size):
+                idxs_batch = rand_idxs[pos:pos + self.batch_size]
+                nb = len(idxs_batch)
+                # allocate batches
+                x_batch = np.zeros((nb, 1) + self.transform_params['patch_size'], dtype='float32')
+                y_batch = np.zeros((nb, 1) + self.transform_params['patch_size'], dtype='float32')
+                patients_ids = []
+
+                for i, idx in enumerate(idxs_batch):
+                    pid = self.patient_ids[idx]
+                    ct_path = self.ct_data_path + pid + '.mhd'
+                    seg_path = self.seg_data_path + pid + '.mhd'
+                    patients_ids.append(pid)
+
+                    ct_img, ct_origin, ct_pixel_spacing = utils_lung.read_mhd(ct_path)
+                    seg_img, seg_origin, seg_pixel_spacing = utils_lung.read_mhd(seg_path)
+
+                    assert(np.sum(ct_origin-seg_origin) <  1e-9)
+                    assert(np.sum(ct_pixel_spacing-seg_pixel_spacing) <  1e-9)
+
+                    print 'ct_img.shape', ct_img.shape
+                    print 'seg_img.shape', seg_img.shape
+                    w,h,d = self.transform_params['patch_size']
+                    patch_center = [self.rng.randint(w/2, ct_img.shape[0]-w/2),
+                                    self.rng.randint(h/2, ct_img.shape[1]-h/2),
+                                    self.rng.randint(d/2, ct_img.shape[1]-d/2)]
+                    print patch_center
+
+
+                    x_batch[i, 0, :, :, :], y_batch[i, 0, :, :, :]  = self.data_prep_fun(ct_img=ct_img, seg_img=seg_img,
+                                                                    patch_center=patch_center,
+                                                                    pixel_spacing=ct_pixel_spacing,
+                                                                    luna_origin=ct_origin)
+
+                    # y_batch[i, 0, :, :, :],  = self.data_prep_fun(data=seg_img,
+                    #                                                 patch_center=patch_center,
+                    #                                                 pixel_spacing=seg_pixel_spacing,
+                    #                                                 luna_origin=seg_origin)
+                if self.full_batch:
+                    if nb == self.batch_size:
+                        yield x_batch, y_batch, patients_ids
+                else:
+                    yield x_batch, y_batch, patients_ids
+
+            if not self.infinite:
+                break
+
+#works, tested
+class LunaScanDataGenerator(object):
+    def __init__(self, ct_data_path, seg_data_path, patient_ids=None, **kwargs):
+
+        if patient_ids:
+            self.patient_ids = patient_ids
+            #self.patient_paths = [data_path + '/' + p + '.mhd' for p in patient_ids]
+        else:
+            patient_paths = utils_lung.get_patient_data_paths(ct_data_path)
+            #self.patient_paths = [p for p in patient_paths if '.mhd' in p]
+            self.patient_ids = [utils_lung.extract_pid_filename(p) for p in self.patient_paths]\
+
+        self.nsamples = len(self.patient_ids)
+        self.ct_data_path = ct_data_path
+        self.seg_data_path = seg_data_path
+        
+
+    def generate(self):
+        for pid in self.patient_ids:
+            ct_path = self.ct_data_path + pid + '.mhd'
+            seg_path = self.seg_data_path + pid + '.mhd'
+
+            ct_img, ct_origin, ct_pixel_spacing = utils_lung.read_mhd(ct_path)
+            seg_img, seg_origin, seg_pixel_spacing = utils_lung.read_mhd(seg_path)
+
+            assert(np.sum(ct_origin-seg_origin) <  1e-9)
+            assert(np.sum(ct_pixel_spacing-seg_pixel_spacing) <  1e-9)
+
+            print 'ct_img.shape', ct_img.shape
+            print 'seg_img.shape', seg_img.shape
+
+            yield ct_img, seg_img, pid
 
 
 class PatchPositiveLunaDataGenerator(object):
@@ -156,6 +311,7 @@ class PatchPositiveLunaDataGenerator(object):
 
             if not self.infinite:
                 break
+
 
 
 class ValidPatchPositiveLunaDataGenerator(object):
