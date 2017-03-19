@@ -14,6 +14,7 @@ import buffering
 from configuration import config, set_configuration
 import pathfinder
 import utils_plots
+from collections import defaultdict
 
 theano.config.warn_float64 = 'raise'
 
@@ -74,7 +75,6 @@ givens_valid[model.l_in.input_var] = x_shared
 givens_valid[model.l_target.input_var] = y_shared
 
 # theano functions
-iter_train = theano.function([], train_loss, givens=givens_train, updates=updates)
 iter_validate = theano.function([], nn.layers.get_output(model.l_out, deterministic=True), givens=givens_valid,
                                 on_unused_input='ignore')
 
@@ -113,20 +113,18 @@ prev_time = start_time
 tmp_losses_train = []
 losses_train_print = []
 
+data_iter = config().train_data_iterator
+pid2sizes = defaultdict(list)
 for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buffering.buffered_gen_threaded(
-        valid_data_iterator.generate())):
-    if chunk_idx in learning_rate_schedule:
-        lr = np.float32(learning_rate_schedule[chunk_idx])
-        print '  setting learning rate to %.7f' % lr
-        print
-        learning_rate.set_value(lr)
+        data_iter.generate())):
+    pid = id_train[0]
+    print chunk_idx, pid, y_chunk_train
 
     # load chunk to GPU
     x_shared.set_value(x_chunk_train)
     y_shared.set_value(y_chunk_train)
 
     predictions = iter_validate()
-    print predictions.shape
 
     if predictions.shape != x_chunk_train.shape:
         pad_width = (np.asarray(x_chunk_train.shape) - np.asarray(predictions.shape)) / 2
@@ -134,12 +132,14 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
         predictions = np.pad(predictions, pad_width=pad_width, mode='constant')
 
     for i in xrange(x_chunk_train.shape[0]):
-        pid = id_train[i]
         for j in xrange(x_chunk_train.shape[1]):
-            utils_plots.plot_slice_3d_3(input=x_chunk_train[i, j, 0],
+            pid2sizes[pid].append(np.sum(predictions[i, j]))
+            utils_plots.plot_slice_3d_2(image3d=x_chunk_train[i, j, 0],
                                         mask=predictions[i, j, 0],
-                                        prediction=predictions[i, j, 0],
-                                        pid='-'.join([str(pid), str(j)]),
+                                        pid='-'.join([str(pid), str(j), str(int(np.sum(predictions[i, j, 0])))]),
                                         img_dir=outputs_path,
                                         idx=np.array(x_chunk_train[i, j, 0].shape) / 2,
                                         axis=0)
+    print sorted(pid2sizes[pid], reverse=True)
+
+    utils.save_pkl(pid2sizes, outputs_path + '/nodule_sizes_train.pkl')

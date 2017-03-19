@@ -11,7 +11,7 @@ import utils
 import utils_lung
 
 # TODO: import correct config here
-candidates_config = 'dsb_c3_s2_p8a1'
+candidates_config = 'dsb_c3_s1e_p8a1'
 import configs_seg_patch.luna_p8a1 as patch_segmentation_config
 
 restart_from_save = None
@@ -26,7 +26,7 @@ p_transform = {'patch_size': (48, 48, 48),
                'mm_patch_size': (48, 48, 48),
                'pixel_spacing': (1., 1., 1.)
                }
-n_candidates_per_patient = 4
+n_candidates_per_patient = 8
 
 
 def data_prep_function(data, patch_centers, pixel_spacing, p_transform,
@@ -54,14 +54,14 @@ print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
 
 train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
-                                                              batch_size=batch_size,
+                                                              batch_size=1,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
                                                               data_prep_fun=data_prep_function_train,
                                                               id2candidates_path=id2candidates_path,
                                                               rng=rng,
                                                               patient_ids=train_pids,
-                                                              random=True, infinite=True)
+                                                              random=False, infinite=False)
 
 valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
                                                               batch_size=1,

@@ -30,6 +30,8 @@ b8bb02d229361a623a4dc57aa0e5c485 (has 2 series of data)
 6a145c28d3b722643f547dfcbdf379ae (half of the lung)
 5fe048f36bd2da6bdb63d8ff3c4022cd (half of the lung)
 
+51fbac477a3639f983904fc4d42b8c15 (the highest candidate is probably not a nodule)
+
 ## Random
 ssh -X -p 10001 ikorshun@localhost
 scp -P 10001 /mnt/sda3/data/kaggle-lung/stage1_sample_submission.csv  ikorshun@localhost://mnt/storage/data/dsb3/
