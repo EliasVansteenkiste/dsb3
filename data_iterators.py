@@ -96,6 +96,45 @@ class LunaScanPositiveLungMaskDataGenerator(LunaScanPositiveDataGenerator):
                 break
 
 
+class LunaScanPositiveLungMaskDataGenerator2(LunaScanPositiveDataGenerator):
+    def __init__(self, data_path, lung_masks_path, transform_params, data_prep_fun, rng,
+                 full_batch, random, infinite, patient_ids=None, **kwargs):
+        super(LunaScanPositiveLungMaskDataGenerator2, self).__init__(data_path, transform_params,
+                                                                     data_prep_fun, rng,
+                                                                     random, infinite, patient_ids, **kwargs)
+
+        self.lung_masks_path = lung_masks_path
+
+    def generate(self):
+        while True:
+            rand_idxs = np.arange(self.nsamples)
+            if self.random:
+                self.rng.shuffle(rand_idxs)
+            for pos in xrange(0, len(rand_idxs)):
+                idx = rand_idxs[pos]
+
+                patient_path = self.patient_paths[idx]
+                pid = utils_lung.extract_pid_filename(patient_path)
+
+                lung_mask_in, origin_mask, pixel_spacing_mask = utils_lung.read_mhd(self.lung_masks_path + '/%s.mhd' % pid)
+                img, origin, pixel_spacing = utils_lung.read_mhd(patient_path)
+                x, y, lung_mask, annotations, tf_matrix = self.data_prep_fun(data=img,
+                                                                             lung_mask=lung_mask_in,
+                                                                             pixel_spacing=pixel_spacing,
+                                                                             luna_annotations=
+                                                                             self.id2annotations[pid],
+                                                                             luna_origin=origin)
+
+                x = np.float32(x)[None, None, :, :, :]
+                y = np.float32(y)[None, None, :, :, :]
+                lung_mask = np.float32(lung_mask)[None, None, :, :, :]
+
+                yield x, y, lung_mask, annotations, tf_matrix, pid
+
+            if not self.infinite:
+                break
+
+
 class PatchPositiveLunaDataGenerator(object):
     def __init__(self, data_path, batch_size, transform_params, data_prep_fun, rng,
                  full_batch, random, infinite, patient_ids=None, **kwargs):
