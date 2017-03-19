@@ -1,0 +1,147 @@
+import numpy as np
+import data_transforms
+import data_iterators
+import pathfinder
+import lasagne as nn
+from collections import namedtuple
+from functools import partial
+import lasagne.layers.dnn as dnn
+import theano.tensor as T
+import utils
+import utils_lung
+from densenet_fast_3D import dense_block,transition
+
+# TODO: import correct config here
+candidates_config = 'dsb_c3_s2_p8a1_ls_elias'
+
+restart_from_save = None
+rng = np.random.RandomState(42)
+
+predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
+candidates_path = predictions_dir + '/%s' % candidates_config
+id2candidates_path = utils_lung.get_candidates_paths(candidates_path)
+
+# transformations
+p_transform = {'patch_size': (48, 48, 48),
+               'mm_patch_size': (48, 48, 48),
+               'pixel_spacing': (1., 1., 1.)
+               }
+n_candidates_per_patient = 8
+
+
+def data_prep_function(data, patch_centers, pixel_spacing, p_transform,
+                       p_transform_augment, **kwargs):
+    x = data_transforms.transform_dsb_candidates(data=data,
+                                                 patch_centers=patch_centers,
+                                                 p_transform=p_transform,
+                                                 p_transform_augment=p_transform_augment,
+                                                 pixel_spacing=pixel_spacing)
+    x = data_transforms.pixelnormHU(x)
+    return x
+
+
+data_prep_function_train = partial(data_prep_function, p_transform_augment=None,
+                                   p_transform=p_transform)
+data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
+                                   p_transform=p_transform)
+
+# data iterators
+batch_size = 4
+
+train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
+train_pids, valid_pids = train_valid_ids['training'], train_valid_ids['validation']
+print 'n train', len(train_pids)
+print 'n valid', len(valid_pids)
+
+train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
+                                                              batch_size=batch_size,
+                                                              transform_params=p_transform,
+                                                              n_candidates_per_patient=n_candidates_per_patient,
+                                                              data_prep_fun=data_prep_function_train,
+                                                              id2candidates_path=id2candidates_path,
+                                                              rng=rng,
+                                                              patient_ids=train_pids,
+                                                              random=True, infinite=True)
+
+valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
+                                                              batch_size=1,
+                                                              transform_params=p_transform,
+                                                              n_candidates_per_patient=n_candidates_per_patient,
+                                                              data_prep_fun=data_prep_function_valid,
+                                                              id2candidates_path=id2candidates_path,
+                                                              rng=rng,
+                                                              patient_ids=valid_pids,
+                                                              random=False, infinite=False)
+
+nchunks_per_epoch = train_data_iterator.nsamples / batch_size
+max_nchunks = nchunks_per_epoch * 10
+
+validate_every = int(0.5 * nchunks_per_epoch)
+save_every = int(0.25 * nchunks_per_epoch)
+
+learning_rate_schedule = {
+    0: 1e-5,
+    int(5 * nchunks_per_epoch): 2e-6,
+    int(6 * nchunks_per_epoch): 1e-6,
+    int(7 * nchunks_per_epoch): 5e-7,
+    int(9 * nchunks_per_epoch): 2e-7
+}
+
+# model
+dropout = 0.
+num_blocks = 3
+depth = 13
+growth_rate = 12
+first_output=16
+
+def build_model():
+    l_in = nn.layers.InputLayer((None, n_candidates_per_patient, 1,) + p_transform['patch_size'])
+    l_target = nn.layers.InputLayer((batch_size,))
+
+
+    network = nn.layers.ReshapeLayer(l_in, (-1, 1,) + p_transform['patch_size'])
+
+    network = dnn.Conv3DDNNLayer(network, first_output, 3, pad='valid',
+                          W=nn.init.HeNormal(gain='relu'),
+                          b=None, nonlinearity=None, name='pre_conv')
+    network = nn.layers.BatchNormLayer(network, name='pre_bn', beta=None, gamma=None)
+
+    if dropout:
+        network = nn.layers.DropoutLayer(network, dropout)
+
+    n = (depth - 1) // num_blocks
+    for b in range(num_blocks):
+        network = dense_block(network, n - 1, growth_rate, dropout,
+                              name_prefix='block%d' % (b + 1))
+        if b < num_blocks - 1:
+            network = transition(network, dropout,
+                                 name_prefix='block%d_trs' % (b + 1))
+    # post processing until prediction
+    network = nn.layers.ScaleLayer(network, name='post_scale')
+    network = nn.layers.BiasLayer(network, name='post_shift')
+    network = nn.layers.NonlinearityLayer(network, nonlinearity=nn.nonlinearities.rectify,
+                                name='post_relu')
+    network = nn.layers.GlobalPoolLayer(network, name='post_pool')
+
+    network = nn.layers.ReshapeLayer(network, (-1, n_candidates_per_patient, first_output+growth_rate*num_blocks*(n-1)))
+
+    l_out = nn.layers.DenseLayer(network, num_units=2,
+                                 W=nn.init.Orthogonal(),
+                                 b=nn.init.Constant(),
+                                 nonlinearity=nn.nonlinearities.softmax)
+
+    return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
+
+
+def build_objective(model, deterministic=False, epsilon=1e-12):
+    predictions = nn.layers.get_output(model.l_out, deterministic=deterministic)
+    targets = T.cast(T.flatten(nn.layers.get_output(model.l_target)), 'int32')
+    p = predictions[T.arange(predictions.shape[0]), targets]
+    p = T.clip(p, epsilon, 1.)
+    loss = T.mean(T.log(p))
+    return -loss
+
+
+def build_updates(train_loss, model, learning_rate):
+    updates = nn.updates.adam(train_loss, nn.layers.get_all_params(model.l_out, trainable=True), learning_rate)
+    return updates

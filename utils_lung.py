@@ -14,6 +14,22 @@ def read_pkl(path):
     return d['pixel_data'], d['origin'], d['spacing']
 
 
+def evaluate_log_loss(pid2prediction, pid2label):
+    predictions, labels = [], []
+    assert set(pid2prediction.keys()) == set(pid2label.keys())
+    for k, v in pid2prediction.iteritems():
+        predictions.append(v)
+        labels.append(pid2label[k])
+    return log_loss(labels, predictions)
+
+
+def log_loss(y_real, y_pred, eps=1e-15):
+    y_pred = np.clip(y_pred, eps, 1 - eps)
+    y_real = np.array(y_real)
+    losses = y_real * np.log(y_pred) + (1 - y_real) * np.log(1 - y_pred)
+    return - np.average(losses)
+
+
 def read_mhd(path):
     itk_data = sitk.ReadImage(path.encode('utf-8'))
     pixel_data = sitk.GetArrayFromImage(itk_data)
@@ -207,7 +223,7 @@ def slice_location_finder(sid2metadata):
 
 
 def get_patient_data_paths(data_dir):
-    pids = os.listdir(data_dir)
+    pids = sorted(os.listdir(data_dir))
     return [data_dir + '/' + p for p in pids]
 
 
@@ -221,6 +237,20 @@ def read_labels(file_path):
             i = 1
             continue
         id, label = item.replace('\n', '').split(',')
+        id2labels[id] = int(label)
+    return id2labels
+
+
+def read_test_labels(file_path):
+    id2labels = {}
+    train_csv = open(file_path)
+    lines = train_csv.readlines()
+    i = 0
+    for item in lines:
+        if i == 0:
+            i = 1
+            continue
+        id, label = item.replace('\n', '').split(';')
         id2labels[id] = int(label)
     return id2labels
 
@@ -254,21 +284,16 @@ def read_luna_negative_candidates(file_path):
     return id2xyzd
 
 
-def write_submission(patient_predictions, submission_path):
+def write_submission(pid2prediction, submission_path):
     """
-    :param patient_predictions: dict of {patient_id: label}
+    :param pid2prediction: dict of {patient_id: label}
     :param submission_path:
     """
-    fi = csv.reader(open(submission_path))
     f = open(submission_path, 'w+')
     fo = csv.writer(f, lineterminator='\n')
-    fo.writerow(fi.next())
-    for line in fi:
-        pid = line[0]
-        if pid in patient_predictions.keys():
-            fo.writerow([pid, patient_predictions[pid]])
-        else:
-            print 'missed patient:', pid
+    fo.writerow(['id', 'cancer'])
+    for pid in pid2prediction.keys():
+        fo.writerow([pid, pid2prediction[pid]])
     f.close()
 
 

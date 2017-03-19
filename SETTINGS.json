@@ -7,7 +7,8 @@
   "LUNA_DATA_PATH": "/home/frederic/kaggle-dsb3/data/luna/dataset/",
   "LUNA_LABELS_PATH": "/home/frederic/kaggle-dsb3/data/luna/annotations.csv",
   "LUNA_VALIDATION_SPLIT_PATH": "/home/frederic/kaggle-dsb3/data/luna/validation_split.pkl",
-  "LUNA_CANDIDATES_PATH": "/home/frederic/kaggle-dsb3/data/luna/candidates_V2.csv"
+  "LUNA_CANDIDATES_PATH": "/home/frederic/kaggle-dsb3/data/luna/candidates_V2.csv",
+  "TEST_LABELS_PATH": "/home/frederic/kaggle-dsb3/data/test_labels.csv"
 }
 
 

@@ -10,8 +10,10 @@ elif utils.hostname() == 'kat':
     with open('SETTINGS_kat.json') as data_file:
         paths = json.load(data_file)
 else:
-    with open('SETTINGS.json') as data_file:
+    with open('/home/frederic/kaggle-dsb3/dsb3-ira2/SETTINGS.json') as data_file:
         paths = json.load(data_file)
+
+
 
 METADATA_PATH = paths["METADATA_PATH"]
 
@@ -21,6 +23,10 @@ utils.check_data_paths(DATA_PATH)
 
 LABELS_PATH = paths["LABELS_PATH"]
 if not os.path.isfile(LABELS_PATH):
+    raise ValueError('no file with train labels')
+
+TEST_LABELS_PATH = paths["TEST_LABELS_PATH"]
+if not os.path.isfile(TEST_LABELS_PATH):
     raise ValueError('no file with train labels')
 
 SAMPLE_SUBMISSION_PATH = paths["SAMPLE_SUBMISSION_PATH"]

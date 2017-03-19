@@ -289,3 +289,63 @@ class NormalCDFLayer(nn.layers.MergeLayer):
         x = (x_range - mu) / (sigma * T.sqrt(2.) + 1e-16)
         cdf = (T.erf(x) + 1.) / 2.
         return cdf
+
+
+
+class AggAllBenignExp(nn.layers.Layer):
+    """
+    takes elementwise product between 2 layers
+    """
+
+    def __init__(self, incoming, **kwargs):
+        super(AggAllBenignExp, self).__init__(incoming, **kwargs)
+
+    def get_output_shape_for(self, input_shape):
+        assert(len(input_shape)==3)
+        assert(input_shape[2]==1)
+        return (input_shape[0], 1)
+
+    def get_output_for(self, input, **kwargs):
+        rectified = nonlinearities.softplus(input)
+        sum_rect = T.sum(rectified, axis=(1,2))
+        output = 1 - T.exp(-sum_rect)
+        return output
+
+class AggAllBenignProd(nn.layers.Layer):
+    """
+    takes elementwise product between 2 layers
+    """
+
+    def __init__(self, incoming, **kwargs):
+        super(AggAllBenignProd, self).__init__(incoming, **kwargs)
+
+    def get_output_shape_for(self, input_shape):
+        assert(len(input_shape)==3)
+        assert(input_shape[2]==1)
+        return (input_shape[0], 1)
+
+    def get_output_for(self, input, **kwargs):
+        ps = nonlinearities.sigmoid(input)
+        prod = T.prod(ps, axis=(1,2))
+        output = 1 - prod
+        return output
+
+class AggAllBenignProdHard(nn.layers.Layer):
+    """
+    takes elementwise product between 2 layers
+    """
+
+    def __init__(self, incoming, **kwargs):
+        super(AggAllBenignProdHard, self).__init__(incoming, **kwargs)
+
+    def get_output_shape_for(self, input_shape):
+        assert(len(input_shape)==3)
+        assert(input_shape[2]==1)
+        return (input_shape[0], 1)
+
+    def get_output_for(self, input, **kwargs):
+        ps = T.nnet.hard_sigmoid(input)
+        prod = T.prod(ps, axis=(1,2))
+        output = 1 - prod
+        return output
+
