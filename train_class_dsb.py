@@ -57,8 +57,8 @@ learning_rate_schedule = config().learning_rate_schedule
 learning_rate = theano.shared(np.float32(learning_rate_schedule[0]))
 updates = config().build_updates(train_loss, model, learning_rate)
 
-x_shared = nn.utils.shared_empty(dim=len(model.l_in.shape))
-y_shared = nn.utils.shared_empty(dim=len(model.l_target.shape))
+x_shared = nn.utils.shared_empty(dim=len(model.l_in.shape),broadcastable=False)
+y_shared = nn.utils.shared_empty(dim=len(model.l_target.shape), broadcastable=False)
 
 givens_train = {}
 givens_train[model.l_in.input_var] = x_shared
