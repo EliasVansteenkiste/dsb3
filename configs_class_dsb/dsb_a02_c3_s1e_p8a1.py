@@ -99,24 +99,8 @@ learning_rate_schedule = {
     int(9 * nchunks_per_epoch): 2e-7
 }
 
+
 # model
-conv3 = partial(dnn.Conv3DDNNLayer,
-                pad="valid",
-                filter_size=3,
-                nonlinearity=nn.nonlinearities.rectify,
-                b=nn.init.Constant(0.1),
-                W=nn.init.Orthogonal("relu"))
-
-max_pool = partial(dnn.MaxPool3DDNNLayer,
-                   pool_size=2)
-
-
-def dense_prelu_layer(l_in, num_units):
-    l = nn.layers.DenseLayer(l_in, num_units=num_units, W=nn.init.Orthogonal(),
-                             nonlinearity=nn.nonlinearities.linear)
-    l = nn.layers.ParametricRectifierLayer(l)
-    return l
-
 
 def build_nodule_classification_model(l_in):
     metadata_dir = utils.get_dir_path('models', pathfinder.METADATA_PATH)
@@ -147,17 +131,32 @@ def build_model():
 
 
 def build_objective(model, deterministic=False, epsilon=1e-12):
+    if deterministic:
+        loss = build_validation_objective(model, deterministic=True, epsilon=1e-12)
+        return loss
+    else:
+        targets = nn.layers.get_output(model.l_target)
+
+        # for negative examples
+        p0 = nn.layers.get_output(model.l_roi_p0, deterministic=deterministic)
+        p0 = T.clip(p0, epsilon, 1.)
+        p0 = T.mean(T.log(p0), axis=-1)
+
+        # for positive examples
+        predictions_1 = nn.layers.get_output(model.l_out, deterministic=deterministic)[:, 0]
+        p1 = T.clip(predictions_1, epsilon, 1.)
+        p1 = T.log(p1)
+
+        loss = -1. * T.mean((1 - targets) * p0 + targets * p1, axis=0)
+    return loss
+
+
+def build_validation_objective(model, deterministic=False, epsilon=1e-12):
     targets = nn.layers.get_output(model.l_target)
-
-    # for negative examples
-    p0 = nn.layers.get_output(model.l_roi_p0, deterministic=deterministic)
-    p0 = T.clip(p0, epsilon, 1.)
-    p0 = T.mean(T.log(p0), axis=-1)
-
-    # for positive examples
-    predictions_1 = nn.layers.get_output(model.l_out, deterministic=deterministic)[:, 0]
-    p1 = T.clip(predictions_1, epsilon, 1.)
-    p1 = T.log(p1)
+    predictions = nn.layers.get_output(model.l_out, deterministic=deterministic)[:, 0]
+    predictions = T.clip(predictions, epsilon, 1. - epsilon)
+    p1 = T.log(predictions)
+    p0 = T.log(1. - predictions)
 
     loss = -1. * T.mean((1 - targets) * p0 + targets * p1, axis=0)
     return loss

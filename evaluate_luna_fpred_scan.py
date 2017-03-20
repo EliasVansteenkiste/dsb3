@@ -24,7 +24,7 @@ for k, v in pid2candidates_path.iteritems():
 
 pid2annotations = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
 
-n_top = 1
+n_top = 10
 tp_top_n = 0
 fp_top_n = 0
 tp = 0
