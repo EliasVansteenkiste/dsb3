@@ -9,7 +9,6 @@ import lasagne.layers.dnn as dnn
 import theano.tensor as T
 import utils
 import utils_lung
-import nn_lung
 
 # TODO: import correct config here
 candidates_config = 'dsb_c3_s1e_p8a1'
@@ -146,19 +145,34 @@ def build_model():
 
 
 def build_objective(model, deterministic=False, epsilon=1e-12):
+    targets = nn.layers.get_output(model.l_target)
+
     # for negative examples
-    predictions_roi = nn.layers.get_output(model.l_roi_out, deterministic=deterministic)
-    predictions_roi = T.clip(predictions_roi, epsilon, 1. - epsilon)
-    predictions_0 = T.mean(T.log(1. - predictions_roi), axis=-1)
+    p0 = nn.layers.get_output(model.l_roi_out, deterministic=deterministic)
+    p0 = T.clip(p0, epsilon, 1. - epsilon)
+    p0 = T.mean(T.log(1. - p0), axis=-1)
 
-    # for a positive label
-    predictions_1 = T.flatten(nn.layers.get_output(model.l_out, deterministic=deterministic))
-    predictions_1 = T.log(T.clip(predictions_1, epsilon, 1. - epsilon))
+    # for positive examples
+    predictions_1 = nn.layers.get_output(model.l_out, deterministic=deterministic)[:, 0]
+    p1 = T.clip(predictions_1, epsilon, 1. - epsilon)
+    p1 = T.log(p1)
 
+    loss = -1. * T.mean((1 - targets) * p0 + targets * p1, axis=0)
+    return loss
+
+
+def build_objective2(model, deterministic=False, epsilon=1e-12):
     targets = T.flatten(nn.layers.get_output(model.l_target))
 
-    loss = -1. * T.mean((1 - targets) * predictions_0 + targets * predictions_1)
-    return loss
+    predictions_roi = nn.layers.get_output(model.l_roi_out, deterministic=deterministic)
+    predictions_roi = T.clip(predictions_roi, epsilon, 1. - epsilon)
+    predictions_roi_0 = T.mean(T.log(predictions_roi), axis=-1)
+
+    predictions_out = T.flatten(nn.layers.get_output(model.l_out, deterministic=deterministic))
+    predictions_out = T.clip(predictions_out, epsilon, 1. - epsilon)
+
+    loss = (1 - targets) * predictions_roi_0 - targets * T.log(predictions_out)
+    return T.mean(loss)
 
 
 def build_updates(train_loss, model, learning_rate):
