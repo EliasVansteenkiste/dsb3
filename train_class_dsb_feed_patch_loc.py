@@ -58,17 +58,17 @@ learning_rate = theano.shared(np.float32(learning_rate_schedule[0]))
 updates = config().build_updates(train_loss, model, learning_rate)
 
 x_shared = nn.utils.shared_empty(dim=len(model.l_in.shape))
-x_loc_shared = nn.utils.shared_empty(dim=len(model.l_in_patch_locs_rshp.shape))
+x_loc_shared = nn.utils.shared_empty(dim=len(model.l_in_patch_locs.shape))
 y_shared = nn.utils.shared_empty(dim=len(model.l_target.shape))
 
 givens_train = {}
 givens_train[model.l_in.input_var] = x_shared
-givens_train[model.l_in.l_in_patch_locs_rshp] = x_loc_shared
+givens_train[model.l_in_patch_locs] = x_loc_shared
 givens_train[model.l_target.input_var] = y_shared
 
 givens_valid = {}
 givens_valid[model.l_in.input_var] = x_shared
-givens_valid[model.l_in.l_in_patch_locs_rshp] = x_loc_shared
+givens_valid[model.l_in_patch_locs] = x_loc_shared
 givens_valid[model.l_target.input_var] = y_shared
 
 # theano functions
@@ -110,7 +110,7 @@ prev_time = start_time
 tmp_losses_train = []
 losses_train_print = []
 
-for chunk_idx, (x_chunk_train, x_loc_chunk_train y_chunk_train, id_train) in izip(chunk_idxs, buffering.buffered_gen_threaded(
+for chunk_idx, (x_chunk_train, x_loc_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buffering.buffered_gen_threaded(
         train_data_iterator.generate())):
     if chunk_idx in learning_rate_schedule:
         lr = np.float32(learning_rate_schedule[chunk_idx])
