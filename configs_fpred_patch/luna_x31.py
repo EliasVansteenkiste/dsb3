@@ -10,7 +10,7 @@ import lasagne
 import theano.tensor as T
 import utils
 
-restart_from_save = "/home/eavsteen/dsb3/storage/metadata/dsb3//models/eavsteen/luna_x30-20170319-152346.pkl"
+restart_from_save = False
 rng = np.random.RandomState(33)
 
 # transformations
