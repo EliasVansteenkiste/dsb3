@@ -31,7 +31,7 @@ logs_dir = utils.get_dir_path('logs', pathfinder.METADATA_PATH)
 sys.stdout = logger.Logger(logs_dir + '/%s.log' % config_name)
 sys.stderr = sys.stdout
 
-data_iterator = config().data_iterator
+data_iterator = config().train_data_iterator
 
 print
 print 'Data'
