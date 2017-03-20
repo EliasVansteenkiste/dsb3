@@ -99,7 +99,22 @@ def read_dicom_scan(patient_data_path):
     for s1, s2 in zip(sids_sorted[1:], sids_sorted[:-1]):
         z_pixel_spacing.append(sid2position[s1] - sid2position[s2])
     z_pixel_spacing = np.array(z_pixel_spacing)
-    assert np.all((z_pixel_spacing - z_pixel_spacing[0]) < 0.01)
+    try:
+        assert np.all((z_pixel_spacing - z_pixel_spacing[0]) < 0.01)
+    except:
+        print 'This patient has multiple series, we will remove one'
+        sids_sorted_2 = []
+        for s1, s2 in zip(sids_sorted[::2], sids_sorted[1::2]):
+            if sid2metadata[s1]["InstanceNumber"] > sid2metadata[s2]["InstanceNumber"]:
+                sids_sorted_2.append(s1)
+            else:
+                sids_sorted_2.append(s2)
+        sids_sorted = sids_sorted_2
+        z_pixel_spacing = []
+        for s1, s2 in zip(sids_sorted[1:], sids_sorted[:-1]):
+            z_pixel_spacing.append(sid2position[s1] - sid2position[s2])
+        z_pixel_spacing = np.array(z_pixel_spacing)
+        assert np.all((z_pixel_spacing - z_pixel_spacing[0]) < 0.01)
 
     pixel_spacing = np.array((z_pixel_spacing[0],
                               sid2metadata[sids_sorted[0]]['PixelSpacing'][0],
@@ -192,7 +207,7 @@ def slice_location_finder(sid2metadata):
 
 
 def get_patient_data_paths(data_dir):
-    pids = os.listdir(data_dir)
+    pids = sorted(os.listdir(data_dir))
     return [data_dir + '/' + p for p in pids]
 
 
@@ -206,6 +221,20 @@ def read_labels(file_path):
             i = 1
             continue
         id, label = item.replace('\n', '').split(',')
+        id2labels[id] = int(label)
+    return id2labels
+
+
+def read_test_labels(file_path):
+    id2labels = {}
+    train_csv = open(file_path)
+    lines = train_csv.readlines()
+    i = 0
+    for item in lines:
+        if i == 0:
+            i = 1
+            continue
+        id, label = item.replace('\n', '').split(';')
         id2labels[id] = int(label)
     return id2labels
 
@@ -239,21 +268,16 @@ def read_luna_negative_candidates(file_path):
     return id2xyzd
 
 
-def write_submission(patient_predictions, submission_path):
+def write_submission(pid2prediction, submission_path):
     """
-    :param patient_predictions: dict of {patient_id: label}
+    :param pid2prediction: dict of {patient_id: label}
     :param submission_path:
     """
-    fi = csv.reader(open(submission_path))
     f = open(submission_path, 'w+')
     fo = csv.writer(f, lineterminator='\n')
-    fo.writerow(fi.next())
-    for line in fi:
-        pid = line[0]
-        if pid in patient_predictions.keys():
-            fo.writerow([pid, patient_predictions[pid]])
-        else:
-            print 'missed patient:', pid
+    fo.writerow(['id', 'cancer'])
+    for pid in pid2prediction.keys():
+        fo.writerow([pid, pid2prediction[pid]])
     f.close()
 
 
@@ -299,3 +323,11 @@ def cross_entropy(predictions, targets, epsilon=1e-12):
     targets = np.asarray(targets).flatten()
     ce = np.mean(np.log(predictions) * targets + np.log(1 - predictions) * (1. - targets))
     return ce
+
+
+def get_generated_pids(predictions_dir):
+    pids = []
+    if os.path.isdir(predictions_dir):
+        pids = os.listdir(predictions_dir)
+        pids = [extract_pid_filename(p) for p in pids]
+    return pids

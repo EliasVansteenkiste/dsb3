@@ -3,6 +3,7 @@ import data_transforms
 import data_iterators
 import pathfinder
 import lasagne as nn
+import nn_lung 
 from collections import namedtuple
 from functools import partial
 import lasagne.layers.dnn as dnn
@@ -11,7 +12,7 @@ import utils
 import utils_lung
 
 # TODO: import correct config here
-candidates_config = 'dsb_c3_s2_p8a1'
+candidates_config = 'dsb_c3_s2_p8a1_ls_elias' 
 
 restart_from_save = None
 rng = np.random.RandomState(42)
@@ -52,7 +53,7 @@ train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
 
-train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
+train_data_iterator = data_iterators.BalancedDSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
                                                               batch_size=batch_size,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -72,15 +73,16 @@ valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               patient_ids=valid_pids,
                                                               random=False, infinite=False)
 
+
 test_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
-                                                             batch_size=1,
-                                                             transform_params=p_transform,
-                                                             n_candidates_per_patient=n_candidates_per_patient,
-                                                             data_prep_fun=data_prep_function_valid,
-                                                             id2candidates_path=id2candidates_path,
-                                                             rng=rng,
-                                                             patient_ids=test_pids,
-                                                             random=False, infinite=False)
+                                                              batch_size=1,
+                                                              transform_params=p_transform,
+                                                              n_candidates_per_patient=n_candidates_per_patient,
+                                                              data_prep_fun=data_prep_function_valid,
+                                                              id2candidates_path=id2candidates_path,
+                                                              rng=rng,
+                                                              patient_ids=test_pids,
+                                                              random=False, infinite=False)
 
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size
 max_nchunks = nchunks_per_epoch * 10
@@ -89,11 +91,11 @@ validate_every = int(0.5 * nchunks_per_epoch)
 save_every = int(0.25 * nchunks_per_epoch)
 
 learning_rate_schedule = {
-    0: 1e-5,
-    int(5 * nchunks_per_epoch): 2e-6,
-    int(6 * nchunks_per_epoch): 1e-6,
-    int(7 * nchunks_per_epoch): 5e-7,
-    int(9 * nchunks_per_epoch): 2e-7
+    0: 5e-5,
+    int(5 * nchunks_per_epoch): 1e-5,
+    int(6 * nchunks_per_epoch): 5e-6,
+    int(7 * nchunks_per_epoch): 1e-6,
+    int(9 * nchunks_per_epoch): 5e-7
 }
 
 # model
@@ -134,25 +136,24 @@ def build_model():
     l = conv3(l, num_filters=256)
     l = conv3(l, num_filters=256)
 
-    num_units_dense = 512
-    l_d01 = dense_prelu_layer(l, num_units=512)
-    l_d01 = nn.layers.ReshapeLayer(l_d01, (-1, n_candidates_per_patient, num_units_dense))
-    l_d02 = dense_prelu_layer(l_d01, num_units=512)
-    l_out = nn.layers.DenseLayer(l_d02, num_units=2,
-                                 W=nn.init.Constant(0.),
-                                 b=np.array([np.log((1397. - 362) / 1398), np.log(362. / 1397)], dtype='float32'),
-                                 nonlinearity=nn.nonlinearities.softmax)
+    l = dense_prelu_layer(l, num_units=512)    
+    l = dense_prelu_layer(l, num_units=512)    
+    l = nn.layers.DenseLayer(l, num_units=1, W=nn.init.Orthogonal(),
+                             nonlinearity=None)
+
+    l = nn.layers.ReshapeLayer(l, (-1, n_candidates_per_patient, 1))
+
+    l_out = nn_lung.AggAllBenignExp(l)
 
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 
 
 def build_objective(model, deterministic=False, epsilon=1e-12):
-    predictions = nn.layers.get_output(model.l_out, deterministic=deterministic)
-    targets = T.cast(T.flatten(nn.layers.get_output(model.l_target)), 'int32')
-    p = predictions[T.arange(predictions.shape[0]), targets]
-    p = T.clip(p, epsilon, 1.)
-    loss = T.mean(T.log(p))
-    return -loss
+    p = nn.layers.get_output(model.l_out, deterministic=deterministic)
+    targets = T.flatten(nn.layers.get_output(model.l_target))
+    p = T.clip(p, epsilon, 1.-epsilon)
+    bce = T.nnet.binary_crossentropy(p, targets)
+    return T.mean(bce)
 
 
 def build_updates(train_loss, model, learning_rate):

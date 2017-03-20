@@ -109,12 +109,17 @@ def segment_HU_scan_elias(x, threshold=-350, pid='test', plot=False, verbose=Fal
     return mask
 
 
-def segment_HU_scan_ira2(x, threshold=-350, pid='test', plot=False):
+def segment_HU_scan_ira(x, threshold=-350, min_area=300):
     mask = np.asarray(x < threshold, dtype='int8')
 
     for zi in xrange(mask.shape[0]):
         skimage.segmentation.clear_border(mask[zi, :, :], in_place=True)
 
+    # noise reduction
+    mask = skimage.morphology.binary_opening(mask, skimage.morphology.cube(2))
+    mask = np.asarray(mask, dtype='int8')
+
+    # label regions
     label_image = skimage.measure.label(mask)
     region_props = skimage.measure.regionprops(label_image)
     sorted_regions = sorted(region_props, key=lambda x: x.area, reverse=True)
@@ -132,11 +137,9 @@ def segment_HU_scan_ira2(x, threshold=-350, pid='test', plot=False):
     label_image = skimage.measure.label(mask)
     region_props = skimage.measure.regionprops(label_image)
     sorted_regions = sorted(region_props, key=lambda x: x.area, reverse=True)
-    print len(sorted_regions)
 
     for r in sorted_regions[1:]:
-        print r.area, r.label
-        if r.area > 10:
+        if r.area > min_area:
             # make an image only containing that region
             label_image_r = label_image == r.label
             # grow the mask
@@ -145,18 +148,9 @@ def segment_HU_scan_ira2(x, threshold=-350, pid='test', plot=False):
             # compute the overlap with true lungs
             overlap = label_image_r * lung_mask
             if not np.any(overlap):
-                print 'REMOVE'
                 for i in range(label_image_r.shape[0]):
                     if np.any(label_image_r[i]):
                         label_image_r[i] = skimage.morphology.convex_hull_image(label_image_r[i])
                 lung_mask_convex *= 1 - label_image_r
 
-    if plot:
-        utils_plots.plot_all_slices(x, lung_mask_convex, pid, './plots/segment_HU_scan_ira2/')
-
     return lung_mask_convex
-
-
-
-
-

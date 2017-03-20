@@ -6,10 +6,9 @@ import string
 import numpy as np
 import lasagne as nn
 import utils_lung
-import os
 
 # TODO: IMPORT A CORRECT PATCH CLASSIFICATION MODEL HERE
-seg_config_name = 'dsb_s2_p8a1'
+seg_config_name = 'luna_s4_p8a1'
 
 # TODO: IMPORT A CORRECT PATCH CLASSIFICATION MODEL HERE
 import configs_fpred_patch.luna_c3 as patch_class_config
@@ -19,8 +18,7 @@ p_transform = patch_class_config.p_transform
 data_prep_function = patch_class_config.partial(patch_class_config.data_prep_function,
                                                 p_transform_augment=None,
                                                 p_transform=p_transform,
-                                                world_coord_system=False,
-                                                luna_origin=None)
+                                                world_coord_system=False)
 
 rng = patch_class_config.rng
 
@@ -29,16 +27,10 @@ predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PA
 segmentation_outputs_path = predictions_dir + '/%s' % seg_config_name
 id2candidates_path = utils_lung.get_candidates_paths(segmentation_outputs_path)
 
-# filter our those, who are already generated
-predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH) \
-                  + '/' + utils.get_script_name(__file__)
-exclude_pids = utils_lung.get_generated_pids(predictions_dir)
-
-data_iterator = data_iterators.CandidatesDSBDataGenerator(data_path=pathfinder.DATA_PATH,
-                                                          transform_params=p_transform,
-                                                          data_prep_fun=data_prep_function,
-                                                          id2candidates_path=id2candidates_path,
-                                                          exclude_pids=exclude_pids)
+data_iterator = data_iterators.FixedCandidatesLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
+                                                                transform_params=p_transform,
+                                                                data_prep_fun=data_prep_function,
+                                                                id2candidates_path=id2candidates_path)
 
 
 def build_model():

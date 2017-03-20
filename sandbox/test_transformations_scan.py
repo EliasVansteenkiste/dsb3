@@ -62,11 +62,11 @@ def test_luna3d():
     luna_data_paths = utils_lung.get_patient_data_paths(pathfinder.LUNA_DATA_PATH)
     luna_data_paths = [p for p in luna_data_paths if '.mhd' in p]
 
-    # luna_data_paths = [pathfinder.LUNA_DATA_PATH + '/1.3.6.1.4.1.14519.5.2.1.6279.6001.223098610241551815995595311693.mhd']
-    # luna_data_paths = [pathfinder.LUNA_DATA_PATH + '/1.3.6.1.4.1.14519.5.2.1.6279.6001.202811684116768680758082619196.mhd']
-    # luna_data_paths = [pathfinder.LUNA_DATA_PATH + '/1.3.6.1.4.1.14519.5.2.1.6279.6001.174168737938619557573021395302.mhd']
+    # luna_data_paths = [
+    #     pathfinder.LUNA_DATA_PATH + '/1.3.6.1.4.1.14519.5.2.1.6279.6001.287966244644280690737019247886.mhd']
+
     luna_data_paths = [
-        pathfinder.LUNA_DATA_PATH + '/1.3.6.1.4.1.14519.5.2.1.6279.6001.287966244644280690737019247886.mhd']
+        '/mnt/sda3/data/kaggle-lung/luna_test_patient/1.3.6.1.4.1.14519.5.2.1.6279.6001.943403138251347598519939390311.mhd']
     for k, p in enumerate(luna_data_paths):
         img, origin, pixel_spacing = utils_lung.read_mhd(p)
         id = os.path.basename(p).replace('.mhd', '')
@@ -76,7 +76,7 @@ def test_luna3d():
 
         img_out, mask, annotations_out = config().data_prep_function(img,
                                                                      pixel_spacing=pixel_spacing,
-                                                                     luna_annotations=None,
+                                                                     luna_annotations=annotations,
                                                                      luna_origin=origin)
 
         mask[mask == 0.] = 0.1
@@ -127,7 +127,7 @@ def test_dsb():
 
     patient_data_paths = utils_lung.get_patient_data_paths(pathfinder.DATA_PATH)
     print len(patient_data_paths)
-    # patient_data_paths = [pathfinder.DATA_PATH + '/64a5a866461a3b6006efb0075e04dffe']
+    patient_data_paths = [pathfinder.DATA_PATH + '/01de8323fa065a8963533c4a86f2f6c1']
 
     for k, p in enumerate(patient_data_paths):
         pid = utils_lung.extract_pid_dir(p)
@@ -148,7 +148,7 @@ def test_dsb():
         # pixel_spacing = np.asarray(xx)
 
         img, pixel_spacing = utils_lung.read_dicom_scan(p)
-        mask = lung_segmentation.segment_HU_scan(img)
+        mask = lung_segmentation.segment_HU_scan_ira(img)
         print pid
         print pixel_spacing
         print '===================================='
@@ -159,11 +159,14 @@ def test_dsb():
                                                                                p_transform_augment=None,
                                                                                lung_mask=mask)
 
+        for i in xrange(100, img_out.shape[0], 5):
+            plot_slice_3d_2(img_out, mask_out, 0, str(pid) + str(i), idx=np.array([i, 200, 200]))
+
         plot_slice_3d_2(img_out, mask_out, 0, pid, idx=np.array(img_out.shape) / 2)
-        # plot_slice_3d_2(mask_out, img_out, 0, pid, idx=np.array(img_out.shape) / 4)
-        # plot_slice_3d_2(mask_out, img_out, 0, pid, idx=np.array(img_out.shape) / 8)
+        plot_slice_3d_2(mask_out, img_out, 0, pid, idx=np.array(img_out.shape) / 4)
+        plot_slice_3d_2(mask_out, img_out, 0, pid, idx=np.array(img_out.shape) / 8)
 
 
 if __name__ == '__main__':
-    test_luna3d()
-    # test_dsb()
+    # test_luna3d()
+    test_dsb()

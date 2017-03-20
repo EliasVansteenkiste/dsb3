@@ -330,4 +330,24 @@ class AggAllBenignProd(nn.layers.Layer):
         output = 1 - prod
         return output
 
+class AggSoPP(nn.layers.Layer):
+    """
+    takes elementwise product between 2 layers
+    """
+
+    def __init__(self, incoming, exp=nn.init.Constant(2.),  **kwargs):
+        super(AggSoPP, self).__init__(incoming, **kwargs)
+        self.exp = self.add_param(exp, (1,), name='exp', regularizable=False)
+
+    def get_output_shape_for(self, input_shape):
+        assert(len(input_shape)==3)
+        assert(input_shape[2]==1)
+        return (input_shape[0], 1)
+
+    def get_output_for(self, input, **kwargs):
+        ps = nonlinearities.sigmoid(input)
+        powd = ps ** self.exp
+        tmean = T.mean(powd, axis=(1,2))
+        return tmean
+
 

@@ -76,7 +76,6 @@ def transform_scan3d(data, pixel_spacing, p_transform,
     if lung_mask is not None:
         lung_mask_out = apply_affine_transform(lung_mask, tf_total, order=1, output_shape=output_shape)
         lung_mask_out[lung_mask_out > 0.] = 1.
-
     if luna_annotations is not None:
         annotatations_out = []
         for zyxd in luna_annotations:

@@ -31,7 +31,7 @@ logs_dir = utils.get_dir_path('logs', pathfinder.METADATA_PATH)
 sys.stdout = logger.Logger(logs_dir + '/%s.log' % config_name)
 sys.stderr = sys.stdout
 
-data_iterator = config().data_iterator
+data_iterator = config().valid_data_iterator
 
 print
 print 'Data'
@@ -40,7 +40,7 @@ print 'n samples: %d' % data_iterator.nsamples
 start_time = time.time()
 n_pos = 0
 tp = 0
-for n, (x, y, lung_mask, annotations, tf_matrix, pid) in enumerate(data_iterator.generate()):
+for n, (ct, lung_mask, annotations, tf_matrix, pid) in enumerate(data_iterator.generate()):
     print '-------------------------------------'
     print n, pid
     n_pos += annotations.shape[0]
