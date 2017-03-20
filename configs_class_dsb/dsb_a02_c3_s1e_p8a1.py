@@ -136,43 +136,31 @@ def build_model():
 
     nodule_classification_model = build_nodule_classification_model(l_in_rshp)
 
-    l_roi_out = nn.layers.SliceLayer(nodule_classification_model.l_out, indices=1, axis=-1)
-    l_roi_out = nn.layers.ReshapeLayer(l_roi_out, (-1, n_candidates_per_patient))
+    l_roi_p0 = nn.layers.SliceLayer(nodule_classification_model.l_out, indices=0, axis=-1)
+    l_roi_p0 = nn.layers.ReshapeLayer(l_roi_p0, (-1, n_candidates_per_patient))
 
-    l_out = nn.layers.FeaturePoolLayer(l_roi_out, pool_size=n_candidates_per_patient, pool_function=T.max)
+    l_roi_p1 = nn.layers.SliceLayer(nodule_classification_model.l_out, indices=1, axis=-1)
+    l_roi_p1 = nn.layers.ReshapeLayer(l_roi_p1, (-1, n_candidates_per_patient))
+    l_out = nn.layers.FeaturePoolLayer(l_roi_p1, pool_size=n_candidates_per_patient, pool_function=T.max)
 
-    return namedtuple('Model', ['l_in', 'l_out', 'l_target', 'l_roi_out'])(l_in, l_out, l_target, l_roi_out)
+    return namedtuple('Model', ['l_in', 'l_out', 'l_target', 'l_roi_p0'])(l_in, l_out, l_target, l_roi_p0)
 
 
 def build_objective(model, deterministic=False, epsilon=1e-12):
     targets = nn.layers.get_output(model.l_target)
 
     # for negative examples
-    p0 = nn.layers.get_output(model.l_roi_out, deterministic=deterministic)
-    p0 = T.clip(p0, epsilon, 1. - epsilon)
-    p0 = T.mean(T.log(1. - p0), axis=-1)
+    p0 = nn.layers.get_output(model.l_roi_p0, deterministic=deterministic)
+    p0 = T.clip(p0, epsilon, 1.)
+    p0 = T.mean(T.log(p0), axis=-1)
 
     # for positive examples
     predictions_1 = nn.layers.get_output(model.l_out, deterministic=deterministic)[:, 0]
-    p1 = T.clip(predictions_1, epsilon, 1. - epsilon)
+    p1 = T.clip(predictions_1, epsilon, 1.)
     p1 = T.log(p1)
 
     loss = -1. * T.mean((1 - targets) * p0 + targets * p1, axis=0)
     return loss
-
-
-def build_objective2(model, deterministic=False, epsilon=1e-12):
-    targets = T.flatten(nn.layers.get_output(model.l_target))
-
-    predictions_roi = nn.layers.get_output(model.l_roi_out, deterministic=deterministic)
-    predictions_roi = T.clip(predictions_roi, epsilon, 1. - epsilon)
-    predictions_roi_0 = T.mean(T.log(predictions_roi), axis=-1)
-
-    predictions_out = T.flatten(nn.layers.get_output(model.l_out, deterministic=deterministic))
-    predictions_out = T.clip(predictions_out, epsilon, 1. - epsilon)
-
-    loss = (1 - targets) * predictions_roi_0 - targets * T.log(predictions_out)
-    return T.mean(loss)
 
 
 def build_updates(train_loss, model, learning_rate):
