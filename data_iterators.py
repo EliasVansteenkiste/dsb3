@@ -745,7 +745,7 @@ class CandidatesLunaSizeValidDataGenerator(object):
 
                 img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
                     if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
-                y_batch = np.array([[1.]], dtype='float32')
+                y_batch = np.array([[float(patch_center[-1])]], dtype='float32')
                 x_batch = np.float32(self.data_prep_fun(data=img,
                                                         patch_center=patch_center,
                                                         pixel_spacing=pixel_spacing,
@@ -867,7 +867,7 @@ class CandidatesDSBDataGenerator(object):
 
 class DSBPatientsDataGenerator(object):
     def __init__(self, data_path, batch_size, transform_params, id2candidates_path, data_prep_fun,
-                 n_candidates_per_patient, rng, random, infinite, shuffle_top_n=False, patient_ids=None):
+                 n_candidates_per_patient, rng, random, infinite, return_patch_locs=False, shuffle_top_n=False, patient_ids=None):
 
         self.id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
         self.id2candidates_path = id2candidates_path
@@ -901,6 +901,10 @@ class DSBPatientsDataGenerator(object):
 
                 x_batch = np.zeros((self.batch_size, self.n_candidates_per_patient, 1,)
                                    + self.transform_params['patch_size'], dtype='float32')
+
+                if return_patch_locs:
+                    x_loc_batch = np.zeros((self.batch_size, self.n_candidates_per_patient, 3), dtype='float32')
+
                 y_batch = np.zeros((self.batch_size,), dtype='float32')
                 pids_batch = []
 
@@ -915,6 +919,9 @@ class DSBPatientsDataGenerator(object):
                     if self.shuffle_top_n:
                         self.rng.shuffle(top_candidates)
 
+                    if return_patch_locs:
+                        x_loc_batch[i] = np.float32(top_candidates[:,:3])
+
                     x_batch[i] = np.float32(self.data_prep_fun(data=img,
                                                                patch_centers=top_candidates,
                                                                pixel_spacing=pixel_spacing))[:, None, :, :, :]
@@ -922,7 +929,10 @@ class DSBPatientsDataGenerator(object):
                     pids_batch.append(pid)
 
                 if len(idxs_batch) == self.batch_size:
-                    yield x_batch, y_batch, pids_batch
+                    if return_patch_locs:
+                        yield x_batch, x_loc_batch, y_batch, pids_batch
+                    else:
+                        yield x_batch, y_batch, pids_batch
 
             if not self.infinite:
                 break
