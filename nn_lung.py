@@ -289,3 +289,13 @@ class NormalCDFLayer(nn.layers.MergeLayer):
         x = (x_range - mu) / (sigma * T.sqrt(2.) + 1e-16)
         cdf = (T.erf(x) + 1.) / 2.
         return cdf
+
+
+def remove_trainable_parameters(layer):
+    """
+    Gathers all layers below a given one and removes their parameters from training
+
+    """
+    for l in nn.layers.get_all_layers(layer):
+        for param in l.params:
+            l.params[param].remove('trainable')
