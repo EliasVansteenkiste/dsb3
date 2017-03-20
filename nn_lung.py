@@ -332,10 +332,9 @@ class AggAllBenignProd(nn.layers.Layer):
 
 class AggSoPP(nn.layers.Layer):
     """
-    takes elementwise product between 2 layers
+    Aggregates via Sum of powers
     """
-
-    def __init__(self, incoming, **kwargs):
+    def __init__(self, incoming, exp=nn.init.Constant(2.),  **kwargs):
         super(AggSoPP, self).__init__(incoming, **kwargs)
         self.exp = self.add_param(exp, (1,), name='exp', regularizable=False)
 
@@ -349,4 +348,3 @@ class AggSoPP(nn.layers.Layer):
         powd = ps ** self.exp
         tmean = T.mean(powd, axis=(1,2))
         return tmean
-
