@@ -521,6 +521,9 @@ class CandidatesAAPMDataGenerator(object):
             print self.id2candidates_path[pid]
             candidates = utils.load_pkl(self.id2candidates_path[pid])
             print candidates.shape
+
+            #y_batch=read_aapm_annotations(file_path)
+
             for candidate in candidates:
                 y_batch = np.array(candidate, dtype='float32')
                 patch_center = candidate[:3]

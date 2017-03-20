@@ -340,6 +340,47 @@ def read_luna_annotations(file_path):
     return id2xyzd
 
 
+
+def read_aapm_annotations(file_path):
+    id2xyzd = defaultdict(list)
+    train_csv = open(file_path)
+    lines = train_csv.readlines()
+    i = 0
+    # skip the first line
+    for item in lines:
+        if i == 0:
+            i = 1
+            continue
+        #id, x, y, z, d = item.replace('\n', '').split(',')
+        id, nodule_idx, x_y_pos, z,final_diagnosis d = item.replace('\n', '').split(';')
+        # post-process x,y
+        x,y=x_y_pos.replace('\n', '')split(',')
+        print "x:{}".format(x)
+        print "y:{}".format(y)
+        print "z:{}".format(z)
+        # post-process diagnosis
+        if final_diagnosis == 'Primary lung cancer':
+            d=1
+        else if 'Suspicious malignant nodule':
+            d=1
+        else:
+            d=0
+
+        id2xyzd[id].append([float(z)-1, float(y)-1, float(x)-1, float(d)])
+        # what to we need? the id of course, what else
+        # how does that work with the number of nodules? ok, that's the index..
+        # in which kind of coordinate system is the data? obviously we need to get into the same coordinate system somehow, otherwise this will be bad
+        # nodules in luna are annotated in the machine coordinates, so what we can do is commpute an image origin similar to the one seen in luna and just convert the nodules to coordinates useing the following formula:
+        # assuming the slides are aligned something like this should work:
+        # load all images, sort them by sequence number, use the origin of the upper left image, compute x position and y position as a distance from that origin ()
+
+
+
+        #id2xyzd[id].append([float(z), float(y), float(x), float(d)])
+    return id2xyzd
+
+
+
 def read_luna_negative_candidates(file_path):
     id2xyzd = defaultdict(list)
     train_csv = open(file_path)
