@@ -63,12 +63,12 @@ y_shared = nn.utils.shared_empty(dim=len(model.l_target.shape))
 
 givens_train = {}
 givens_train[model.l_in.input_var] = x_shared
-givens_train[model.l_in_patch_locs] = x_loc_shared
+givens_train[model.l_in_patch_locs.input_var] = x_loc_shared
 givens_train[model.l_target.input_var] = y_shared
 
 givens_valid = {}
 givens_valid[model.l_in.input_var] = x_shared
-givens_valid[model.l_in_patch_locs] = x_loc_shared
+givens_valid[model.l_in_patch_locs.input_var] = x_loc_shared
 givens_valid[model.l_target.input_var] = y_shared
 
 # theano functions

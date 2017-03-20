@@ -230,7 +230,7 @@ def build_model():
     print l.output_shape
     print l_in_patch_locs_rshp.output_shape
 
-    l = nn.layers.ConcatLayer([l, l_in_patch_locs_rshp], axis=1)
+    l = nn.layers.ConcatLayer([l_in_patch_locs_rshp, l], axis=1 , name='concat_feat_locs')
 
     l = drop(l, name='drop_final2')
 
