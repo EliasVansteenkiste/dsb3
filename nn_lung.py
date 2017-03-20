@@ -350,4 +350,18 @@ class AggSoPP(nn.layers.Layer):
         tmean = T.mean(powd, axis=(1,2))
         return tmean
 
+class Unbroadcast(nn.layers.Layer):
+    """
+    takes elementwise product between 2 layers
+    """
+    def __init__(self, incoming,  **kwargs):
+        super(Unbroadcast, self).__init__(incoming, **kwargs)
+
+    def get_output_shape_for(self, input_shape):
+        return input_shape
+
+    def get_output_for(self, input, **kwargs):
+        all_dims = range(len(input.shape))
+        print all_dims
+        return T.Unbroadcast(input, *all_dims)
 
