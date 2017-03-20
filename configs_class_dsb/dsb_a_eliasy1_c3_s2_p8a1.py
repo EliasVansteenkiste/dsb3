@@ -218,8 +218,8 @@ def build_model():
 
 
     l_in_rshp = nn.layers.ReshapeLayer(l_in, (-1, 1,) + p_transform['patch_size'])
-    l_in_patch_locs_rshp = nn.layers.ReshapeLayer(l_in, (-1, 3))
-    
+    print l_in_patch_locs.output_shape
+    l_in_patch_locs_rshp = nn.layers.ReshapeLayer(l_in_patch_locs, (-1, 3))
 
     penultimate_layer = load_pretrained_model(l_in_rshp)
 
@@ -227,7 +227,10 @@ def build_model():
 
     l = dense(l, 256, name='dense_final1')
 
-    l = nn.layers.ConcatLayer([l, l_in_patch_locs_rshp], axis=2)
+    print l.output_shape
+    print l_in_patch_locs_rshp.output_shape
+
+    l = nn.layers.ConcatLayer([l_in_patch_locs_rshp, l], axis=1 , name='concat_feat_locs')
 
     l = drop(l, name='drop_final2')
 
