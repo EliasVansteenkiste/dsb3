@@ -74,7 +74,7 @@ def extract_pid_dir(patient_data_path):
 
 
 def extract_pid_dir_aapm(patient_data_path):
-    return patient_data_path.split('/')[-3]
+    return patient_data_path.split('/')[-4]
 
 
 def extract_pid_filename(file_path, replace_str='.mhd'):
@@ -273,19 +273,28 @@ def get_patient_data_paths(data_dir):
     return [data_dir + '/' + p for p in pids]
 
 
+def get_path_to_image_from_patient(data_dir,pid):
+
+    patient_path = data_dir + pid + '/'
+    patient_studies=[ patient_path + study + '/' for study in os.listdir(patient_path)]
+    patient_series=[current_study + series +'/' for current_study in patient_studies for series in os.listdir(current_study)]
+    
+    return patient_series[0]
+
+
+
 def get_patient_data_paths_aapm(data_dir):
 
     pids = sorted(os.listdir(data_dir))
     output=[]
 
     for pid in pids:
-         patient_path = data_dir + pid + '/'
-         patient_studies=[ patient_path + study + '/' for study in os.listdir(patient_path)]
-         patient_series=[current_study + series +'/' for current_study in patient_studies for series in os.listdir(current_study)]
-         output.append(patient_series[0])
-         #patient_files=[current_file for current_series in patient_series for current_file in glob(current_series+'/*.dcm')]
-    
-
+         #patient_path = data_dir + pid + '/'
+         #patient_studies=[ patient_path + study + '/' for study in os.listdir(patient_path)]
+         #patient_series=[current_study + series +'/' for current_study in patient_studies for series in os.listdir(current_study)]
+         first_series=get_path_to_image_from_patient(data_dir,pid):
+         output.append(first_series)
+         
     return output#[data_dir + '/' + p for p in pids]
 
 

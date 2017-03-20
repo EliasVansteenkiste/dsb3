@@ -27,7 +27,7 @@ def extract_candidates(predictions_scan, tf_matrix, pid, outputs_path):
         blobs_original_voxel_coords.append(blob_j_original)
 
     blobs = np.asarray(blobs_original_voxel_coords)
-    print blobs.shape
+    print "blobs.shape: {}".format(blobs.shape)
     utils.save_pkl(blobs, outputs_path + '/%s.pkl' % pid)
 
 

@@ -446,6 +446,9 @@ class DSBScanLungMaskDataGenerator(object):
             yield x, lung_mask, tf_matrix, pid
 
 
+            
+            
+            
 class AAPMScanLungMaskDataGenerator(object):
     def __init__(self, data_path, transform_params, data_prep_fun, exclude_pids=None,
                  include_pids=None, part_out_of=(1, 1)):
@@ -492,6 +495,46 @@ class AAPMScanLungMaskDataGenerator(object):
 
 
 
+class CandidatesAAPMDataGenerator(object):
+    def __init__(self, data_path, transform_params, id2candidates_path, data_prep_fun, exclude_pids=None):
+        if exclude_pids is not None:
+            for p in exclude_pids:
+                id2candidates_path.pop(p, None)
+
+        self.id2candidates_path = id2candidates_path
+        self.id2patient_path = {}
+        for pid in id2candidates_path.keys():
+            self.id2patient_path[pid] =utils_lung.get_path_to_image_from_patient(data_path,pid)#: data_path + '/' + pid +
+
+        self.nsamples = len(self.id2patient_path)
+        self.data_path = data_path
+        self.data_prep_fun = data_prep_fun
+        self.transform_params = transform_params
+
+    def generate(self):
+
+        for pid in self.id2candidates_path.iterkeys():
+            patient_path = self.id2patient_path[pid]
+            print pid, patient_path
+            img, pixel_spacing = utils_lung.read_dicom_scan(patient_path)
+
+            print self.id2candidates_path[pid]
+            candidates = utils.load_pkl(self.id2candidates_path[pid])
+            print candidates.shape
+            for candidate in candidates:
+                y_batch = np.array(candidate, dtype='float32')
+                patch_center = candidate[:3]
+                x_batch = np.float32(self.data_prep_fun(data=img,
+                                                        patch_center=patch_center,
+                                                        pixel_spacing=pixel_spacing))[None, None, :, :, :]
+
+                yield x_batch, y_batch, [pid]
+
+            
+
+
+
+            
 class CandidatesDSBDataGenerator(object):
     def __init__(self, data_path, transform_params, id2candidates_path, data_prep_fun, exclude_pids=None):
         if exclude_pids is not None:
