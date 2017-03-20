@@ -57,13 +57,20 @@ def segment_HU_scan_ira(x, threshold=-350, min_area=1000000):
     if len(candidate_lung_regions) > 1:
         print 'NUMBER OF CANDIDATE REGIONS', len(candidate_lung_regions)
         middle_patch = label_image[mask.shape[0] / 2]
-        region2distance = {}
+        region2distance, region2centroid = {}, {}
         for r in candidate_lung_regions:
             middle_patch_r = middle_patch == r.label
             centroid = np.average(np.where(middle_patch_r), axis=1)
+            region2centroid[r] = centroid
             distance = np.sum((centroid - np.asarray(middle_patch.shape) / 2) ** 2)
             region2distance[r] = distance
         lung_region = min(region2distance, key=region2distance.get)
+        n_lung_regions = 1
+        for r in candidate_lung_regions:
+            print region2centroid[r]
+            if abs(region2centroid[r][0] - region2centroid[lung_region][0]) < 100:
+                label_image[label_image == r.label] = lung_region.label
+                n_lung_regions += 1
 
     lung_label = lung_region.label
     lung_mask = np.asarray((label_image == lung_label), dtype='int8')
@@ -80,7 +87,7 @@ def segment_HU_scan_ira(x, threshold=-350, min_area=1000000):
     region_props = skimage.measure.regionprops(label_image)
     sorted_regions = sorted(region_props, key=lambda x: x.area, reverse=True)
 
-    for r in sorted_regions[1:]:
+    for r in sorted_regions[n_lung_regions:]:
         if r.area > 125:
             label_image_r = label_image == r.label
             for i in range(label_image_r.shape[0]):

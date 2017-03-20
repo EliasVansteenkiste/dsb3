@@ -75,7 +75,8 @@ def test_luna3d_2():
     luna_data_paths = [
         # '/mnt/sda3/data/kaggle-lung/luna_test_patient/1.3.6.1.4.1.14519.5.2.1.6279.6001.943403138251347598519939390311.mhd'],
         # '/mnt/sda3/data/kaggle-lung/luna_test_patient/1.3.6.1.4.1.14519.5.2.1.6279.6001.225515255547637437801620523312.mhd',
-        '/mnt/sda3/data/kaggle-lung/luna_test_patient/1.3.6.1.4.1.14519.5.2.1.6279.6001.771831598853841017505646275338.mhd'
+        # '/mnt/sda3/data/kaggle-lung/luna_test_patient/1.3.6.1.4.1.14519.5.2.1.6279.6001.771831598853841017505646275338.mhd',
+        '/mnt/sda3/data/kaggle-lung/luna_test_patient/1.3.6.1.4.1.14519.5.2.1.6279.6001.228511122591230092662900221600.mhd'
     ]
 
     for k, p in enumerate(luna_data_paths):
