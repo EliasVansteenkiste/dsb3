@@ -10,12 +10,12 @@ import lasagne
 import theano.tensor as T
 import utils
 
-restart_from_save = None
+restart_from_save = "/home/eavsteen/dsb3/storage/metadata/dsb3//models/eavsteen/luna_x30-20170319-152346.pkl"
 rng = np.random.RandomState(33)
 
 # transformations
-p_transform = {'patch_size': (48, 48, 48),
-               'mm_patch_size': (48, 48, 48),
+p_transform = {'patch_size': (32, 32, 32),
+               'mm_patch_size': (32, 32, 32),
                'pixel_spacing': (1., 1., 1.)
                }
 p_transform_augment = {
@@ -74,15 +74,15 @@ nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
 max_nchunks = nchunks_per_epoch * 100
 
 validate_every = int(5. * nchunks_per_epoch)
-save_every = int(5. * nchunks_per_epoch)
+save_every = int(1. * nchunks_per_epoch)
 
 learning_rate_schedule = {
-    0: 5e-4,
-    int(max_nchunks * 0.5): 1e-4,
-    int(max_nchunks * 0.6): 5e-5,
-    int(max_nchunks * 0.7): 2e-5,
-    int(max_nchunks * 0.8): 1e-5,
-    int(max_nchunks * 0.9): 5e-6
+    0: 1e-4,
+    int(max_nchunks * 0.5): 5e-5,
+    int(max_nchunks * 0.6): 2.5e-5,
+    int(max_nchunks * 0.7): 1.25e-5,
+    int(max_nchunks * 0.8): 0.625e-6,
+    int(max_nchunks * 0.9): 0.3125e-6
 }
 
 # model
