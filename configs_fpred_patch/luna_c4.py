@@ -14,14 +14,14 @@ restart_from_save = None
 rng = np.random.RandomState(42)
 
 # transformations
-p_transform = {'patch_size': (64, 64, 64),
-               'mm_patch_size': (64, 64, 64),
+p_transform = {'patch_size': (48, 48, 48),
+               'mm_patch_size': (48, 48, 48),
                'pixel_spacing': (1., 1., 1.)
                }
 p_transform_augment = {
-    'translation_range_z': [-4, 4],
-    'translation_range_y': [-4, 4],
-    'translation_range_x': [-4, 4],
+    'translation_range_z': [-3, 3],
+    'translation_range_y': [-3, 3],
+    'translation_range_x': [-3, 3],
     'rotation_range_z': [-180, 180],
     'rotation_range_y': [-180, 180],
     'rotation_range_x': [-180, 180]
@@ -89,7 +89,6 @@ conv3 = partial(dnn.Conv3DDNNLayer,
                 filter_size=3,
                 pad='valid',
                 W=nn.init.Orthogonal(),
-                b=nn.init.Constant(0.01),
                 nonlinearity=nn.nonlinearities.very_leaky_rectify)
 
 max_pool = partial(dnn.MaxPool3DDNNLayer,
@@ -99,12 +98,11 @@ drop = lasagne.layers.DropoutLayer
 
 dense = partial(lasagne.layers.DenseLayer,
                 W=lasagne.init.Orthogonal(),
-                b=lasagne.init.Constant(0.01),
                 nonlinearity=lasagne.nonlinearities.very_leaky_rectify)
 
 
-def build_model(l_in=None):
-    l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size']) if l_in is None else l_in
+def build_model():
+    l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
     l_target = nn.layers.InputLayer((None, 1))
 
     l = conv3(l_in, num_filters=128)
@@ -124,10 +122,10 @@ def build_model(l_in=None):
     l = max_pool(l)
 
     l_d01 = nn.layers.DenseLayer(l, num_units=1024, W=nn.init.Orthogonal(),
-                                 b=nn.init.Constant(0.01), nonlinearity=nn.nonlinearities.very_leaky_rectify)
+                                 nonlinearity=nn.nonlinearities.very_leaky_rectify)
 
     l_d02 = nn.layers.DenseLayer(nn.layers.dropout(l_d01), num_units=1024, W=nn.init.Orthogonal(),
-                                 b=nn.init.Constant(0.01), nonlinearity=nn.nonlinearities.very_leaky_rectify)
+                                 nonlinearity=nn.nonlinearities.very_leaky_rectify)
 
     l_out = nn.layers.DenseLayer(l_d02, num_units=2,
                                  W=nn.init.Constant(0.),

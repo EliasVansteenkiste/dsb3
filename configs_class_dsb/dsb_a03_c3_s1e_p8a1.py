@@ -110,7 +110,6 @@ def build_nodule_classification_model(l_in):
 
     model = patch_class_config.build_model(l_in)
     nn.layers.set_all_param_values(model.l_out, metadata['param_values'])
-    # nn_lung.remove_trainable_parameters(model.l_out)
     return model
 
 
@@ -142,7 +141,7 @@ def build_objective(model, deterministic=False, epsilon=1e-12):
         p0 = T.sum(T.log(p0), axis=-1)
 
         # for positive examples
-        p1 = nn.layers.get_output(model.l_out, deterministic=deterministic)[:, 0]
+        p1 = nn.layers.get_output(model.l_out, deterministic=deterministic)
         p1 = T.log(p1)
 
         loss = -1. * T.mean((1 - targets) * p0 + targets * p1, axis=0)

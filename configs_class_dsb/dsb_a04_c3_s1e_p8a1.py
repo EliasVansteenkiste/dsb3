@@ -100,6 +100,8 @@ learning_rate_schedule = {
     int(9 * nchunks_per_epoch): 2e-7
 }
 
+untrained_weigths_grad_scale = 10
+
 
 # model
 
@@ -116,6 +118,9 @@ def build_nodule_classification_model(l_in):
                                  W=nn.init.Constant(0.),
                                  b=nn.init.Constant(np.log(0.74 / 0.26)),
                                  nonlinearity=nn.nonlinearities.sigmoid)
+    l_out.W.tag.grad_scale = untrained_weigths_grad_scale
+    l_out.b.tag.grad_scale = untrained_weigths_grad_scale
+
     model = namedtuple('Model', ['l_in', 'l_out', 'l_target'])(model.l_in, l_out, model.l_target)
     return model
 
@@ -132,7 +137,9 @@ def build_model():
 
     l_out = nn_lung.ComplementProbAggregationLayer(l_roi_p0)
 
-    return namedtuple('Model', ['l_in', 'l_out', 'l_target', 'l_roi_p0'])(l_in, l_out, l_target, l_roi_p0)
+    return namedtuple('Model', ['l_in', 'l_out', 'l_target', 'l_roi_p0', 'l_roi_dense_out'])(l_in, l_out, l_target,
+                                                                                             l_roi_p0,
+                                                                                             nodule_classification_model.l_out)
 
 
 def build_objective(model, deterministic=False, epsilon=1e-12):
@@ -155,7 +162,7 @@ def build_objective(model, deterministic=False, epsilon=1e-12):
     return loss
 
 
-def build_validation_objective(model, deterministic=False, epsilon=1e-12):
+def build_validation_objective(model, deterministic=True, epsilon=1e-12):
     targets = nn.layers.get_output(model.l_target)
     predictions = nn.layers.get_output(model.l_out, deterministic=deterministic)[:, 0]
     predictions = T.clip(predictions, epsilon, 1. - epsilon)
@@ -167,5 +174,6 @@ def build_validation_objective(model, deterministic=False, epsilon=1e-12):
 
 
 def build_updates(train_loss, model, learning_rate):
-    updates = nn.updates.adam(train_loss, nn.layers.get_all_params(model.l_out, trainable=True), learning_rate)
+    updates = nn.updates.adam(train_loss, nn.layers.get_all_params(model.l_out, trainable=True),
+                              learning_rate)
     return updates
