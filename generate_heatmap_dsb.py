@@ -65,7 +65,7 @@ for n, (x, id) in enumerate(data_iterator.generate()):
 
     result = np.concatenate(predictions,axis=2)
 
-    utils.save_pkl(predictions, outputs_path + '/%s.pkl' % pid)
+    utils.save_pkl(result, outputs_path + '/%s.pkl' % pid)
 
 
 
