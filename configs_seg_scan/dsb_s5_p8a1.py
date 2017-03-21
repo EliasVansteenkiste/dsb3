@@ -35,8 +35,11 @@ def data_prep_function(data, pixel_spacing, p_transform=p_transform):
 
 # check if some predictions were generated
 predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH) + \
-                  '/' + utils.get_script_name(__file__)
+                  '/dsb_s5_p8a1'  # + utils.get_script_name(__file__)
+
 exclude_pids = utils_lung.get_generated_pids(predictions_dir)
+print predictions_dir
+print 'number of already generated:', len(exclude_pids)
 
 data_iterator = data_iterators.DSBScanLungMaskDataGenerator(data_path=pathfinder.DATA_PATH,
                                                             transform_params=p_transform,

@@ -116,7 +116,8 @@ class LunaScanPositiveLungMaskDataGenerator2(LunaScanPositiveDataGenerator):
                 patient_path = self.patient_paths[idx]
                 pid = utils_lung.extract_pid_filename(patient_path)
 
-                lung_mask_in, origin_mask, pixel_spacing_mask = utils_lung.read_mhd(self.lung_masks_path + '/%s.mhd' % pid)
+                lung_mask_in, origin_mask, pixel_spacing_mask = utils_lung.read_mhd(
+                    self.lung_masks_path + '/%s.mhd' % pid)
                 img, origin, pixel_spacing = utils_lung.read_mhd(patient_path)
                 x, y, lung_mask, annotations, tf_matrix = self.data_prep_fun(data=img,
                                                                              lung_mask=lung_mask_in,

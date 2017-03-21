@@ -127,8 +127,7 @@ def build_model():
     l_roi_p1 = nn.layers.ReshapeLayer(l_roi_p1, (-1, n_candidates_per_patient))
     l_out = nn.layers.FeaturePoolLayer(l_roi_p1, pool_size=n_candidates_per_patient, pool_function=T.max)
 
-    return namedtuple('Model', ['l_in', 'l_out', 'l_target', 'l_roi_p0', 'l_roi_p1'])(l_in, l_out, l_target, l_roi_p0,
-                                                                                      l_roi_p1)
+    return namedtuple('Model', ['l_in', 'l_out', 'l_target', 'l_roi_p0'])(l_in, l_out, l_target, l_roi_p0)
 
 
 def build_objective(model, deterministic=False, epsilon=1e-12):
@@ -141,12 +140,10 @@ def build_objective(model, deterministic=False, epsilon=1e-12):
         # for negative examples
         p0 = nn.layers.get_output(model.l_roi_p0, deterministic=deterministic)
         p0 = T.clip(p0, epsilon, 1.)
-        p0 = T.mean(T.log(p0), axis=-1)
+        p0 = T.sum(T.log(p0), axis=-1)
 
         # for positive examples
-        predictions_1 = nn.layers.get_output(model.l_out, deterministic=deterministic)[:, 0]
-        p1 = T.clip(predictions_1, epsilon, 1.)
-        p1 = T.log(p1)
+        p1 = T.log(1. - T.exp(p0))
 
         loss = -1. * T.mean((1 - targets) * p0 + targets * p1, axis=0)
     return loss
