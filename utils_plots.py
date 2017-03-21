@@ -183,6 +183,38 @@ def plot_slice_3d_3_patch(input, mask, prediction, axis, pid, patch_size=64, img
     plt.close('all')
 
 
+def plot_slice_3d_2_patch(ct_scan, mask, pid, img_dir=None, idx=None):
+    # to convert cuda arrays to numpy array
+    ct_scan = np.asarray(ct_scan)
+    mask = np.asarray(mask)
+
+    fig, ax = plt.subplots(2, 3, figsize=[8, 8])
+    fig.canvas.set_window_title(pid)
+
+    if idx == None:
+        #just plot in the middle of the cube
+        in_sh = ct_scan.shape
+        idx = [in_sh[0]/2,in_sh[1]/2,in_sh[2]/2]
+    print np.amin(ct_scan), np.amax(ct_scan)
+    print np.amin(mask), np.amax(mask)
+
+
+    ax[0, 0].imshow(ct_scan[idx[0], :, :], cmap=plt.cm.gray)
+    ax[0, 1].imshow(ct_scan[:, idx[1], :], cmap=plt.cm.gray)
+    ax[0, 2].imshow(ct_scan[:, :, idx[2]], cmap=plt.cm.gray)
+
+    ax[1, 0].imshow(mask[idx[0], :, :], cmap=plt.cm.gray)
+    ax[1, 1].imshow(mask[:, idx[1], :], cmap=plt.cm.gray)
+    ax[1, 2].imshow(mask[:, :, idx[2]], cmap=plt.cm.gray)
+
+    if img_dir is not None:
+        fig.savefig(img_dir + '/%s.png' % pid, bbox_inches='tight')
+    else:
+        plt.show()
+    fig.clf()
+    plt.close('all')
+
+
 def plot_2d(img, mask, pid, img_dir):
     # fig = plt.figure()
     fig, ax = plt.subplots(2, 2, figsize=[8, 8])

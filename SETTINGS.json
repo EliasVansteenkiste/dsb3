@@ -5,7 +5,7 @@
   "METADATA_PATH": "/home/eavsteen/dsb3/storage/metadata/dsb3/",
   "SAMPLE_SUBMISSION_PATH": "/home/eavsteen/dsb3/storage/data/dsb3/stage1_sample_submission.csv",
   "VALIDATION_SPLIT_PATH": "/home/eavsteen/dsb3/storage/data/dsb3/dsb_validation_split.pkl",
-  "LUNA_DATA_PATH": "/data/dsb3/luna/dataset/",
+  "LUNA_DATA_PATH": "/data/dsb3/luna/dataset_pkl/",
   "LUNA_SEG_DATA_PATH": "/data/dsb3/luna/seg-lungs-LUNA16/",
   "LUNA_LABELS_PATH": "/home/eavsteen/dsb3/storage/data/dsb3/luna/annotations.csv",
   "LUNA_CANDIDATES_PATH": "/home/eavsteen/dsb3/storage/data/dsb3/luna/candidates_V2.csv",

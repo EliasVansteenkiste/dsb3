@@ -15,7 +15,7 @@ import utils_lung
 # TODO: import correct config here
 candidates_config = 'dsb_c3_s2_p8a1_ls_elias' 
 
-restart_from_save = None
+restart_from_save =  '/home/eavsteen/dsb3/storage/metadata/dsb3/models/eavsteen/dsb_a_eliasv9_c3_s2_p8a1-20170316-112742.pkl' 
 rng = np.random.RandomState(42)
 
 predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
@@ -27,17 +27,7 @@ p_transform = {'patch_size': (48, 48, 48),
                'mm_patch_size': (48, 48, 48),
                'pixel_spacing': (1., 1., 1.)
                }
-
-p_transform_augment = {
-    'translation_range_z': [-5, 5],
-    'translation_range_y': [-5, 5],
-    'translation_range_x': [-5, 5],
-    'rotation_range_z': [-10, 10],
-    'rotation_range_y': [-10, 10],
-    'rotation_range_x': [-10, 10]
-}
-
-n_candidates_per_patient = 8
+n_candidates_per_patient = 10
 
 
 def data_prep_function(data, patch_centers, pixel_spacing, p_transform,
@@ -57,13 +47,12 @@ data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
                                    p_transform=p_transform)
 
 # data iterators
-batch_size = 2
+batch_size = 4
 
 train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
-train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
+train_pids, valid_pids = train_valid_ids['training'], train_valid_ids['validation']
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
-print 'n test', len(valid_pids)
 
 train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
                                                               batch_size=batch_size,
@@ -85,29 +74,18 @@ valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               patient_ids=valid_pids,
                                                               random=False, infinite=False)
 
-
-test_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
-                                                              batch_size=1,
-                                                              transform_params=p_transform,
-                                                              n_candidates_per_patient=n_candidates_per_patient,
-                                                              data_prep_fun=data_prep_function_valid,
-                                                              id2candidates_path=id2candidates_path,
-                                                              rng=rng,
-                                                              patient_ids=test_pids,
-                                                              random=False, infinite=False)
-
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size
-max_nchunks = nchunks_per_epoch * 30
+max_nchunks = nchunks_per_epoch * 10
 
 validate_every = int(0.5 * nchunks_per_epoch)
 save_every = int(0.25 * nchunks_per_epoch)
 
 learning_rate_schedule = {
-    0: 5e-5,
-    int(5 * nchunks_per_epoch): 1e-5,
-    int(6 * nchunks_per_epoch): 5e-6,
-    int(7 * nchunks_per_epoch): 2e-6,
-    int(9 * nchunks_per_epoch): 1e-6
+    0: 1e-5,
+    int(5 * nchunks_per_epoch): 2e-6,
+    int(6 * nchunks_per_epoch): 1e-6,
+    int(7 * nchunks_per_epoch): 5e-7,
+    int(9 * nchunks_per_epoch): 2e-7
 }
 
 # model
@@ -133,7 +111,8 @@ def dense_prelu_layer(l_in, num_units):
 
 def build_model():
     l_in = nn.layers.InputLayer((None, n_candidates_per_patient, 1,) + p_transform['patch_size'])
-    l_in_rshp = nn.layers.ReshapeLayer(l_in, (-1, 1,) + p_transform['patch_size'])
+    l_in_un = nn_lung.Unbroadcast(l_in)
+    l_in_rshp = nn.layers.ReshapeLayer(l_in_un, (-1, 1,) + p_transform['patch_size'])
     l_target = nn.layers.InputLayer((batch_size,))
 
     l = conv3(l_in_rshp, num_filters=128)
@@ -150,8 +129,8 @@ def build_model():
     l = conv3(l, num_filters=256)
     l = conv3(l, num_filters=256)
 
-    l = dense_prelu_layer(drop(l), num_units=512)    
-    l = dense_prelu_layer(drop(l), num_units=512)    
+    l = dense_prelu_layer(l, num_units=512)    
+    l = dense_prelu_layer(l, num_units=512)    
     l = nn.layers.DenseLayer(l, num_units=1, W=nn.init.Orthogonal(),
                              nonlinearity=None)
 
