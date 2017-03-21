@@ -74,7 +74,7 @@ nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
 max_nchunks = nchunks_per_epoch * 100
 
 validate_every = int(5. * nchunks_per_epoch)
-save_every = int(1. * nchunks_per_epoch)
+save_every = int(5. * nchunks_per_epoch)
 
 learning_rate_schedule = {
     0: 1e-4,
