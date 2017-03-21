@@ -14,6 +14,7 @@ import buffering
 from configuration import config, set_configuration
 import pathfinder
 
+nn.random.set_rng(np.random.RandomState(317070))
 theano.config.warn_float64 = 'raise'
 
 if len(sys.argv) < 2:
