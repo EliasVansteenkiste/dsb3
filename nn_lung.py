@@ -382,5 +382,5 @@ class LogMeanExp(nn.layers.Layer):
 
     def get_output_for(self, input, **kwargs):
         ps = nonlinearities.sigmoid(input)
-        return T.log(T.mean(T.exp(self.r * ps), axis=self.axis) + 1e-7) / self.r
+        return T.log(T.mean(T.exp(self.r * ps), axis=(1,2)) + 1e-7) / self.r
 
