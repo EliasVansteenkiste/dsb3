@@ -299,3 +299,18 @@ def remove_trainable_parameters(layer):
     for l in nn.layers.get_all_layers(layer):
         for param in l.params:
             l.params[param].remove('trainable')
+
+
+class ComplementProbAggregationLayer(nn.layers.Layer):
+    def __init__(self, incoming, **kwargs):
+        super(ComplementProbAggregationLayer, self).__init__(incoming, **kwargs)
+
+    def get_output_shape_for(self, input_shape):
+        return (input_shape[0], 1)
+
+    def get_output_for(self, input, **kwargs):
+        epsilon = 1e-12
+        p_roi_0 = T.clip(input, epsilon, 1. - epsilon)
+        log_p0 = T.sum(T.log(p_roi_0), axis=-1, keepdims=True)
+        p1 = 1. - T.exp(log_p0)
+        return p1

@@ -110,7 +110,13 @@ def build_nodule_classification_model(l_in):
 
     model = patch_class_config.build_model(l_in)
     nn.layers.set_all_param_values(model.l_out, metadata['param_values'])
-    # nn_lung.remove_trainable_parameters(model.l_out)
+
+    l_out = nn.layers.DenseLayer(model.l_out.input_layer,
+                                 num_units=1,
+                                 W=nn.init.Constant(0.),
+                                 b=nn.init.Constant(np.log(0.74 / 0.26)),
+                                 nonlinearity=nn.nonlinearities.sigmoid)
+    model = namedtuple('Model', ['l_in', 'l_out', 'l_target'])(model.l_in, l_out, model.l_target)
     return model
 
 
@@ -121,8 +127,8 @@ def build_model():
 
     nodule_classification_model = build_nodule_classification_model(l_in_rshp)
 
-    l_roi_p0 = nn.layers.SliceLayer(nodule_classification_model.l_out, indices=0, axis=-1)
-    l_roi_p0 = nn.layers.ReshapeLayer(l_roi_p0, (-1, n_candidates_per_patient))
+    l_roi_p0 = nn.layers.ReshapeLayer(nodule_classification_model.l_out,
+                                      (-1, n_candidates_per_patient))
 
     l_out = nn_lung.ComplementProbAggregationLayer(l_roi_p0)
 
