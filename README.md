@@ -1,7 +1,8 @@
 ## TODO
 
 - shuffle nodules between patients with the same label
-
+- dsb_a04 ?
+- luna_c4
 
 ## LUNA
 * generate blobs: test_seg_scan.py  

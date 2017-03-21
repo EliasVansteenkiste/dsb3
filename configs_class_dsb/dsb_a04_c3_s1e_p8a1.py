@@ -89,7 +89,7 @@ test_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinde
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size
 max_nchunks = nchunks_per_epoch * 10
 
-validate_every = int(0.5 * nchunks_per_epoch)
+validate_every = int(nchunks_per_epoch)
 save_every = int(0.25 * nchunks_per_epoch)
 
 learning_rate_schedule = {
@@ -113,15 +113,15 @@ def build_nodule_classification_model(l_in):
     model = patch_class_config.build_model(l_in)
     nn.layers.set_all_param_values(model.l_out, metadata['param_values'])
 
+    prior_p0 = np.power(0.74, 1. / n_candidates_per_patient)
     l_out = nn.layers.DenseLayer(model.l_out.input_layer,
                                  num_units=1,
                                  W=nn.init.Constant(0.),
-                                 b=nn.init.Constant(np.log(0.74 / 0.26)),
+                                 b=nn.init.Constant(np.log(prior_p0 / (1 - prior_p0))),
                                  nonlinearity=nn.nonlinearities.sigmoid)
     l_out.W.tag.grad_scale = untrained_weigths_grad_scale
     l_out.b.tag.grad_scale = untrained_weigths_grad_scale
-
-    model = namedtuple('Model', ['l_in', 'l_out', 'l_target'])(model.l_in, l_out, model.l_target)
+    model = model._replace(l_out=l_out)
     return model
 
 
@@ -174,6 +174,12 @@ def build_validation_objective(model, deterministic=True, epsilon=1e-12):
 
 
 def build_updates(train_loss, model, learning_rate):
-    updates = nn.updates.adam(train_loss, nn.layers.get_all_params(model.l_out, trainable=True),
-                              learning_rate)
+    params = nn.layers.get_all_params(model.l_out)
+    grads = T.grad(train_loss, params)
+    for idx, param in enumerate(params):
+        grad_scale = getattr(param.tag, 'grad_scale', 1)
+        if grad_scale != 1:
+            grads[idx] *= grad_scale
+
+    updates = nn.updates.adam(grads, params, learning_rate)
     return updates
