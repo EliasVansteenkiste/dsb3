@@ -29,6 +29,8 @@ utils.auto_make_dir(outputs_path)
 
 train_data_iterator = config().train_data_iterator
 valid_data_iterator = config().valid_data_iterator
+test_data_iterator = config().test_data_iterator
+
 
 print
 print 'Data'
@@ -37,7 +39,7 @@ print 'n validation: %d' % valid_data_iterator.nsamples
 print 'n chunks per epoch', config().nchunks_per_epoch
 
 # use buffering.buffered_gen_threaded()
-for (x_chunk_train, y_chunk_train, id_train) in valid_data_iterator.generate():
+for (x_chunk_train, y_chunk_train, id_train) in test_data_iterator.generate():
     print id_train
     print x_chunk_train.shape
 
