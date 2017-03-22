@@ -361,7 +361,7 @@ class Unbroadcast(nn.layers.Layer):
         return input_shape
 
     def get_output_for(self, input, **kwargs):
-        all_dims = range(len(input.shape))
+        all_dims = range(len(T.shape(input)))
         print all_dims
         return T.Unbroadcast(input, *all_dims)
 
