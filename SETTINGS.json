@@ -1,5 +1,5 @@
 {
-  "DATA_PATH": "/data/dsb3/stage1/",
+  "DATA_PATH": "/mnt/ssd/stage1/",
   "LABELS_PATH": "/mnt/storage/data/dsb3/stage1_labels.csv",
   "TEST_LABELS_PATH": "/mnt/storage/data/dsb3/test_labels.csv",
   "METADATA_PATH": "/mnt/storage/metadata/dsb3/",

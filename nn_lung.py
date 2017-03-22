@@ -292,13 +292,13 @@ class NormalCDFLayer(nn.layers.MergeLayer):
 
 
 
-class LogSumExp(nn.layers.Layer):
+class LogMeanExp(nn.layers.Layer):
     """
-    ln(sum(exp( r * x ))) /  r
+    ln(mean(exp( r * x ))) /  r
     """
 
     def __init__(self, incoming, r=1, axis=-1, **kwargs):
-        super(LogSumExp, self).__init__(incoming, **kwargs)
+        super(LogMeanExp, self).__init__(incoming, **kwargs)
         self.r = np.float32(r)
         self.axis = axis
 
@@ -308,7 +308,22 @@ class LogSumExp(nn.layers.Layer):
         return (input_shape[0], 1)
 
     def get_output_for(self, input, **kwargs):
-        return T.log(T.sum(T.exp(self.r * input), axis=self.axis) + 1e-7) / self.r
+        return T.log(T.mean(T.exp(self.r * input), axis=self.axis) + 1e-7) / self.r
+
+
+class ProbTheory(nn.layers.Layer):
+
+    def __init__(self, incoming, axis=(1,2), **kwargs):
+        super(ProbTheory, self).__init__(incoming, **kwargs)
+        self.axis = axis
+
+    def get_output_shape_for(self, input_shape):
+        assert(len(input_shape)==3)
+        assert(input_shape[2]==1)
+        return (input_shape[0], 1)
+
+    def get_output_for(self, input, **kwargs):
+        return 1-T.prod(1-input, axis=self.axis)
 
 
 class AggAllBenignExp(nn.layers.Layer):

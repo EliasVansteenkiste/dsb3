@@ -235,7 +235,11 @@ def build_model():
 
     l = nn.layers.ReshapeLayer(l, (-1, n_candidates_per_patient, 1), name='reshape2patients')
 
-    l_out = nn_lung.LogMeanExp(l, r=8, axis=(1,2), name='LME')
+    # l = nn.layers.FeaturePoolLayer(l, pool_size=n_candidates_per_patient, axis=1)
+    # l = nn_lung.ProbTheory(l, axis=(1,2))
+    l_out = nn_lung.LogMeanExp(l, r=8, axis=(1, 2), name='LME')
+
+    # l_out = nn.layers.ReshapeLayer(l, (-1, 1))
 
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 
@@ -252,9 +256,21 @@ def build_updates(train_loss, model, learning_rate):
     final_layer=nn.layers.get_all_layers(model.l_out)[-3]
     print 'trainable layer -3', final_layer.name
     param_final=final_layer.get_params(trainable=True)
+
     final_layer=nn.layers.get_all_layers(model.l_out)[-4]
     print 'trainable layer -4', final_layer.name
     param_final.extend(final_layer.get_params(trainable=True))
+    print len(param_final)
+
+    for i in range(5, 10):
+        final_layer = nn.layers.get_all_layers(model.l_out)[-i]
+        print 'trainable layer %i'%(-i), final_layer.name
+        param_final.extend(final_layer.get_params(trainable=True))
+    print len(param_final)
 
     updates = nn.updates.adam(train_loss, param_final, learning_rate)
+    #
+    # params = nn.layers.get_all_params(model.l_out, trainable=True)
+    # updates = nn.updates.adam(train_loss, params, learning_rate)
+
     return updates

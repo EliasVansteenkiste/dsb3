@@ -939,6 +939,59 @@ class DSBPatientsDataGenerator(object):
             if not self.infinite:
                 break
 
+class DSBPatientsDataGeneratorNoCandidates(object):
+    def __init__(self, data_path, batch_size, transform_params, data_prep_fun, rng, random, infinite,
+                 patient_ids=None):
+
+        self.id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
+        self.patient_paths = []
+        if patient_ids is not None:
+            for pid in patient_ids:
+                self.patient_paths.append(data_path + '/' + pid)
+        else:
+            raise ValueError('provide patient ids')
+
+        self.nsamples = len(self.patient_paths)
+        self.data_path = data_path
+        self.data_prep_fun = data_prep_fun
+        self.batch_size = batch_size
+        self.transform_params = transform_params
+        self.rng = rng
+        self.random = random
+        self.infinite = infinite
+
+    def generate(self):
+        while True:
+            rand_idxs = np.arange(self.nsamples)
+            if self.random:
+                self.rng.shuffle(rand_idxs)
+
+            for pos in xrange(0, len(rand_idxs), self.batch_size):
+                idxs_batch = rand_idxs[pos:pos + self.batch_size]
+
+                x_batch = np.zeros((self.batch_size,) + self.transform_params['patch_size'], dtype='float32')
+
+                y_batch = np.zeros((self.batch_size,), dtype='float32')
+                pids_batch = []
+
+                for i, idx in enumerate(idxs_batch):
+                    patient_path = self.patient_paths[idx]
+                    pid = utils_lung.extract_pid_dir(patient_path)
+
+                    img, pixel_spacing = utils_lung.read_dicom_scan(patient_path)
+
+                    x_batch[i] = np.float32(self.data_prep_fun(data=img,
+                                                               pixel_spacing=pixel_spacing))
+                    y_batch[i] = self.id2label.get(pid)
+                    pids_batch.append(pid)
+
+                if len(idxs_batch) == self.batch_size:
+                    yield x_batch, y_batch, pids_batch
+
+            if not self.infinite:
+                break
+
+
 
 class DSBPatientsDataGeneratorRandomSelectionNonCancerous(object):
     def __init__(self, data_path, batch_size, transform_params, id2candidates_path, data_prep_fun,
