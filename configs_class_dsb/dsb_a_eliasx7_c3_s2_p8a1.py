@@ -249,12 +249,17 @@ def build_objective(model, deterministic=False, epsilon=1e-12):
 
 
 def build_updates(train_loss, model, learning_rate):
+
     final_layer=nn.layers.get_all_layers(model.l_out)[-3]
     print 'trainable layer -3', final_layer.name
     param_final=final_layer.get_params(trainable=True)
     final_layer=nn.layers.get_all_layers(model.l_out)[-4]
     print 'trainable layer -4', final_layer.name
     param_final.extend(final_layer.get_params(trainable=True))
+    for lidx in range(-20,-4):
+      layer=nn.layers.get_all_layers(model.l_out)[lidx]
+      print 'trainable layer',lidx, layer.name
+      param_final.extend(layer.get_params(trainable=True))
 
     updates = nn.updates.adam(train_loss, param_final, learning_rate)
     return updates
