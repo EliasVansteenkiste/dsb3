@@ -51,7 +51,9 @@ for layer in all_layers:
     print '    %s %s %s' % (name, num_param, layer.output_shape)
 
 train_loss = config().build_objective(model, deterministic=False)
+train_loss2 = config().build_objective2(model, deterministic=False)
 valid_loss = config().build_objective(model, deterministic=True)
+valid_loss2 = config().build_objective2(model, deterministic=True)
 
 learning_rate_schedule = config().learning_rate_schedule
 learning_rate = theano.shared(np.float32(learning_rate_schedule[0]))
@@ -70,8 +72,8 @@ givens_valid[model.l_in.input_var] = x_shared
 givens_valid[model.l_target.input_var] = y_shared
 
 # theano functions
-iter_train = theano.function([idx], train_loss, givens=givens_train, updates=updates)
-iter_validate = theano.function([], valid_loss, givens=givens_valid)
+iter_train = theano.function([idx], [train_loss, train_loss2], givens=givens_train, updates=updates)
+iter_validate = theano.function([], [valid_loss, valid_loss2], givens=givens_valid)
 
 if config().restart_from_save:
     print 'Load model parameters for resuming'
@@ -85,10 +87,12 @@ if config().restart_from_save:
     learning_rate.set_value(lr)
     losses_eval_train = resume_metadata['losses_eval_train']
     losses_eval_valid = resume_metadata['losses_eval_valid']
+    losses_eval_valid2 = resume_metadata['losses_eval_valid2']
 else:
     chunk_idxs = range(config().max_nchunks)
     losses_eval_train = []
     losses_eval_valid = []
+    losses_eval_valid2 = []
     start_chunk_idx = 0
 
 train_data_iterator = config().train_data_iterator
@@ -106,7 +110,9 @@ chunk_idx = 0
 start_time = time.time()
 prev_time = start_time
 tmp_losses_train = []
+tmp_losses_train2 = []
 losses_train_print = []
+losses_train_print2 = []
 
 # use buffering.buffered_gen_threaded()
 for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buffering.buffered_gen_threaded(
@@ -123,22 +129,28 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
 
     # make nbatches_chunk iterations
     for b in xrange(config().nbatches_chunk):
-        loss = iter_train(b)
+        loss, loss2 = iter_train(b)
         # print loss
         tmp_losses_train.append(loss)
+        tmp_losses_train2.append(loss2)
+
         losses_train_print.append(loss)
+        losses_train_print2.append(loss2)
 
     if (chunk_idx + 1) % 10 == 0:
-        print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks), np.mean(losses_train_print)
+        print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks), np.mean(losses_train_print), np.mean(losses_train_print2)
         losses_train_print = []
+        losses_train_print2 = []
 
     if ((chunk_idx + 1) % config().validate_every) == 0:
         print
         print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks)
         # calculate mean train loss since the last validation phase
         mean_train_loss = np.mean(tmp_losses_train)
-        print 'Mean train loss: %7f' % mean_train_loss
+        mean_train_loss2 = np.mean(tmp_losses_train2)
+        print 'Mean train loss: %7f, %7f' % mean_train_loss, mean_train_loss2
         losses_eval_train.append(mean_train_loss)
+        losses_eval_train2.append(mean_train_loss2)
         tmp_losses_train = []
 
         # load validation data to GPU
@@ -148,14 +160,17 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
                                                 buffer_size=2)):
             x_shared.set_value(x_chunk_valid)
             y_shared.set_value(y_chunk_valid)
-            l_valid = iter_validate()
-            print i, l_valid
+            l_valid, l_valid2 = iter_validate()
+            print i, l_valid, l_valid2
             tmp_losses_valid.append(l_valid)
+            tmp_losses_valid2.append(l_valid2)
 
         # calculate validation loss across validation set
         valid_loss = np.mean(tmp_losses_valid)
-        print 'Validation loss: ', valid_loss
+        valid_loss2 = np.mean(tmp_losses_valid2)
+        print 'Validation loss: ', valid_loss, valid_loss2
         losses_eval_valid.append(valid_loss)
+        losses_eval_valid2.append(valid_loss2)
 
         now = time.time()
         time_since_start = now - start_time
@@ -181,6 +196,8 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
                 'chunks_since_start': chunk_idx,
                 'losses_eval_train': losses_eval_train,
                 'losses_eval_valid': losses_eval_valid,
+                'losses_eval_train2': losses_eval_train2,
+                'losses_eval_valid2': losses_eval_valid2,
                 'param_values': nn.layers.get_all_param_values(model.l_out)
             }, f, pickle.HIGHEST_PROTOCOL)
             print '  saved to %s' % metadata_path
