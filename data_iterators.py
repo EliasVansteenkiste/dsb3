@@ -745,8 +745,8 @@ class MixedPatientsDataGenerator(object):
         # ok we will not have colliding ids
 
         # build id2label and id2candidate paths
-        dsb_id2label=utils_lung.read_labels(data_path) 
-        aapm_id2label=utils_lung.read_aapm_labels_per_patient(aapm_data_path)
+        dsb_id2label=utils_lung.read_labels(pathfinder.LABELS_PATH) 
+        aapm_id2label=utils_lung.read_aapm_labels_per_patient(pathfinder.AAPM_LABELS_PATH)
         
 
         self.id2label = dsb_id2label.copy()#{**dsb_id2label, **aapm_id2label}
@@ -764,7 +764,7 @@ class MixedPatientsDataGenerator(object):
 
         if aapm_patient_ids is not None:
            for pid in aapm_patient_ids:
-               self.patient_paths.append((pid,utils_lung.get_path_to_image_from_patient(data_path,pid)))
+               self.patient_paths.append((pid,utils_lung.get_path_to_image_from_patient(aapm_data_path,pid)))
         else:
             raise ValueError('provide aapm patient ids')
 

@@ -11,14 +11,17 @@ import utils
 import utils_lung
 
 # TODO: import correct config here
-candidates_config = 'aapm_c3_s2_p8a1'
+aapm_candidates_config = 'aapm_c3_s2_p8a1'
+dsb_candidates_config = 'dsb_c3_s2_p8a1'
 
 restart_from_save = None
 rng = np.random.RandomState(42)
 
 predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
-candidates_path = predictions_dir + '/%s' % candidates_config
-id2candidates_path = utils_lung.get_candidates_paths(candidates_path)
+dsb_candidates_path = predictions_dir + '/%s' % dsb_candidates_config
+aapm_candidates_path = predictions_dir + '/%s' % aapm_candidates_config
+dsb_id2candidates_path = utils_lung.get_candidates_paths(dsb_candidates_path)
+aapm_id2candidates_path = utils_lung.get_candidates_paths(aapm_3candidates_path)
 
 # transformations
 p_transform = {'patch_size': (48, 48, 48),
@@ -63,7 +66,8 @@ train_data_iterator = data_iterators.AAPMPatientsDataGenerator(data_path=pathfin
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
                                                               data_prep_fun=data_prep_function_train,
-                                                              id2candidates_path=id2candidates_path,
+                                                              id2candidates_path=dsb_id2candidates_path,
+                                                               aapm_id2candidates_path=aapm_id2candidates_path,
                                                               rng=rng,
                                                               patient_ids=train_pids,
                                                               random=True, 
@@ -74,7 +78,8 @@ valid_data_iterator = data_iterators.AAPMPatientsDataGenerator(data_path=pathfin
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
                                                               data_prep_fun=data_prep_function_valid,
-                                                              id2candidates_path=id2candidates_path,
+                                                              id2candidates_path=dsb_id2candidates_path,
+                                                               aapm_id2candidates_path=aapm_id2candidates_path,
                                                               rng=rng,
                                                               patient_ids=valid_pids,
                                                               random=False, infinite=False)
@@ -84,7 +89,8 @@ test_data_iterator = data_iterators.AAPMPatientsDataGenerator(data_path=pathfind
                                                              transform_params=p_transform,
                                                              n_candidates_per_patient=n_candidates_per_patient,
                                                              data_prep_fun=data_prep_function_valid,
-                                                             id2candidates_path=id2candidates_path,
+                                                             id2candidates_path=dsb_id2candidates_path,
+                                                              aapm_id2candidates_path=aapm_id2candidates_path,
                                                              rng=rng,
                                                              patient_ids=test_pids,
                                                              random=False, infinite=False)

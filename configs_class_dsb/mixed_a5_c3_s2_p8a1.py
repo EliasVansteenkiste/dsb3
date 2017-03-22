@@ -18,8 +18,10 @@ restart_from_save = None
 rng = np.random.RandomState(42)
 
 predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
-candidates_path = predictions_dir + '/%s' % candidates_config
-id2candidates_path = utils_lung.get_candidates_paths(candidates_path)
+dsb_candidates_path = predictions_dir + '/%s' % dsb_candidates_config
+aapm_candidates_path = predictions_dir + '/%s' % aapm_candidates_config
+dsb_id2candidates_path = utils_lung.get_candidates_paths(dsb_candidates_path)
+aapm_id2candidates_path = utils_lung.get_candidates_paths(aapm_candidates_path)
 
 # transformations
 p_transform = {'patch_size': (48, 48, 48),
@@ -49,13 +51,13 @@ data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
 batch_size = 4
 
 
-#FIXXME: for test purposes, we again just use the ids
+
 train_valid_ids =utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
-aapm_train_valid_ids =id2candidates_path.keys() #utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
+aapm_train_valid_ids =aapm_id2candidates_path.keys() #utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
 
 #FIXXME: to try this out we separate only into a train set as well as validation set, testset is just the validation set all over again
 
-aapm_train_pids, aapm_valid_pids, aapm_test_pids = train_valid_ids[:50], train_valid_ids[50:], train_valid_ids[50:]
+aapm_train_pids, aapm_valid_pids, aapm_test_pids = aapm_train_valid_ids[:50], aapm_train_valid_ids[50:], aapm_train_valid_ids[50:]
 
 train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
 
@@ -67,7 +69,8 @@ train_data_iterator = data_iterators.MixedPatientsDataGenerator(data_path=pathfi
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
                                                               data_prep_fun=data_prep_function_train,
-                                                              id2candidates_path=id2candidates_path,
+                                                              id2candidates_path=dsb_id2candidates_path,
+                                                              aapm_id2candidates_path=aapm_id2candidates_path,
                                                               rng=rng,
                                                               patient_ids=train_pids,
                                                               aapm_patient_ids=aapm_train_pids,
@@ -79,7 +82,8 @@ valid_data_iterator = data_iterators.MixedPatientsDataGenerator(data_path=pathfi
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
                                                               data_prep_fun=data_prep_function_valid,
-                                                              id2candidates_path=id2candidates_path,
+                                                              id2candidates_path=dsb_id2candidates_path,
+                                                            aapm_id2candidates_path=aapm_id2candidates_path,
                                                               rng=rng,
                                                               patient_ids=valid_pids,
                                                               aapm_patient_ids=aapm_valid_pids,
@@ -90,7 +94,8 @@ test_data_iterator = data_iterators.MixedPatientsDataGenerator(data_path=pathfin
                                                              transform_params=p_transform,
                                                              n_candidates_per_patient=n_candidates_per_patient,
                                                              data_prep_fun=data_prep_function_valid,
-                                                             id2candidates_path=id2candidates_path,
+                                                             id2candidates_path=dsb_id2candidates_path,
+                                                             aapm_id2candidates_path=aapm_id2candidates_path,
                                                              rng=rng,
                                                              patient_ids=test_pids,
                                                              aapm_patient_ids=aapm_test_pids,
