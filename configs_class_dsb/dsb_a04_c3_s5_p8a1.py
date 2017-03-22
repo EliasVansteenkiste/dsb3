@@ -12,7 +12,7 @@ import utils_lung
 import nn_lung
 
 # TODO: import correct config here
-candidates_config = 'dsb_c3_s1e_p8a1'
+candidates_config = 'dsb_c3_s5_p8a1'
 # TODO: import correct config here
 import configs_fpred_patch.luna_c3 as patch_class_config
 

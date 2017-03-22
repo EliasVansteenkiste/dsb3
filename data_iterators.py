@@ -316,6 +316,107 @@ class CandidatesLunaDataGenerator(object):
                 break
 
 
+class CandidatesMultipleTransformsLunaDataGenerator(object):
+    def __init__(self, data_path, batch_size, transform_params, patient_ids, data_prep_fun, rng,
+                 full_batch, random, infinite, positive_proportion, **kwargs):
+        """
+
+        :param data_path:
+        :param batch_size:
+        :param transform_params: this has to be a list with transformations
+        :param patient_ids:
+        :param data_prep_fun:
+        :param rng:
+        :param full_batch:
+        :param random:
+        :param infinite:
+        :param positive_proportion:
+        :param kwargs:
+        :return:
+        """
+        id2positive_annotations = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
+        id2negative_annotations = utils_lung.read_luna_negative_candidates(pathfinder.LUNA_CANDIDATES_PATH)
+
+        self.file_extension = '.pkl' if 'pkl' in data_path else '.mhd'
+        self.id2positive_annotations = {}
+        self.id2negative_annotations = {}
+        self.patient_paths = []
+        n_positive, n_negative = 0, 0
+        for pid in patient_ids:
+            if pid in id2positive_annotations:
+                self.id2positive_annotations[pid] = id2positive_annotations[pid]
+                self.id2negative_annotations[pid] = id2negative_annotations[pid]
+                self.patient_paths.append(data_path + '/' + pid + self.file_extension)
+                n_positive += len(id2positive_annotations[pid])
+                n_negative += len(id2negative_annotations[pid])
+
+        print 'n positive', n_positive
+        print 'n negative', n_negative
+
+        self.nsamples = len(self.patient_paths)
+
+        print 'n patients', self.nsamples
+        self.data_path = data_path
+        self.batch_size = batch_size
+        self.rng = rng
+        self.full_batch = full_batch
+        self.random = random
+        self.infinite = infinite
+        self.data_prep_fun = data_prep_fun
+        self.transform_params = transform_params
+        assert isinstance(self.transform_params, list)
+        self.positive_proportion = positive_proportion
+
+    def generate(self):
+        while True:
+            rand_idxs = np.arange(self.nsamples)
+            if self.random:
+                self.rng.shuffle(rand_idxs)
+            for pos in xrange(0, len(rand_idxs), self.batch_size):
+                idxs_batch = rand_idxs[pos:pos + self.batch_size]
+                nb = len(idxs_batch)
+                # allocate batches
+                y_batch = np.zeros((nb, 1), dtype='float32')
+                xs_batch = []
+
+                for transformation in self.transform_params:
+                    x_batch = np.zeros((nb, 1) + transformation['patch_size'], dtype='float32')
+                    xs_batch.append(x_batch)
+                patients_ids = []
+
+                for i, idx in enumerate(idxs_batch):
+                    patient_path = self.patient_paths[idx]
+
+                    id = utils_lung.extract_pid_filename(patient_path, self.file_extension)
+                    patients_ids.append(id)
+
+                    img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
+                        if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
+                    if i < np.rint(self.batch_size * self.positive_proportion):
+                        patient_annotations = self.id2positive_annotations[id]
+                    else:
+                        patient_annotations = self.id2negative_annotations[id]
+
+                    patch_center = patient_annotations[self.rng.randint(len(patient_annotations))]
+
+                    y_batch[i] = float(patch_center[-1] > 0)
+                    x_tf = self.data_prep_fun(data=img,
+                                              patch_center=patch_center,
+                                              pixel_spacing=pixel_spacing,
+                                              luna_origin=origin)
+                    for k in xrange(len(x_tf)):
+                        xs_batch[k][i, 0, :, :, :] = x_tf[k]
+
+                if self.full_batch:
+                    if nb == self.batch_size:
+                        yield xs_batch, y_batch, patients_ids
+                else:
+                    yield xs_batch, y_batch, patients_ids
+
+            if not self.infinite:
+                break
+
+
 class CandidatesLunaValidDataGenerator(object):
     def __init__(self, data_path, transform_params, patient_ids, data_prep_fun, **kwargs):
         rng = np.random.RandomState(42)  # do not change this!!!

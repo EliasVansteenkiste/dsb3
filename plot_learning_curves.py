@@ -21,4 +21,3 @@ expid = metadata['experiment_id']
 analysis_dir = utils.get_dir_path('analysis', pathfinder.METADATA_PATH)
 
 plot_learning_curves(metadata['losses_eval_train'], metadata['losses_eval_valid'], expid, analysis_dir)
-

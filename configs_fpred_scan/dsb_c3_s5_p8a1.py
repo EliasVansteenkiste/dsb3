@@ -31,7 +31,7 @@ id2candidates_path = utils_lung.get_candidates_paths(segmentation_outputs_path)
 
 # filter our those, who are already generated
 predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH) \
-                  + '/' + utils.get_script_name(__file__)
+                  + '/dsb_c3_s5_p8a1/'
 exclude_pids = utils_lung.get_generated_pids(predictions_dir)
 
 data_iterator = data_iterators.CandidatesDSBDataGenerator(data_path=pathfinder.DATA_PATH,

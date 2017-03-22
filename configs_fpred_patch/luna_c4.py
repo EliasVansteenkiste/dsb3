@@ -14,10 +14,23 @@ restart_from_save = None
 rng = np.random.RandomState(42)
 
 # transformations
-p_transform = {'patch_size': (48, 48, 48),
-               'mm_patch_size': (48, 48, 48),
-               'pixel_spacing': (1., 1., 1.)
-               }
+p_transform1 = {'patch_size': (48, 48, 48),
+                'mm_patch_size': (48, 48, 48),
+                'pixel_spacing': (1., 1., 1.)
+                }
+
+p_transform2 = {'patch_size': (48, 48, 48),
+                'mm_patch_size': (48, 48, 48),
+                'pixel_spacing': (0.5, 0.5, 0.5)
+                }
+
+p_transform3 = {'patch_size': (48, 48, 48),
+                'mm_patch_size': (48, 48, 48),
+                'pixel_spacing': (4., 4., 4.)
+                }
+
+p_transforms = [p_transform1, p_transform2, p_transform3]
+
 p_transform_augment = {
     'translation_range_z': [-3, 3],
     'translation_range_y': [-3, 3],
@@ -27,26 +40,33 @@ p_transform_augment = {
     'rotation_range_x': [-180, 180]
 }
 
+p_transforms_augment = [p_transform_augment, p_transform_augment, None]
+
 
 # data preparation function
-def data_prep_function(data, patch_center, pixel_spacing, luna_origin, p_transform,
-                       p_transform_augment, world_coord_system, **kwargs):
-    x, patch_annotation_tf = data_transforms.transform_patch3d(data=data,
-                                                               luna_annotations=None,
-                                                               patch_center=patch_center,
-                                                               p_transform=p_transform,
-                                                               p_transform_augment=p_transform_augment,
-                                                               pixel_spacing=pixel_spacing,
-                                                               luna_origin=luna_origin,
-                                                               world_coord_system=world_coord_system)
-    x = data_transforms.pixelnormHU(x)
-    return x
+def data_prep_function(data, patch_center, pixel_spacing, luna_origin,
+                       p_transforms_augment, world_coord_system, **kwargs):
+    x_outs = []
+    for pt, pta in zip(p_transforms, p_transforms_augment):
+        x, patch_annotation_tf = data_transforms.transform_patch3d(data=data,
+                                                                   luna_annotations=None,
+                                                                   patch_center=patch_center,
+                                                                   p_transform=pt,
+                                                                   p_transform_augment=pta,
+                                                                   pixel_spacing=pixel_spacing,
+                                                                   luna_origin=luna_origin,
+                                                                   world_coord_system=world_coord_system)
+        x = data_transforms.pixelnormHU(x)
+        x_outs.append(x)
+    return x_outs
 
 
-data_prep_function_train = partial(data_prep_function, p_transform_augment=p_transform_augment,
-                                   p_transform=p_transform, world_coord_system=True)
-data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
-                                   p_transform=p_transform, world_coord_system=True)
+data_prep_function_train = partial(data_prep_function,
+                                   p_transforms_augment=p_transforms_augment,
+                                   world_coord_system=True)
+data_prep_function_valid = partial(data_prep_function,
+                                   p_transforms_augment=[None] * len(p_transforms_augment),
+                                   world_coord_system=True)
 
 # data iterators
 batch_size = 4
@@ -56,19 +76,20 @@ chunk_size = batch_size * nbatches_chunk
 train_valid_ids = utils.load_pkl(pathfinder.LUNA_VALIDATION_SPLIT_PATH)
 train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['valid']
 
-train_data_iterator = data_iterators.CandidatesLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
-                                                                 batch_size=chunk_size,
-                                                                 transform_params=p_transform,
-                                                                 data_prep_fun=data_prep_function_train,
-                                                                 rng=rng,
-                                                                 patient_ids=train_pids,
-                                                                 full_batch=True, random=True, infinite=True,
-                                                                 positive_proportion=0.5)
+train_data_iterator = data_iterators.CandidatesMultipleTransformsLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
+                                                                                   batch_size=chunk_size,
+                                                                                   transform_params=p_transforms,
+                                                                                   data_prep_fun=data_prep_function_train,
+                                                                                   rng=rng,
+                                                                                   patient_ids=train_pids,
+                                                                                   full_batch=True, random=True,
+                                                                                   infinite=True,
+                                                                                   positive_proportion=0.5)
 
-valid_data_iterator = data_iterators.CandidatesLunaValidDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
-                                                                      transform_params=p_transform,
-                                                                      data_prep_fun=data_prep_function_valid,
-                                                                      patient_ids=valid_pids)
+valid_data_iterator = data_iterators.CandidatesMultipleTransformsLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
+                                                                                   transform_params=p_transforms,
+                                                                                   data_prep_fun=data_prep_function_valid,
+                                                                                   patient_ids=valid_pids)
 
 nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
 max_nchunks = nchunks_per_epoch * 100
@@ -85,14 +106,14 @@ learning_rate_schedule = {
 }
 
 # model
-conv3 = partial(dnn.Conv3DDNNLayer,
-                filter_size=3,
-                pad='same',
-                W=nn.init.Orthogonal(),
-                nonlinearity=nn.nonlinearities.very_leaky_rectify)
+conv3d = partial(dnn.Conv3DDNNLayer,
+                 filter_size=3,
+                 pad='same',
+                 W=nn.init.Orthogonal(),
+                 nonlinearity=nn.nonlinearities.very_leaky_rectify)
 
-max_pool = partial(dnn.MaxPool3DDNNLayer,
-                   pool_size=2)
+max_pool3d = partial(dnn.MaxPool3DDNNLayer,
+                     pool_size=2)
 
 drop = lasagne.layers.DropoutLayer
 
@@ -101,37 +122,85 @@ dense = partial(lasagne.layers.DenseLayer,
                 nonlinearity=lasagne.nonlinearities.very_leaky_rectify)
 
 
-def build_model(l_in=None):
-    l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size']) if l_in is None else l_in
+def inrn_v2(lin):
+    n_base_filter = 32
+
+    l1 = conv3d(lin, n_base_filter, filter_size=1)
+
+    l2 = conv3d(lin, n_base_filter, filter_size=1)
+    l2 = conv3d(l2, n_base_filter, filter_size=3)
+
+    l3 = conv3d(lin, n_base_filter, filter_size=1)
+    l3 = conv3d(l3, n_base_filter, filter_size=3)
+    l3 = conv3d(l3, n_base_filter, filter_size=3)
+
+    l = lasagne.layers.ConcatLayer([l1, l2, l3])
+
+    l = conv3d(l, lin.output_shape[1], filter_size=1)
+
+    l = lasagne.layers.ElemwiseSumLayer([l, lin])
+
+    l = lasagne.layers.NonlinearityLayer(l, nonlinearity=lasagne.nonlinearities.rectify)
+
+    return l
+
+
+def inrn_v2_red(lin):
+    # We want to reduce our total volume /4
+
+    den = 16
+    nom2 = 4
+    nom3 = 5
+    nom4 = 7
+
+    ins = lin.output_shape[1]
+
+    l1 = max_pool3d(lin)
+
+    l2 = conv3d(lin, ins // den * nom2, filter_size=3, stride=2)
+
+    l3 = conv3d(lin, ins // den * nom2, filter_size=1)
+    l3 = conv3d(l3, ins // den * nom3, filter_size=3, stride=2)
+
+    l4 = conv3d(lin, ins // den * nom2, filter_size=1)
+    l4 = conv3d(l4, ins // den * nom3, filter_size=3)
+    l4 = conv3d(l4, ins // den * nom4, filter_size=3, stride=2)
+
+    l = lasagne.layers.ConcatLayer([l1, l2, l3, l4])
+
+    return l
+
+
+def feat_red(lin):
+    # We want to reduce the feature maps by a factor of 2
+    ins = lin.output_shape[1]
+    l = conv3d(lin, ins // 2, filter_size=1)
+    return l
+
+
+def build_model(l_ins=None):
     l_target = nn.layers.InputLayer((None, 1))
 
-    l = conv3(l_in, num_filters=128)
-    l = conv3(l, num_filters=128)
+    l_in1 = nn.layers.InputLayer((None, 1,) + p_transform1['patch_size']) if l_ins is None else l_ins[0]
+    l_in2 = nn.layers.InputLayer((None, 1,) + p_transform2['patch_size']) if l_ins is None else l_ins[1]
+    l_in3 = nn.layers.InputLayer((None, 1,) + p_transform3['patch_size']) if l_ins is None else l_ins[2]
 
-    l = max_pool(l)
+    # part 1 for pixelspacing of 1.
+    l = conv3d(l_in1, 64)
+    l = inrn_v2_red(l)
+    l = inrn_v2(l)
+    l = feat_red(l)
+    l = inrn_v2(l)
+    l = inrn_v2_red(l)
+    l = inrn_v2(l)
+    l = feat_red(l)
+    l = inrn_v2(l)
+    l = feat_red(l)
+    l = dense(drop(l), 128)
 
-    l = conv3(l, num_filters=128)
-    l = conv3(l, num_filters=128)
-
-    l = max_pool(l)
-
-    l = conv3(l, num_filters=256)
-    l = conv3(l, num_filters=256)
-    l = conv3(l, num_filters=256)
-
-    l = max_pool(l)
-
-    l = conv3(l, num_filters=512)
-    l = conv3(l, num_filters=512)
-    l = conv3(l, num_filters=512)
-
-    l = max_pool(l)
-
-    l_d01 = nn.layers.DenseLayer(l, num_units=1024, W=nn.init.Orthogonal(),
-                                 nonlinearity=nn.nonlinearities.very_leaky_rectify)
-
-    l_d02 = nn.layers.DenseLayer(nn.layers.dropout(l_d01), num_units=1024, W=nn.init.Orthogonal(),
-                                 nonlinearity=nn.nonlinearities.very_leaky_rectify)
+    l_out = nn.layers.DenseLayer(l, num_units=2,
+                                 W=nn.init.Constant(0.),
+                                 nonlinearity=nn.nonlinearities.softmax)
 
     l_out = nn.layers.DenseLayer(l_d02, num_units=2,
                                  W=nn.init.Constant(0.),
