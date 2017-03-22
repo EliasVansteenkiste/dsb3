@@ -770,7 +770,7 @@ class CandidatesLunaSizeValidDataGenerator(object):
 
 class CandidatesLunaSizeBinDataGenerator(object):
     def __init__(self, data_path, batch_size, transform_params, patient_ids, data_prep_fun, rng,
-                 full_batch, random, infinite, positive_proportion, bin_size=4, **kwargs):
+                 full_batch, random, infinite, positive_proportion, bin_borders = [4,8,20,50], **kwargs):
 
         id2positive_annotations = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
         id2negative_annotations = utils_lung.read_luna_negative_candidates(pathfinder.LUNA_CANDIDATES_PATH)
@@ -803,7 +803,7 @@ class CandidatesLunaSizeBinDataGenerator(object):
         self.data_prep_fun = data_prep_fun
         self.transform_params = transform_params
         self.positive_proportion = positive_proportion
-        self.bin_size = bin_size
+        self.bin_borders = bin_borders
 
     def generate(self):
         while True:
@@ -833,9 +833,13 @@ class CandidatesLunaSizeBinDataGenerator(object):
 
                     patch_center = patient_annotations[self.rng.randint(len(patient_annotations))]
 
-                    diameter = int(patch_center[-1])
-                    ybin = diameter//self.bin_size
-                    if diameter > 0:
+                    diameter = patch_center[-1]
+                    if diameter > 0.:
+                        ybin = 0
+                        for idx, border in enumerate(self.bin_borders):
+                            if diameter<border:
+                                ybin = diameter
+                                break                            
                         y_batch[i] = 1. + ybin
                     else:
                         y_batch[i] = 0. 
@@ -855,7 +859,7 @@ class CandidatesLunaSizeBinDataGenerator(object):
                 break
 
 class CandidatesLunaSizeBinValidDataGenerator(object):
-    def __init__(self, data_path, transform_params, patient_ids, data_prep_fun, bin_size=4, **kwargs):
+    def __init__(self, data_path, transform_params, patient_ids, data_prep_fun, bin_borders = [4,8,20,50], **kwargs):
         rng = np.random.RandomState(42)  # do not change this!!!
 
         id2positive_annotations = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
@@ -890,7 +894,7 @@ class CandidatesLunaSizeBinValidDataGenerator(object):
         self.rng = rng
         self.data_prep_fun = data_prep_fun
         self.transform_params = transform_params
-        self.bin_size = bin_size
+        self.bin_borders = bin_borders
 
     def generate(self):
 
@@ -901,8 +905,12 @@ class CandidatesLunaSizeBinValidDataGenerator(object):
                 img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
                     if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
 
-                diameter = int(patch_center[3])
-                ybin = diameter//self.bin_size
+                diameter = patch_center[3]                        
+                ybin = 0
+                for idx, border in enumerate(self.bin_borders):
+                    if diameter<border:
+                        ybin = diameter
+                        break  
 
                 y_batch = np.array([[1. + ybin]], dtype='float32')
                 x_batch = np.float32(self.data_prep_fun(data=img,
