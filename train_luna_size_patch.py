@@ -91,6 +91,7 @@ if config().restart_from_save:
 else:
     chunk_idxs = range(config().max_nchunks)
     losses_eval_train = []
+    losses_eval_train2 = []
     losses_eval_valid = []
     losses_eval_valid2 = []
     start_chunk_idx = 0
