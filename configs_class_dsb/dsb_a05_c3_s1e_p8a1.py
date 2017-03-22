@@ -29,7 +29,7 @@ p_transform = {'patch_size': (48, 48, 48),
                'mm_patch_size': (48, 48, 48),
                'pixel_spacing': (1., 1., 1.)
                }
-n_candidates_per_patient = 4
+n_candidates_per_patient = 8
 
 
 def data_prep_function(data, patch_centers, pixel_spacing, p_transform,

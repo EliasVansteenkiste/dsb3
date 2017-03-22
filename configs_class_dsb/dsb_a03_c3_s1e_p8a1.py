@@ -5,7 +5,6 @@ import pathfinder
 import lasagne as nn
 from collections import namedtuple
 from functools import partial
-import lasagne.layers.dnn as dnn
 import theano.tensor as T
 import utils
 import utils_lung
@@ -102,7 +101,6 @@ learning_rate_schedule = {
 
 
 # model
-
 def build_nodule_classification_model(l_in):
     metadata_dir = utils.get_dir_path('models', pathfinder.METADATA_PATH)
     metadata_path = utils.find_model_metadata(metadata_dir, patch_class_config.__name__.split('.')[-1])
@@ -141,7 +139,7 @@ def build_objective(model, deterministic=False, epsilon=1e-12):
         p0 = T.sum(T.log(p0), axis=-1)
 
         # for positive examples
-        p1 = nn.layers.get_output(model.l_out, deterministic=deterministic)
+        p1 = nn.layers.get_output(model.l_out, deterministic=deterministic)[:, 0]
         p1 = T.log(p1)
 
         loss = -1. * T.mean((1 - targets) * p0 + targets * p1, axis=0)
