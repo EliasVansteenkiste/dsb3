@@ -1,4 +1,5 @@
 {
+
   "DATA_PATH": "/home/frederic/kaggle-dsb3/data/stage1/",
   "LABELS_PATH": "/home/frederic/kaggle-dsb3/data/stage1_labels.csv",
   "METADATA_PATH": "/home/frederic/kaggle-dsb3/metadata",
@@ -10,5 +11,6 @@
   "LUNA_CANDIDATES_PATH": "/home/frederic/kaggle-dsb3/data/luna/candidates_V2.csv",
   "TEST_LABELS_PATH": "/home/frederic/kaggle-dsb3/data/test_labels.csv"
 }
+
 
 

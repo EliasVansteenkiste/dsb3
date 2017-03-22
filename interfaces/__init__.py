@@ -1,0 +1,1 @@
+"""This folder contains the basic interfaces which need to be implemented in the application folder"""

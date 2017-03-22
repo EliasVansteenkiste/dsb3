@@ -13,12 +13,17 @@
 * stats over fpred: evaluate_luna_fpred_scan.py
 
 
+=======
+Downloaded. Awaiting deployment to machines and preparation. Did not unzip correctly the first time.
+
+
 ## DSB
 
 * generate blobs: test_seg_scan_dsb.py
 * fpred: test_fpred_scan_dsb.py
 * plot rois as in the final data iterator: plot_dsb_roi.py
 * train classifier: train_class_dsb.py 
+
 
 
 
@@ -29,6 +34,19 @@ b8bb02d229361a623a4dc57aa0e5c485 (has 2 series of data)
 08528b8817429d12b7ce2bf444d264f9 (half of the lung)
 6a145c28d3b722643f547dfcbdf379ae (half of the lung)
 5fe048f36bd2da6bdb63d8ff3c4022cd (half of the lung)
+
+### TODOS
+
+* look at the data
+* 
+* write more config files
+* ensemble
+* create submissions
+* load the data as fast as possible
+  * Cache?
+
+TO BE CONTINUED
+
 
 ## Random
 ssh -X -p 10001 ikorshun@localhost
