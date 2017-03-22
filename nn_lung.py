@@ -365,3 +365,42 @@ class Unbroadcast(nn.layers.Layer):
         print all_dims
         return T.Unbroadcast(input, *all_dims)
 
+class LogMeanExp(nn.layers.Layer):
+    """
+    ln(mean(exp( r * x ))) /  r
+    """
+
+    def __init__(self, incoming, r=1, axis=-1, **kwargs):
+        super(LogMeanExp, self).__init__(incoming, **kwargs)
+        self.r = np.float32(r)
+        self.axis = axis
+
+    def get_output_shape_for(self, input_shape):
+        assert(len(input_shape)==3)
+        assert(input_shape[2]==1)
+        return (input_shape[0], 1)
+
+    def get_output_for(self, input, **kwargs):
+        ps = nonlinearities.sigmoid(input)
+        return T.log(T.mean(T.exp(self.r * ps), axis=(1,2)) + 1e-7) / self.r
+
+class AggMILLoss(nn.layers.Layer):
+    """
+    ln(mean(exp( r * x ))) /  r
+    """
+
+    def __init__(self, incoming, r=1, **kwargs):
+        super(AggMIL, self).__init__(incoming, **kwargs)
+        self.r = np.float32(r)
+
+    def get_output_shape_for(self, input_shape):
+        assert(len(input_shape)==3)
+        assert(input_shape[2]==1)
+        return (input_shape[0], 2)
+
+    def get_output_for(self, input, **kwargs):
+
+        ps = nonlinearities.sigmoid(input)
+        sum_p_r_benign = T.sum(ps,axis=1)
+        sum_log = T.sum(T.log(1-ps+1.e-12),axis=1)
+        return T.concatenate([sum_log, sum_p_r_benign])

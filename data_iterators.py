@@ -1252,3 +1252,26 @@ class BalancedDSBPatientsDataGenerator(object):
                                                    pixel_spacing=pixel_spacing))[:, None, :, :, :]
             y_batch[i] = self.id2label.get(pid) 
         return x_batch, y_batch, batch_pids
+
+class DSBDataGenerator(object):
+    def __init__(self, data_path, transform_params, data_prep_fun, patient_pids=None, **kwargs):
+        self.patient_paths = utils_lung.get_patient_data_paths(data_path)
+
+
+        self.patient_paths = [data_path + '/' + p for p in patient_pids]
+
+        self.nsamples = len(self.patient_paths)
+        self.data_path = data_path
+        self.data_prep_fun = data_prep_fun
+        self.transform_params = transform_params
+
+    def generate(self):
+        for p in self.patient_paths:
+            pid = utils_lung.extract_pid_dir(p)
+
+            img, pixel_spacing = utils_lung.read_dicom_scan(p)
+
+            x, tf_matrix = self.data_prep_fun(data=img, pixel_spacing=pixel_spacing)
+
+            x = np.float32(x)[None, None, :, :, :]
+            yield x,  pid
