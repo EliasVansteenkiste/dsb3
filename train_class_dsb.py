@@ -48,7 +48,7 @@ for layer in all_layers:
     name = string.ljust(layer.__class__.__name__, 32)
     num_param = sum([np.prod(p.get_value().shape) for p in layer.get_params()])
     num_param = string.ljust(num_param.__str__(), 10)
-    print '    %s %s %s' % (name, num_param, layer.output_shape)
+    print '    %s %s %s %s' % (name, num_param, layer.output_shape, layer.name)
 
 train_loss = config().build_objective(model, deterministic=False)
 valid_loss = config().build_objective(model, deterministic=True)
