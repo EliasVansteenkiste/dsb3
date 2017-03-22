@@ -89,6 +89,8 @@ def plot_slice_3d_3(input, mask, prediction, axis, pid, img_dir=None, idx=None):
 def plot_slice_3d_3axis(input, pid, img_dir=None, idx=None):
     # to convert cuda arrays to numpy array
     input = np.asarray(input)
+    if idx == None:
+        idx = np.array(input.shape)/2
 
     fig, ax = plt.subplots(2, 2, figsize=[8, 8])
     fig.canvas.set_window_title(pid)

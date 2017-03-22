@@ -574,6 +574,103 @@ class CandidatesDSBDataGenerator(object):
                 yield x_batch, y_batch, [pid]
 
 
+class AAPMPatientsDataGenerator(object):
+
+    def __init__(self, data_path, batch_size, transform_params, id2candidates_path, data_prep_fun,
+                 n_candidates_per_patient, rng, random, infinite, shuffle_top_n=False, patient_ids=None):
+
+
+        self.id2label = utils_lung.read_aapm_labels_per_patient(pathfinder.AAPM_LABELS_PATH)
+        self.id2candidates_path = id2candidates_path
+        self.patient_paths = []
+        if patient_ids is not None:
+            for pid in patient_ids:
+                self.patient_paths.append(utils_lung.get_path_to_image_from_patient(data_path,pid))
+        else:
+            raise ValueError('provide patient ids')
+
+        self.nsamples = len(self.patient_paths)
+        self.data_path = data_path
+        self.data_prep_fun = data_prep_fun
+        self.batch_size = batch_size
+        self.transform_params = transform_params
+        self.n_candidates_per_patient = n_candidates_per_patient
+        self.rng = rng
+        self.random = random
+        self.infinite = infinite
+        
+        #TODO: used for debugging purposes to take a look at the ground truth
+        self.ground_truth=utils_lung.read_aapm_annotations(pathfinder.AAPM_LABELS_PATH)
+
+        self.shuffle_top_n = shuffle_top_n
+
+
+    def generate(self):
+        while True:
+            rand_idxs = np.arange(self.nsamples)
+            if self.random:
+                self.rng.shuffle(rand_idxs)
+
+            for pos in xrange(0, len(rand_idxs), self.batch_size):
+                idxs_batch = rand_idxs[pos:pos + self.batch_size]
+
+                x_batch = np.zeros((self.batch_size, self.n_candidates_per_patient, 1,)
+                                   + self.transform_params['patch_size'], dtype='float32')
+                y_batch = np.zeros((self.batch_size,), dtype='float32')
+                pids_batch = []
+
+                for i, idx in enumerate(idxs_batch):
+                    patient_path = self.patient_paths[idx]
+                    pid = utils_lung.extract_pid_dir_aapm(patient_path)
+
+                    img, pixel_spacing = utils_lung.read_dicom_scan(patient_path)
+
+                    all_candidates = utils.load_pkl(self.id2candidates_path[pid])
+                    top_candidates = all_candidates[:self.n_candidates_per_patient]
+                    if self.shuffle_top_n:
+                        self.rng.shuffle(top_candidates)
+
+                    # first take a look at the image 
+                    # get the voxel coords of the node to 
+                    #print "ground_truth: {}".format(ground_truth)
+                    #utils_plots.plot_slice_3d_3axis(img, pid, img_dir=utils.get_dir_path('analysis',pathfinder.METADATA_PATH), idx=ground_truth)
+
+
+
+                    # can I probably just use that function to hand down the one center and set world coordinates to false? that should work I think :-)
+
+                    import utils_plots
+                    ground_truth=[idx for idx in self.ground_truth[pid][0][:-1]]
+                    ground_truth[0]=img.shape[0]-ground_truth[0]
+                    
+
+                    print "ground truth: {}".format(ground_truth)
+                    # TODO: candidates probably need to be converted to voxel coordinates to 
+                    # be comparable ?
+                    print "candidates: {}".format(top_candidates)
+
+                    # x_plot = np.float32(self.data_prep_fun(data=img,
+                    #                                            patch_centers=[ground_truth],
+                    #                                            pixel_spacing=pixel_spacing))[:, None, :, :, :]
+
+                    x_batch[i] = np.float32(self.data_prep_fun(data=img,
+                                                               patch_centers=top_candidates,
+                                                               pixel_spacing=pixel_spacing))[:, None, :, :, :]
+                    #utils_plots.plot_slice_3d_3axis(x_batch[i][0,0,:,:,:], pid, img_dir=utils.get_dir_path('analysis',pathfinder.METADATA_PATH))
+                    
+                    y_batch[i] = self.id2label.get(pid)
+                    pids_batch.append(pid)
+
+                if len(idxs_batch) == self.batch_size:
+                    yield x_batch, y_batch, pids_batch
+
+            if not self.infinite:
+                break
+
+
+
+
+
 class DSBPatientsDataGenerator(object):
 
     def __init__(self, data_path, batch_size, transform_params, id2candidates_path, data_prep_fun,
@@ -637,3 +734,92 @@ class DSBPatientsDataGenerator(object):
 
             if not self.infinite:
                 break
+
+
+class MixedPatientsDataGenerator(object):
+
+    def __init__(self, data_path,aapm_data_path, batch_size, transform_params, id2candidates_path,aapm_id2candidates_path, data_prep_fun,
+                 n_candidates_per_patient, rng, random, infinite, shuffle_top_n=False, patient_ids=None,aapm_patient_ids=None):
+
+
+        # ok we will not have colliding ids
+
+        # build id2label and id2candidate paths
+        dsb_id2label=utils_lung.read_labels(data_path) 
+        aapm_id2label=utils_lung.read_aapm_labels_per_patient(aapm_data_path)
+        
+
+        self.id2label = dsb_id2label.copy()#{**dsb_id2label, **aapm_id2label}
+        self.id2label.update(aapm_id2label)
+        print "id2label: {}".format(self.id2label)
+        self.id2candidates_path = id2candidates_path.copy()  #{id2candidates_path,aapm_id2candidates_path}
+        self.id2candidates_path.update(aapm_id2candidates_path)
+        print "id2candidates_path: {}".format(self.id2candidates_path)
+        self.patient_paths = []
+        if patient_ids is not None:
+            for pid in patient_ids:
+                self.patient_paths.append((pid,data_path + '/' + pid))
+        else:
+            raise ValueError('provide patient ids')
+
+        if aapm_patient_ids is not None:
+           for pid in aapm_patient_ids:
+               self.patient_paths.append((pid,utils_lung.get_path_to_image_from_patient(data_path,pid)))
+        else:
+            raise ValueError('provide aapm patient ids')
+
+
+
+        self.nsamples = len(self.patient_paths)
+        self.data_path = data_path
+        self.data_prep_fun = data_prep_fun
+        self.batch_size = batch_size
+        self.transform_params = transform_params
+        self.n_candidates_per_patient = n_candidates_per_patient
+        self.rng = rng
+        self.random = random
+        self.infinite = infinite
+
+        self.shuffle_top_n = shuffle_top_n
+
+
+    def generate(self):
+        while True:
+            rand_idxs = np.arange(self.nsamples)
+            if self.random:
+                self.rng.shuffle(rand_idxs)
+
+            for pos in xrange(0, len(rand_idxs), self.batch_size):
+                idxs_batch = rand_idxs[pos:pos + self.batch_size]
+
+                x_batch = np.zeros((self.batch_size, self.n_candidates_per_patient, 1,)
+                                   + self.transform_params['patch_size'], dtype='float32')
+                y_batch = np.zeros((self.batch_size,), dtype='float32')
+                pids_batch = []
+
+                for i, idx in enumerate(idxs_batch):
+                    (pid,patient_path) = self.patient_paths[idx]
+                    #pid = utils_lung.extract_pid_dir(patient_path)
+
+                    img, pixel_spacing = utils_lung.read_dicom_scan(patient_path)
+
+                    all_candidates = utils.load_pkl(self.id2candidates_path[pid])
+                    top_candidates = all_candidates[:self.n_candidates_per_patient]
+                    if self.shuffle_top_n:
+                        self.rng.shuffle(top_candidates)
+
+                    x_batch[i] = np.float32(self.data_prep_fun(data=img,
+                                                               patch_centers=top_candidates,
+                                                               pixel_spacing=pixel_spacing))[:, None, :, :, :]
+                    y_batch[i] = self.id2label.get(pid)
+                    pids_batch.append(pid)
+
+                if len(idxs_batch) == self.batch_size:
+                    yield x_batch, y_batch, pids_batch
+
+            if not self.infinite:
+                break
+
+
+
+

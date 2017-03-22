@@ -292,7 +292,7 @@ def get_patient_data_paths_aapm(data_dir):
          #patient_path = data_dir + pid + '/'
          #patient_studies=[ patient_path + study + '/' for study in os.listdir(patient_path)]
          #patient_series=[current_study + series +'/' for current_study in patient_studies for series in os.listdir(current_study)]
-         first_series=get_path_to_image_from_patient(data_dir,pid):
+         first_series=get_path_to_image_from_patient(data_dir,pid)
          output.append(first_series)
          
     return output#[data_dir + '/' + p for p in pids]
@@ -309,6 +309,41 @@ def read_labels(file_path):
             continue
         id, label = item.replace('\n', '').split(',')
         id2labels[id] = int(label)
+    return id2labels
+
+def read_aapm_labels_per_patient(file_path):
+    id2labels = defaultdict(list)
+    train_csv = open(file_path)
+    lines = train_csv.readlines()
+    i = 0
+    for item in lines:
+        if i == 0:
+            i = 1
+            continue
+
+        id, nodule_idx, x_y_pos, z,final_diagnosis = item.replace('\n', '').split(';')
+        final_diagnosis=final_diagnosis.strip()
+        if final_diagnosis == 'Primary lung cancer':
+            label=1
+        elif final_diagnosis == 'Suspicious malignant nodule':
+            label=1
+        else:
+            print "label: {}".format(final_diagnosis)
+            label=0
+        
+        id2labels[id].append(int(label))
+    
+    id2patlabels={id:np.prod(label_list) for (id,label_list) in id2labels.iteritems()}
+    print "id2patlabels: {}".format(id2patlabels)
+    return id2patlabels
+  
+
+
+
+
+
+
+
     return id2labels
 
 
@@ -351,34 +386,21 @@ def read_aapm_annotations(file_path):
         if i == 0:
             i = 1
             continue
-        #id, x, y, z, d = item.replace('\n', '').split(',')
-        id, nodule_idx, x_y_pos, z,final_diagnosis d = item.replace('\n', '').split(';')
-        # post-process x,y
-        x,y=x_y_pos.replace('\n', '')split(',')
-        print "x:{}".format(x)
-        print "y:{}".format(y)
-        print "z:{}".format(z)
-        # post-process diagnosis
+
+        id, nodule_idx, x_y_pos, z,final_diagnosis = item.replace('\n', '').split(';')
+
+        x,y=x_y_pos.replace('\n', '').split(',')
+        final_diagnosis = final_diagnosis.strip()
+
         if final_diagnosis == 'Primary lung cancer':
             d=1
-        else if 'Suspicious malignant nodule':
+        elif final_diagnosis ==  'Suspicious malignant nodule':
             d=1
         else:
             d=0
 
         id2xyzd[id].append([float(z)-1, float(y)-1, float(x)-1, float(d)])
-        # what to we need? the id of course, what else
-        # how does that work with the number of nodules? ok, that's the index..
-        # in which kind of coordinate system is the data? obviously we need to get into the same coordinate system somehow, otherwise this will be bad
-        # nodules in luna are annotated in the machine coordinates, so what we can do is commpute an image origin similar to the one seen in luna and just convert the nodules to coordinates useing the following formula:
-        # assuming the slides are aligned something like this should work:
-        # load all images, sort them by sequence number, use the origin of the upper left image, compute x position and y position as a distance from that origin ()
-
-
-
-        #id2xyzd[id].append([float(z), float(y), float(x), float(d)])
     return id2xyzd
-
 
 
 def read_luna_negative_candidates(file_path):
