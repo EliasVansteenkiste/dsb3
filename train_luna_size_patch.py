@@ -86,6 +86,8 @@ if config().restart_from_save:
     print '  setting learning rate to %.7f' % lr
     learning_rate.set_value(lr)
     losses_eval_train = resume_metadata['losses_eval_train']
+    losses_eval_train2 = resume_metadata['losses_eval_train2']
+
     losses_eval_valid = resume_metadata['losses_eval_valid']
     losses_eval_valid2 = resume_metadata['losses_eval_valid2']
 else:
