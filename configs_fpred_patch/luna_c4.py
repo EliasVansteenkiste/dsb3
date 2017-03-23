@@ -188,13 +188,9 @@ def build_branch(l_in):
     l = feat_red(l)
     l = inrn_v2(l)
 
-    l = inrn_v2_red(l)
-    l = inrn_v2(l)
     l = feat_red(l)
-    l = inrn_v2(l)
 
-    l = dense(nn.layers.dropout(l, p=0.3), 32)
-    l = dense(nn.layers.dropout(l, p=0.3), 32)
+    l = dense(nn.layers.dropout(l), 32)
     return l
 
 
@@ -210,7 +206,8 @@ def build_model(l_ins=None):
     l_out3 = build_branch(l_in3)  # pixelspacing of 4.
 
     l_merge = nn.layers.ConcatLayer([l_out1, l_out2, l_out3], axis=-1)
-    l_out = nn.layers.DenseLayer(l_merge, num_units=2,
+    l = dense(nn.layers.dropout(l_merge, p=0.2), 128)
+    l_out = nn.layers.DenseLayer(l, num_units=2,
                                  W=nn.init.Constant(0.),
                                  nonlinearity=nn.nonlinearities.softmax)
     l_ins = [l_in1, l_in2, l_in3]
