@@ -10,7 +10,7 @@ import lasagne
 import theano.tensor as T
 import utils
 
-restart_from_save = False  
+restart_from_save = "/home/eavsteen/dsb3/storage/metadata/dsb3//models/eavsteen/t_el_4-20170323-010448.pkl"
 rng = np.random.RandomState(33)
 
 # transformations
@@ -18,6 +18,7 @@ p_transform = {'patch_size': (48, 48, 48),
                'mm_patch_size': (48, 48, 48),
                'pixel_spacing': (1., 1., 1.)
                }
+
 p_transform_augment = {
     'translation_range_z': [-3, 3],
     'translation_range_y': [-3, 3],
@@ -190,22 +191,19 @@ def build_model():
 
 
 def build_objective(model, deterministic=False, epsilon=1e-12):
-    predictions = nn.layers.get_output(model.l_out)
+    predictions = nn.layers.get_output(model.l_out, deterministic=deterministic)
     targets = T.cast(T.flatten(nn.layers.get_output(model.l_target)), 'int32')
     cc = nn.objectives.categorical_crossentropy(predictions,targets)
     return T.mean(cc)
 
 def build_objective2(model, deterministic=False, epsilon=1e-12):
     predictions = nn.layers.get_output(model.l_out, deterministic=deterministic)
-    targets = T.cast(T.flatten(nn.layers.get_output(model.l_target)), 'int32')
-
+    targets = T.flatten(nn.layers.get_output(model.l_target))
+    targets = T.clip(targets, 0, 1)
     p_no_nodule = predictions[:,0]
-    p_nodule = 1-p_no_nodule
-
-    p = T.clip(p_nodule, epsilon, 1.-epsilon)
-    bce = T.nnet.binary_crossentropy(p, targets)
+    p_nodule = np.float32(1.)-p_no_nodule
+    bce = T.nnet.binary_crossentropy(p_nodule, targets)
     return T.mean(bce)
-
 
 
 def build_updates(train_loss, model, learning_rate):
