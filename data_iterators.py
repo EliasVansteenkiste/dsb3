@@ -316,23 +316,11 @@ class CandidatesLunaDataGenerator(object):
                 break
 
 
-class CandidatesMultipleTransformsLunaDataGenerator(object):
+class CandidatesMTLunaDataGenerator(object):
     def __init__(self, data_path, batch_size, transform_params, patient_ids, data_prep_fun, rng,
                  full_batch, random, infinite, positive_proportion, **kwargs):
         """
-
-        :param data_path:
-        :param batch_size:
         :param transform_params: this has to be a list with transformations
-        :param patient_ids:
-        :param data_prep_fun:
-        :param rng:
-        :param full_batch:
-        :param random:
-        :param infinite:
-        :param positive_proportion:
-        :param kwargs:
-        :return:
         """
         id2positive_annotations = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
         id2negative_annotations = utils_lung.read_luna_negative_candidates(pathfinder.LUNA_CANDIDATES_PATH)
@@ -415,6 +403,79 @@ class CandidatesMultipleTransformsLunaDataGenerator(object):
 
             if not self.infinite:
                 break
+
+
+class CandidatesMTValidLunaDataGenerator(object):
+    def __init__(self, data_path, transform_params, patient_ids, data_prep_fun, **kwargs):
+        """
+        :param transform_params: this has to be a list with transformations
+        """
+        rng = np.random.RandomState(42)  # do not change this!!!
+
+        id2positive_annotations = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
+        id2negative_annotations = utils_lung.read_luna_negative_candidates(pathfinder.LUNA_CANDIDATES_PATH)
+
+        self.file_extension = '.pkl' if 'pkl' in data_path else '.mhd'
+        self.id2positive_annotations = {}
+        self.id2negative_annotations = {}
+        self.id2patient_path = {}
+        n_positive, n_negative = 0, 0
+        for pid in patient_ids:
+            if pid in id2positive_annotations:
+                self.id2positive_annotations[pid] = id2positive_annotations[pid]
+                negative_annotations = id2negative_annotations[pid]
+                n_pos = len(id2positive_annotations[pid])
+                n_neg = len(id2negative_annotations[pid])
+                neg_idxs = rng.choice(n_neg, size=n_pos, replace=False)
+                negative_annotations_selected = []
+                for i in neg_idxs:
+                    negative_annotations_selected.append(negative_annotations[i])
+                self.id2negative_annotations[pid] = negative_annotations_selected
+
+                self.id2patient_path[pid] = data_path + '/' + pid + self.file_extension
+                n_positive += n_pos
+                n_negative += n_pos
+
+        print 'n positive', n_positive
+        print 'n negative', n_negative
+
+        self.nsamples = len(self.id2patient_path)
+        self.data_path = data_path
+        self.rng = rng
+        self.data_prep_fun = data_prep_fun
+        self.transform_params = transform_params
+        assert isinstance(self.transform_params, list)
+
+    def generate(self):
+        for pid in self.id2positive_annotations.iterkeys():
+            for patch_center in self.id2positive_annotations[pid]:
+                patient_path = self.id2patient_path[pid]
+
+                img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
+                    if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
+                y_batch = np.array([[1.]], dtype='float32')
+
+                xs_batch = self.data_prep_fun(data=img, patch_center=patch_center,
+                                              pixel_spacing=pixel_spacing,
+                                              luna_origin=origin)
+                for k in xrange(len(xs_batch)):
+                    xs_batch[k] = np.float32(xs_batch[k])[None, None, :, :, :]
+
+                yield xs_batch, y_batch, [pid]
+
+            for patch_center in self.id2negative_annotations[pid]:
+                patient_path = self.id2patient_path[pid]
+
+                img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
+                    if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
+                y_batch = np.array([[0.]], dtype='float32')
+                xs_batch = self.data_prep_fun(data=img, patch_center=patch_center,
+                                              pixel_spacing=pixel_spacing,
+                                              luna_origin=origin)
+                for k in xrange(len(xs_batch)):
+                    xs_batch[k] = np.float32(xs_batch[k])[None, None, :, :, :]
+
+                yield xs_batch, y_batch, [pid]
 
 
 class CandidatesLunaValidDataGenerator(object):

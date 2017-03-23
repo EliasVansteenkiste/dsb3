@@ -21,7 +21,8 @@ p_transform1 = {'patch_size': (48, 48, 48),
 
 p_transform2 = {'patch_size': (48, 48, 48),
                 'mm_patch_size': (48, 48, 48),
-                'pixel_spacing': (0.5, 0.5, 0.5)
+                'pixel_spacing': (0.5, 0.5, 0.5),
+                'interpolation_order': 0
                 }
 
 p_transform3 = {'patch_size': (48, 48, 48),
@@ -69,27 +70,27 @@ data_prep_function_valid = partial(data_prep_function,
                                    world_coord_system=True)
 
 # data iterators
-batch_size = 4
-nbatches_chunk = 8
+batch_size = 8
+nbatches_chunk = 1
 chunk_size = batch_size * nbatches_chunk
 
 train_valid_ids = utils.load_pkl(pathfinder.LUNA_VALIDATION_SPLIT_PATH)
 train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['valid']
 
-train_data_iterator = data_iterators.CandidatesMultipleTransformsLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
-                                                                                   batch_size=chunk_size,
-                                                                                   transform_params=p_transforms,
-                                                                                   data_prep_fun=data_prep_function_train,
-                                                                                   rng=rng,
-                                                                                   patient_ids=train_pids,
-                                                                                   full_batch=True, random=True,
-                                                                                   infinite=True,
-                                                                                   positive_proportion=0.5)
+train_data_iterator = data_iterators.CandidatesMTLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
+                                                                   batch_size=chunk_size,
+                                                                   transform_params=p_transforms,
+                                                                   data_prep_fun=data_prep_function_train,
+                                                                   rng=rng,
+                                                                   patient_ids=train_pids,
+                                                                   full_batch=True, random=True,
+                                                                   infinite=True,
+                                                                   positive_proportion=0.5)
 
-valid_data_iterator = data_iterators.CandidatesMultipleTransformsLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
-                                                                                   transform_params=p_transforms,
-                                                                                   data_prep_fun=data_prep_function_valid,
-                                                                                   patient_ids=valid_pids)
+valid_data_iterator = data_iterators.CandidatesMTValidLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
+                                                                        transform_params=p_transforms,
+                                                                        data_prep_fun=data_prep_function_valid,
+                                                                        patient_ids=valid_pids)
 
 nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
 max_nchunks = nchunks_per_epoch * 100
@@ -98,11 +99,10 @@ validate_every = int(5. * nchunks_per_epoch)
 save_every = int(1. * nchunks_per_epoch)
 
 learning_rate_schedule = {
-    0: 1e-5,
-    int(max_nchunks * 0.5): 5e-6,
-    int(max_nchunks * 0.6): 2e-6,
-    int(max_nchunks * 0.8): 1e-6,
-    int(max_nchunks * 0.9): 5e-7
+    0: 3e-4,
+    int(max_nchunks * 0.3): 2e-4,
+    int(max_nchunks * 0.6): 1e-4,
+    int(max_nchunks * 0.9): 1e-5
 }
 
 # model
@@ -114,8 +114,6 @@ conv3d = partial(dnn.Conv3DDNNLayer,
 
 max_pool3d = partial(dnn.MaxPool3DDNNLayer,
                      pool_size=2)
-
-drop = lasagne.layers.DropoutLayer
 
 dense = partial(lasagne.layers.DenseLayer,
                 W=lasagne.init.Orthogonal(),
@@ -178,6 +176,28 @@ def feat_red(lin):
     return l
 
 
+def build_branch(l_in):
+    l = conv3d(l_in, 64)
+    l = inrn_v2_red(l)
+    l = inrn_v2(l)
+    l = feat_red(l)
+    l = inrn_v2(l)
+
+    l = inrn_v2_red(l)
+    l = inrn_v2(l)
+    l = feat_red(l)
+    l = inrn_v2(l)
+
+    l = inrn_v2_red(l)
+    l = inrn_v2(l)
+    l = feat_red(l)
+    l = inrn_v2(l)
+
+    l = dense(nn.layers.dropout(l, p=0.3), 32)
+    l = dense(nn.layers.dropout(l, p=0.3), 32)
+    return l
+
+
 def build_model(l_ins=None):
     l_target = nn.layers.InputLayer((None, 1))
 
@@ -185,28 +205,17 @@ def build_model(l_ins=None):
     l_in2 = nn.layers.InputLayer((None, 1,) + p_transform2['patch_size']) if l_ins is None else l_ins[1]
     l_in3 = nn.layers.InputLayer((None, 1,) + p_transform3['patch_size']) if l_ins is None else l_ins[2]
 
-    # part 1 for pixelspacing of 1.
-    l = conv3d(l_in1, 64)
-    l = inrn_v2_red(l)
-    l = inrn_v2(l)
-    l = feat_red(l)
-    l = inrn_v2(l)
-    l = inrn_v2_red(l)
-    l = inrn_v2(l)
-    l = feat_red(l)
-    l = inrn_v2(l)
-    l = feat_red(l)
-    l = dense(drop(l), 128)
+    l_out1 = build_branch(l_in1)  # pixelspacing of 1.
+    l_out2 = build_branch(l_in2)  # pixelspacing of 0.5
+    l_out3 = build_branch(l_in3)  # pixelspacing of 4.
 
-    l_out = nn.layers.DenseLayer(l, num_units=2,
+    l_merge = nn.layers.ConcatLayer([l_out1, l_out2, l_out3], axis=-1)
+    l_out = nn.layers.DenseLayer(l_merge, num_units=2,
                                  W=nn.init.Constant(0.),
                                  nonlinearity=nn.nonlinearities.softmax)
+    l_ins = [l_in1, l_in2, l_in3]
 
-    l_out = nn.layers.DenseLayer(l_d02, num_units=2,
-                                 W=nn.init.Constant(0.),
-                                 nonlinearity=nn.nonlinearities.softmax)
-
-    return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
+    return namedtuple('Model', ['l_ins', 'l_out', 'l_target'])(l_ins, l_out, l_target)
 
 
 def build_objective(model, deterministic=False, epsilon=1e-12):

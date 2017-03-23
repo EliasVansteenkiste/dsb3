@@ -11,7 +11,8 @@ rng = np.random.RandomState(42)
 # transformations
 p_transform = {'patch_size': (48, 48, 48),
                'mm_patch_size': (48, 48, 48),
-               'pixel_spacing': (0.5, 0.5, 0.5)
+               'pixel_spacing': (0.5, 0.5, 0.5),
+               # 'interpolation_order': 0
                }
 p_transform_augment = {
     'translation_range_z': [-16, 16],
