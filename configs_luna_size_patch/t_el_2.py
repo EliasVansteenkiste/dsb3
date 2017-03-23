@@ -63,12 +63,14 @@ train_data_iterator = data_iterators.CandidatesLunaSizeBinDataGenerator(data_pat
                                                                  rng=rng,
                                                                  patient_ids=train_valid_ids['train'],
                                                                  full_batch=True, random=True, infinite=True,
-                                                                 positive_proportion=0.5)
+                                                                 positive_proportion=0.5,
+                                                                 size_borders=[4,8,12,16,20,24,28,32,36])
 
 valid_data_iterator = data_iterators.CandidatesLunaSizeBinValidDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                       transform_params=p_transform,
                                                                       data_prep_fun=data_prep_function_valid,
-                                                                      patient_ids=train_valid_ids['valid'])
+                                                                      patient_ids=train_valid_ids['valid'],
+                                                                      size_borders=[4,8,12,16,20,24,28,32,36])
 
 nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
 max_nchunks = nchunks_per_epoch * 100
@@ -180,10 +182,21 @@ def build_model():
 
 
 def build_objective(model, deterministic=False, epsilon=1e-12):
-    predictions = nn.layers.get_output(model.l_out)
+    predictions = nn.layers.get_output(model.l_out, deterministic=deterministic)
     targets = T.cast(T.flatten(nn.layers.get_output(model.l_target)), 'int32')
     cc = nn.objectives.categorical_crossentropy(predictions,targets)
     return T.mean(cc)
+
+
+def build_objective2(model, deterministic=False, epsilon=1e-12):
+    predictions = nn.layers.get_output(model.l_out, deterministic=deterministic)
+    targets = T.flatten(nn.layers.get_output(model.l_target))
+    targets = T.clip(targets, 0, 1)
+    p_no_nodule = predictions[:,0]
+    p_nodule = np.float32(1.)-p_no_nodule
+    p = T.clip(p_nodule, epsilon, 1.-epsilon)
+    bce = T.nnet.binary_crossentropy(p, targets)
+    return T.mean(bce)
 
 
 def build_updates(train_loss, model, learning_rate):
