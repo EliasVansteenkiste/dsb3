@@ -53,24 +53,24 @@ for line in open("/home/frederic/kaggle-dsb3/data/stage1_labels.csv","r"):
 print("Zeros valid: "+str(sum(zero_list_v)/float(len(zero_list_v))))
 print("Ones valid: "+str(sum(one_list_v)/float(len(one_list_v))))
 
-bins = numpy.arange(0,1.01,0.1)
+bins = numpy.arange(0,1.01,0.05)
 
 plt.figure()
-plt.hist([zero_list_v,zero_list_t], bins=bins,color=["blue","red"],stacked=False,label=["valid","test"])
+plt.hist([zero_list_v,zero_list_t],normed=True, bins=bins,color=["blue","red"],stacked=False,label=["valid","test"])
 plt.legend(prop={'size': 10})
 plt.title("Zero probs")
 plt.xlabel('Probability')
 plt.ylabel('Counts')
-
+plt.xticks(numpy.arange(0,1.01,0.1))
 plt.grid(True)
 
 plt.figure()
-plt.hist([one_list_v,one_list_t], bins=bins,color=["blue","red"],stacked=False,label=["valid","test"])
+plt.hist([one_list_v,one_list_t],normed=True, bins=bins,color=["blue","red"],stacked=False,label=["valid","test"])
 plt.legend(prop={'size': 10})
 plt.title("One probs")
 plt.xlabel('Probability')
 plt.ylabel('Counts')
-
+plt.xticks(numpy.arange(0,1.01,0.1))
 plt.grid(True)
 
 plt.show()
