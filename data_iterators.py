@@ -751,10 +751,10 @@ class MixedPatientsDataGenerator(object):
 
         self.id2label = dsb_id2label.copy()#{**dsb_id2label, **aapm_id2label}
         self.id2label.update(aapm_id2label)
-        print "id2label: {}".format(self.id2label)
+        #print "id2label: {}".format(self.id2label)
         self.id2candidates_path = id2candidates_path.copy()  #{id2candidates_path,aapm_id2candidates_path}
         self.id2candidates_path.update(aapm_id2candidates_path)
-        print "id2candidates_path: {}".format(self.id2candidates_path)
+        #print "id2candidates_path: {}".format(self.id2candidates_path)
         self.patient_paths = []
         if patient_ids is not None:
             for pid in patient_ids:
@@ -765,8 +765,7 @@ class MixedPatientsDataGenerator(object):
         if aapm_patient_ids is not None:
            for pid in aapm_patient_ids:
                self.patient_paths.append((pid,utils_lung.get_path_to_image_from_patient(aapm_data_path,pid)))
-        else:
-            raise ValueError('provide aapm patient ids')
+
 
 
 

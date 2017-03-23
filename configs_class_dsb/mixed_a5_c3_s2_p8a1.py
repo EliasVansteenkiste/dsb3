@@ -57,7 +57,7 @@ aapm_train_valid_ids =aapm_id2candidates_path.keys() #utils.load_pkl(pathfinder.
 
 #FIXXME: to try this out we separate only into a train set as well as validation set, testset is just the validation set all over again
 
-aapm_train_pids, aapm_valid_pids, aapm_test_pids = aapm_train_valid_ids[:50], aapm_train_valid_ids[50:], aapm_train_valid_ids[50:]
+aapm_train_pids, aapm_valid_pids, aapm_test_pids = aapm_train_valid_ids,None,None
 
 train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
 
@@ -102,7 +102,7 @@ test_data_iterator = data_iterators.MixedPatientsDataGenerator(data_path=pathfin
                                                              random=False, infinite=False)
 
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size
-max_nchunks = nchunks_per_epoch * 10* 20
+max_nchunks = nchunks_per_epoch * 10
 
 validate_every = int(0.5 * nchunks_per_epoch)
 save_every = int(0.25 * nchunks_per_epoch)
