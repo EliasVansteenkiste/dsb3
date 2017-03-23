@@ -78,7 +78,8 @@ save_every = int(1. * nchunks_per_epoch)
 
 learning_rate_schedule = {
     0: 1e-4,
-    int(max_nchunks * 0.9): 1e-5
+    int(max_nchunks * 0.5): 1e-5,
+    int(max_nchunks * 0.9): 1e-6
 }
 
 # model
@@ -95,7 +96,7 @@ drop = lasagne.layers.DropoutLayer
 
 dense = partial(lasagne.layers.DenseLayer,
                 W=lasagne.init.Orthogonal(),
-                nonlinearity=lasagne.nonlinearities.very_leaky_rectify)
+                nonlinearity=lasagne.nonlinearities.rectify)
 
 
 def inrn_v2(lin):
@@ -174,7 +175,7 @@ def build_model(l_in=None):
     l = feat_red(l)
     l = inrn_v2(l)
 
-    l = dense(drop(l), 32)
+    l = dense(drop(l), 128)
     l = dense(drop(l), 32)
 
     l_out = nn.layers.DenseLayer(l, num_units=2,
