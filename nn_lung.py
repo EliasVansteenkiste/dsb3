@@ -381,8 +381,7 @@ class LogMeanExp(nn.layers.Layer):
         return (input_shape[0], 1)
 
     def get_output_for(self, input, **kwargs):
-        ps = nonlinearities.sigmoid(input)
-        return T.log(T.mean(T.exp(self.r * ps), axis=(1,2)) + 1e-7) / self.r
+        return T.log(T.mean(T.exp(self.r * input), axis=self.axis) + 1e-7) / self.r
 
 class AggMILLoss(nn.layers.Layer):
     """
