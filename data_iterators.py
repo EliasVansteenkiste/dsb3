@@ -838,11 +838,12 @@ class CandidatesLunaSizeBinDataGenerator(object):
                         ybin = 0
                         for idx, border in enumerate(self.bin_borders):
                             if diameter<border:
-                                ybin = diameter
+                                ybin = idx
                                 break                            
                         y_batch[i] = 1. + ybin
                     else:
                         y_batch[i] = 0. 
+                    #print 'y_batch[i]', y_batch[i], 'diameter', diameter
 
                     x_batch[i, 0, :, :, :] = self.data_prep_fun(data=img,
                                                                 patch_center=patch_center,
@@ -909,7 +910,7 @@ class CandidatesLunaSizeBinValidDataGenerator(object):
                 ybin = 0
                 for idx, border in enumerate(self.bin_borders):
                     if diameter<border:
-                        ybin = diameter
+                        ybin = idx
                         break  
 
                 y_batch = np.array([[1. + ybin]], dtype='float32')
