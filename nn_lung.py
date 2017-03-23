@@ -325,6 +325,22 @@ class ProbTheory(nn.layers.Layer):
     def get_output_for(self, input, **kwargs):
         return 1-T.prod(1-input, axis=self.axis)
 
+class PushUpOnlyHighVals(nn.layers.Layer):
+    def __init__(self, incoming, factor, power, axis=(1,2), **kwargs):
+        super(PushUpOnlyHighVals, self).__init__(incoming, **kwargs)
+        self.axis = axis
+        self.factor = factor
+        self.power = power
+
+    def get_output_shape_for(self, input_shape):
+        assert(len(input_shape)==3)
+        assert(input_shape[2]==1)
+        return (input_shape[0], 1)
+
+    def get_output_for(self, input, **kwargs):
+        W = input+(self.factor*input)**self.power
+        return T.sum(input*W, axis=self.axis)/T.sum(W, axis=self.axis)
+
 
 class AggAllBenignExp(nn.layers.Layer):
     """
