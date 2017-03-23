@@ -56,18 +56,21 @@ for n, (x, id) in enumerate(data_iterator.generate()):
     pid = id
 
     print(pid)
-    print model.l_out.shape
-    predictions = np.empty((x.shape[2]//patch_size, x.shape[3]//patch_size, x.shape[4]//patch_size,) + model.l_out.shape[1])
+    print model.l_out.output_shape
+    predictions = np.empty(((x.shape[2]-patch_size+1)//stride, (x.shape[3]-patch_size+1)//stride, (x.shape[4]-patch_size+1)//stride,) + (model.l_out.output_shape[1],))
     print predictions.shape
     print 'x.shape', x.shape
-    for i in np.arange(0,x.shape[2]-patch_size+1,patch_size):  
-        for j in np.arange(0,x.shape[3]-patch_size+1,patch_size):  
-            for k in np.arange(0,x.shape[4]-patch_size+1,patch_size):
-                x_in = x[0,0,i:i+patch_size,j:j+patch_size,k:k+patch_size]
-                print x_in.shape
-                x_shared.set_value(x_in[None,None,:,:,:])
+    for idxi, i in enumerate(np.arange(0,x.shape[2]-patch_size,stride)):  
+        print 'slice idxi', idxi 
+	for idxj, j in enumerate(np.arange(0,x.shape[3]-patch_size,stride)):  
+            for idxk, k in enumerate(np.arange(0,x.shape[4]-patch_size,stride)):
+                #print i, j, k, '|', idxi, idxj, idxk, x.shape[4], x.shape[4]-patch_size+1
+		x_in = x[0,0,i:i+patch_size,j:j+patch_size,k:k+patch_size]
+                #print x_in.shape
+                x_shared.set_value(x_in[None,:,:,:])
                 fm = get_featuremap()
-                predictions.append(fm)
+		#print fm.shape
+                predictions[idxi,idxj,idxk] = fm[0]
 
     result = np.concatenate(predictions,axis=0)
 
