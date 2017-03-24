@@ -2,6 +2,8 @@ import numpy
 import cPickle
 
 test_data_1 = cPickle.load(open("/home/frederic/kaggle-dsb3/metadata/model-predictions/frederic/dsb_a_liolme16_c3_s2_p8a1-20170322-213835/dsb_a_liolme16_c3_s2_p8a1-20170322-213835-public_LB.pkl","rb"))
+#test_data_1 = cPickle.load(open("/home/frederic/kaggle-dsb3/metadata/model-predictions/frederic/dsb_af1_c2_s5_p8a1-20170324-111246/dsb_af1_c2_s5_p8a1-20170324-111246-test.pkl","rb"))
+
 test_data_2 = cPickle.load(open("/home/frederic/kaggle-dsb3/metadata/model-predictions/frederic/dsb_af4_c3_s5_p8a1-20170323-101206/dsb_af4_c3_s5_p8a1-20170323-101206-test.pkl","rb"))
 #test_data_2 = cPickle.load(open("/home/frederic/kaggle-dsb3/metadata/model-predictions/frederic/dsb_af4_c3_s2_p8a1-20170319-123808/dsb_af4_c3_s2_p8a1-20170319-123808-test.pkl","rb"))
 

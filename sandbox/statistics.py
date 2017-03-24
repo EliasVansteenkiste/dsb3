@@ -10,6 +10,8 @@ zero_list_t = []
 one_list_t = []
 
 first = True
+i=0
+
 for line in open("/home/frederic/kaggle-dsb3/data/test_labels.csv","r"):
     parts = line.strip().split(";")
     if first:
@@ -18,16 +20,19 @@ for line in open("/home/frederic/kaggle-dsb3/data/test_labels.csv","r"):
         # if parts[0][0:5]=="f4d23":
         #     one_list.append(1)
         # else:
+
         if parts[1]=="0":
             zero_list_t.append(test_data[parts[0]])
         else:
             one_list_t.append(test_data[parts[0]])
+        i+=1
+
 
 print("Zeros test: "+str(sum(zero_list_t)/float(len(zero_list_t))))
 print("Ones test: "+str(sum(one_list_t)/float(len(one_list_t))))
 
-a = numpy.log(numpy.asarray(one_list_t))
-b = numpy.log(1-numpy.asarray(zero_list_t))
+a = numpy.log(numpy.clip(numpy.asarray(one_list_t),0.0,1))
+b = numpy.log(1-numpy.clip(numpy.asarray(zero_list_t),0.,1))
 c = numpy.concatenate([a,b])
 
 print("Log loss "+str(-numpy.mean(c)))
@@ -45,6 +50,7 @@ for line in open("/home/frederic/kaggle-dsb3/data/stage1_labels.csv","r"):
         first = False
     else:
         if parts[0] in valid_data:
+
             if parts[1]=="0":
                 zero_list_v.append(valid_data[parts[0]])
             else:
@@ -52,6 +58,14 @@ for line in open("/home/frederic/kaggle-dsb3/data/stage1_labels.csv","r"):
 
 print("Zeros valid: "+str(sum(zero_list_v)/float(len(zero_list_v))))
 print("Ones valid: "+str(sum(one_list_v)/float(len(one_list_v))))
+
+a = numpy.log(numpy.clip(numpy.asarray(one_list_v),0.,1))
+b = numpy.log(1-numpy.clip(numpy.asarray(zero_list_v),0,1))
+c = numpy.concatenate([a,b])
+
+print("Log loss "+str(-numpy.mean(c)))
+
+
 
 bins = numpy.arange(0,1.01,0.05)
 
