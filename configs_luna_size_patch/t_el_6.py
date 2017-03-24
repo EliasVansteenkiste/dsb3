@@ -10,7 +10,7 @@ import lasagne
 import theano.tensor as T
 import utils
 
-restart_from_save = "/home/eavsteen/dsb3/storage/metadata/dsb3//models/eavsteen/t_el_4-20170323-010448.pkl"
+restart_from_save = None #"/home/eavsteen/dsb3/storage/metadata/dsb3//models/eavsteen/t_el_4-20170323-010448.pkl"
 rng = np.random.RandomState(33)
 
 # transformations
@@ -58,6 +58,8 @@ chunk_size = batch_size * nbatches_chunk
 train_valid_ids = utils.load_pkl(pathfinder.LUNA_VALIDATION_SPLIT_PATH)
 train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['valid']
 
+bin_borders = [4,8,20,30,100]
+
 train_data_iterator = data_iterators.CandidatesLunaSizeBinDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                  batch_size=chunk_size,
                                                                  transform_params=p_transform,
@@ -82,12 +84,12 @@ validate_every = int(5. * nchunks_per_epoch)
 save_every = int(5. * nchunks_per_epoch)
 
 learning_rate_schedule = {
-    0: 1e-4,
-    int(max_nchunks * 0.5): 5e-5,
-    int(max_nchunks * 0.6): 2.5e-5,
-    int(max_nchunks * 0.7): 1.25e-5,
-    int(max_nchunks * 0.8): 0.625e-6,
-    int(max_nchunks * 0.9): 0.3125e-6
+    0: 4e-4,
+    int(max_nchunks * 0.5): 1e-4,
+    int(max_nchunks * 0.6): 5e-5,
+    int(max_nchunks * 0.7): 2.5e-5,
+    int(max_nchunks * 0.8): 1.25e-5,
+    int(max_nchunks * 0.9): 0.625e-5
 }
 
 # model
