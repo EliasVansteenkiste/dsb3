@@ -316,8 +316,9 @@ class AggAllBenignProd(nn.layers.Layer):
     takes elementwise product between 2 layers
     """
 
-    def __init__(self, incoming, **kwargs):
+    def __init__(self, incoming, apply_nl = True, **kwargs):
         super(AggAllBenignProd, self).__init__(incoming, **kwargs)
+        self.apply_nl = apply_nl
 
     def get_output_shape_for(self, input_shape):
         assert(len(input_shape)==3)
@@ -325,7 +326,8 @@ class AggAllBenignProd(nn.layers.Layer):
         return (input_shape[0], 1)
 
     def get_output_for(self, input, **kwargs):
-        ps = nonlinearities.sigmoid(input)
+        if apply_nl:
+            ps = nonlinearities.sigmoid(input)
         prod = T.prod(ps, axis=(1,2))
         output = 1 - prod
         return output
@@ -362,3 +364,41 @@ class Unbroadcast(nn.layers.Layer):
     def get_output_for(self, input, **kwargs):
         return T.unbroadcast(input, 0,1,2,3,4,5)
 
+class LogMeanExp(nn.layers.Layer):
+    """
+    ln(mean(exp( r * x ))) /  r
+    """
+
+    def __init__(self, incoming, r=1, axis=-1, **kwargs):
+        super(LogMeanExp, self).__init__(incoming, **kwargs)
+        self.r = np.float32(r)
+        self.axis = axis
+
+    def get_output_shape_for(self, input_shape):
+        assert(len(input_shape)==3)
+        assert(input_shape[2]==1)
+        return (input_shape[0], 1)
+
+    def get_output_for(self, input, **kwargs):
+        return T.log(T.mean(T.exp(self.r * input), axis=self.axis) + 1e-7) / self.r
+
+class AggMILLoss(nn.layers.Layer):
+    """
+    ln(mean(exp( r * x ))) /  r
+    """
+
+    def __init__(self, incoming, r=1, **kwargs):
+        super(AggMIL, self).__init__(incoming, **kwargs)
+        self.r = np.float32(r)
+
+    def get_output_shape_for(self, input_shape):
+        assert(len(input_shape)==3)
+        assert(input_shape[2]==1)
+        return (input_shape[0], 2)
+
+    def get_output_for(self, input, **kwargs):
+
+        ps = nonlinearities.sigmoid(input)
+        sum_p_r_benign = T.sum(ps,axis=1)
+        sum_log = T.sum(T.log(1-ps+1.e-12),axis=1)
+        return T.concatenate([sum_log, sum_p_r_benign])

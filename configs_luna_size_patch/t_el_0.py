@@ -10,7 +10,7 @@ import lasagne
 import theano.tensor as T
 import utils
 
-restart_from_save = False
+restart_from_save = False  
 rng = np.random.RandomState(33)
 
 # transformations
@@ -56,7 +56,7 @@ chunk_size = batch_size * nbatches_chunk
 train_valid_ids = utils.load_pkl(pathfinder.LUNA_VALIDATION_SPLIT_PATH)
 train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['valid']
 
-train_data_iterator = data_iterators.CandidatesLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
+train_data_iterator = data_iterators.CandidatesLunaSizeBinDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                  batch_size=chunk_size,
                                                                  transform_params=p_transform,
                                                                  data_prep_fun=data_prep_function_train,
@@ -65,7 +65,7 @@ train_data_iterator = data_iterators.CandidatesLunaDataGenerator(data_path=pathf
                                                                  full_batch=True, random=True, infinite=True,
                                                                  positive_proportion=0.5)
 
-valid_data_iterator = data_iterators.CandidatesLunaValidDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
+valid_data_iterator = data_iterators.CandidatesLunaSizeBinValidDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                       transform_params=p_transform,
                                                                       data_prep_fun=data_prep_function_valid,
                                                                       patient_ids=train_valid_ids['valid'])
@@ -171,9 +171,9 @@ def build_model():
 
     l = dense(drop(l), 128)
 
-    l_out = nn.layers.DenseLayer(l, num_units=2,
-                                 W=lasagne.init.Orthogonal('relu'),
-                                 b=lasagne.init.Constant(0.5),
+    l_out = nn.layers.DenseLayer(l, num_units=10,
+                                 W=lasagne.init.Orthogonal(),
+                                 b=lasagne.init.Constant(0.1),
                                  nonlinearity=nn.nonlinearities.softmax)
 
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
@@ -182,13 +182,11 @@ def build_model():
 def build_objective(model, deterministic=False, epsilon=1e-12):
     predictions = nn.layers.get_output(model.l_out)
     targets = T.cast(T.flatten(nn.layers.get_output(model.l_target)), 'int32')
-    p = predictions[T.arange(predictions.shape[0]), targets]
-    p = T.clip(p, epsilon, 1.)
-
-    loss = T.mean(T.log(p))
-    return -loss
+    cc = nn.objectives.categorical_crossentropy(predictions,targets)
+    return T.mean(cc)
 
 
 def build_updates(train_loss, model, learning_rate):
     updates = nn.updates.adam(train_loss, nn.layers.get_all_params(model.l_out, trainable=True), learning_rate)
     return updates
+    

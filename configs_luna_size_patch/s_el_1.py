@@ -56,7 +56,7 @@ chunk_size = batch_size * nbatches_chunk
 train_valid_ids = utils.load_pkl(pathfinder.LUNA_VALIDATION_SPLIT_PATH)
 train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['valid']
 
-train_data_iterator = data_iterators.CandidatesLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
+train_data_iterator = data_iterators.CandidatesLunaSizeDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                  batch_size=chunk_size,
                                                                  transform_params=p_transform,
                                                                  data_prep_fun=data_prep_function_train,
@@ -65,7 +65,7 @@ train_data_iterator = data_iterators.CandidatesLunaDataGenerator(data_path=pathf
                                                                  full_batch=True, random=True, infinite=True,
                                                                  positive_proportion=0.5)
 
-valid_data_iterator = data_iterators.CandidatesLunaValidDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
+valid_data_iterator = data_iterators.CandidatesLunaSizeValidDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                       transform_params=p_transform,
                                                                       data_prep_fun=data_prep_function_valid,
                                                                       patient_ids=train_valid_ids['valid'])
@@ -74,15 +74,15 @@ nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
 max_nchunks = nchunks_per_epoch * 100
 
 validate_every = int(5. * nchunks_per_epoch)
-save_every = int(5. * nchunks_per_epoch)
+save_every = int(1. * nchunks_per_epoch)
 
 learning_rate_schedule = {
-    0: 1e-4,
-    int(max_nchunks * 0.5): 5e-5,
-    int(max_nchunks * 0.6): 2.5e-5,
-    int(max_nchunks * 0.7): 1.25e-5,
-    int(max_nchunks * 0.8): 0.625e-6,
-    int(max_nchunks * 0.9): 0.3125e-6
+    0: 2e-4, 
+    int(max_nchunks * 0.5): 1e-4,
+    int(max_nchunks * 0.6): 5e-5,
+    int(max_nchunks * 0.7): 2.5e-5,
+    int(max_nchunks * 0.8): 1.25e-5,
+    int(max_nchunks * 0.9): 0.625e-5,
 }
 
 # model
@@ -171,24 +171,22 @@ def build_model():
 
     l = dense(drop(l), 128)
 
-    l_out = nn.layers.DenseLayer(l, num_units=2,
+    l_out = nn.layers.DenseLayer(l, num_units=1,
                                  W=lasagne.init.Orthogonal('relu'),
-                                 b=lasagne.init.Constant(0.5),
-                                 nonlinearity=nn.nonlinearities.softmax)
+                                 b=lasagne.init.Constant(5),
+                                 nonlinearity=nn.nonlinearities.softplus)
 
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 
 
 def build_objective(model, deterministic=False, epsilon=1e-12):
     predictions = nn.layers.get_output(model.l_out)
-    targets = T.cast(T.flatten(nn.layers.get_output(model.l_target)), 'int32')
-    p = predictions[T.arange(predictions.shape[0]), targets]
-    p = T.clip(p, epsilon, 1.)
-
-    loss = T.mean(T.log(p))
-    return -loss
+    targets = T.flatten(nn.layers.get_output(model.l_target))
+    sq_err = nn.objectives.squared_error(predictions,targets)
+    return T.mean(sq_err)
 
 
 def build_updates(train_loss, model, learning_rate):
     updates = nn.updates.adam(train_loss, nn.layers.get_all_params(model.l_out, trainable=True), learning_rate)
     return updates
+    
