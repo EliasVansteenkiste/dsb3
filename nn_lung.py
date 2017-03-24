@@ -360,7 +360,5 @@ class Unbroadcast(nn.layers.Layer):
         return input_shape
 
     def get_output_for(self, input, **kwargs):
-        all_dims = range(len(input.shape))
-        print all_dims
-        return T.Unbroadcast(input, *all_dims)
+        return T.unbroadcast(input, 0,1,2,3,4,5)
 
