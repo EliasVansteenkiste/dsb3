@@ -326,6 +326,101 @@ class CandidatesLunaDataGenerator(object):
                 break
 
 
+class CandidatesLunaDataGeneratorBetter(object):
+    def __init__(self, data_path, batch_size, transform_params, patient_ids, data_prep_fun, rng,
+                 full_batch, random, infinite, positive_proportion, nodule_size_bins=None, **kwargs):
+
+        id2positive_annotations = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
+        id2negative_annotations = utils_lung.read_luna_negative_candidates(pathfinder.LUNA_CANDIDATES_PATH)
+
+        self.file_extension = '.pkl' if 'pkl' in data_path else '.mhd'
+        self.id2positive_annotations = {}
+        self.id2negative_annotations = {}
+        self.pid2patient_path = {}
+        n_positive = 0
+        for pid in patient_ids:
+            self.pid2patient_path[pid] = data_path + '/' + pid + self.file_extension
+            if pid in id2positive_annotations:
+                self.id2positive_annotations[pid] = id2positive_annotations[pid]
+                n_positive += len(id2positive_annotations[pid])
+            if pid in id2negative_annotations:
+                self.id2negative_annotations[pid] = id2negative_annotations[pid]
+
+        self.nsamples = int(n_positive + (1. - positive_proportion) / positive_proportion * n_positive)
+        print 'n samples', self.nsamples
+        self.idx2pid_annotation = {}
+        i = 0
+        for pid, annotations in self.id2positive_annotations.iteritems():
+            for a in annotations:
+                self.idx2pid_annotation[i] = (pid, a)
+                i += 1
+        print 'n positive', len(self.idx2pid_annotation.keys())
+
+        while i < self.nsamples:
+            pid = rng.choice(self.id2negative_annotations.keys())
+            patient_annotations = self.id2negative_annotations[pid]
+            a = patient_annotations[rng.randint(len(patient_annotations))]
+            self.idx2pid_annotation[i] = (pid, a)
+            i += 1
+        assert len(self.idx2pid_annotation) == self.nsamples
+
+        self.data_path = data_path
+        self.batch_size = batch_size
+        self.rng = rng
+        self.full_batch = full_batch
+        self.random = random
+        self.infinite = infinite
+        self.data_prep_fun = data_prep_fun
+        self.transform_params = transform_params
+        self.positive_proportion = positive_proportion
+        self.nodule_size_bins = nodule_size_bins
+        if nodule_size_bins is not None:
+            assert self.transform_params['pixel_spacing'] == (1., 1., 1.)
+
+    def find_nodule_size_bin(self, diameter):
+        if diameter == 0:
+            return 0
+        else:
+            return np.digitize(diameter, self.nodule_size_bins)
+
+    def generate(self):
+        while True:
+            rand_idxs = np.arange(self.nsamples)
+            if self.random:
+                self.rng.shuffle(rand_idxs)
+            for pos in xrange(0, len(rand_idxs), self.batch_size):
+                idxs_batch = rand_idxs[pos:pos + self.batch_size]
+                nb = len(idxs_batch)
+                # allocate batches
+                x_batch = np.zeros((nb, 1) + self.transform_params['patch_size'], dtype='float32')
+                y_batch = np.zeros((nb, 1), dtype='float32')
+                patients_ids = []
+
+                for i, idx in enumerate(idxs_batch):
+                    pid, patch_center = self.idx2pid_annotation[idx]
+                    patient_path = self.pid2patient_path[pid]
+                    patients_ids.append(pid)
+
+                    img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
+                        if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
+
+                    y_batch[i] = float(patch_center[-1] > 0) if self.nodule_size_bins is None else \
+                        self.find_nodule_size_bin(patch_center[-1])
+                    x_batch[i, 0, :, :, :] = self.data_prep_fun(data=img,
+                                                                patch_center=patch_center,
+                                                                pixel_spacing=pixel_spacing,
+                                                                luna_origin=origin)
+
+                if self.full_batch:
+                    if nb == self.batch_size:
+                        yield x_batch, y_batch, patients_ids
+                else:
+                    yield x_batch, y_batch, patients_ids
+
+            if not self.infinite:
+                break
+
+
 class CandidatesMTLunaDataGenerator(object):
     def __init__(self, data_path, batch_size, transform_params, patient_ids, data_prep_fun, rng,
                  full_batch, random, infinite, positive_proportion, **kwargs):
@@ -560,6 +655,59 @@ class CandidatesLunaValidDataGenerator(object):
                 img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
                     if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
                 y_batch = np.array([[0.]], dtype='float32')
+                x_batch = np.float32(self.data_prep_fun(data=img,
+                                                        patch_center=patch_center,
+                                                        pixel_spacing=pixel_spacing,
+                                                        luna_origin=origin))[None, None, :, :, :]
+
+                yield x_batch, y_batch, [pid]
+
+
+class CandidatesPositiveSizesLunaValidDataGenerator(object):
+    def __init__(self, data_path, transform_params, patient_ids, data_prep_fun, nodule_size_bins=None,
+                 **kwargs):
+        rng = np.random.RandomState(42)  # do not change this!!!
+
+        id2positive_annotations = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
+
+        self.file_extension = '.pkl' if 'pkl' in data_path else '.mhd'
+        self.id2positive_annotations = {}
+        self.id2negative_annotations = {}
+        self.id2patient_path = {}
+        n_positive = 0
+        for pid in patient_ids:
+            if pid in id2positive_annotations:
+                self.id2positive_annotations[pid] = id2positive_annotations[pid]
+                n_pos = len(id2positive_annotations[pid])
+                self.id2patient_path[pid] = data_path + '/' + pid + self.file_extension
+                n_positive += n_pos
+
+        print 'n positive', n_positive
+
+        self.nsamples = len(self.id2patient_path)
+        self.data_path = data_path
+        self.rng = rng
+        self.data_prep_fun = data_prep_fun
+        self.transform_params = transform_params
+        self.nodule_size_bins = nodule_size_bins
+        if nodule_size_bins is not None:
+            assert self.transform_params['pixel_spacing'] == (1., 1., 1.)
+
+    def find_nodule_size_bin(self, diameter):
+        return np.digitize(diameter, self.nodule_size_bins)
+
+    def generate(self):
+
+        for pid in self.id2positive_annotations.iterkeys():
+            for patch_center in self.id2positive_annotations[pid]:
+                patient_path = self.id2patient_path[pid]
+
+                img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
+                    if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
+                if self.nodule_size_bins is None:
+                    y_batch = np.array([[1.]], dtype='float32')
+                else:
+                    y_batch = np.array([[self.find_nodule_size_bin(patch_center[-1])]], dtype='float32')
                 x_batch = np.float32(self.data_prep_fun(data=img,
                                                         patch_center=patch_center,
                                                         pixel_spacing=pixel_spacing,

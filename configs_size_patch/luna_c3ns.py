@@ -28,7 +28,11 @@ p_transform_augment = {
 }
 
 nodule_size_bins = [4, 8, 20, 30, 100]
-size_priors = [0.5392, 0.3, 0.14, 0.02, 0.0008]
+positive_proportion = 0.4  # this is for top 4 for luna_c3_s5_p8a1
+size_priors = [0.0413153456998, 0.614671163575, 0.301854974705, 0.0404721753794, 0.00168634064081]
+size_priors = [s * positive_proportion for s in size_priors]
+size_priors[0] += 1. - positive_proportion
+
 n_size_classes = len(nodule_size_bins)
 
 
@@ -67,7 +71,7 @@ train_data_iterator = data_iterators.CandidatesLunaDataGenerator(data_path=pathf
                                                                  rng=rng,
                                                                  patient_ids=train_pids,
                                                                  full_batch=True, random=True, infinite=True,
-                                                                 positive_proportion=0.5,
+                                                                 positive_proportion=positive_proportion,
                                                                  nodule_size_bins=nodule_size_bins)
 
 valid_data_iterator = data_iterators.CandidatesLunaValidDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
@@ -79,7 +83,7 @@ valid_data_iterator = data_iterators.CandidatesLunaValidDataGenerator(data_path=
 nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
 max_nchunks = nchunks_per_epoch * 100
 
-validate_every = int(5. * nchunks_per_epoch)
+validate_every = int(10. * nchunks_per_epoch)
 save_every = int(1. * nchunks_per_epoch)
 
 learning_rate_schedule = {
@@ -184,12 +188,10 @@ def build_model(l_in=None):
     l = dense(drop(l), 128)
 
     softmax_bias = np.log(size_priors)
-    print softmax_bias
     l_out = nn.layers.DenseLayer(l, num_units=n_size_classes,
                                  W=nn.init.Constant(0.),
                                  b=np.array(softmax_bias, dtype='float32'),
                                  nonlinearity=nn.nonlinearities.softmax)
-
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 
 

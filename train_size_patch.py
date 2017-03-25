@@ -21,7 +21,7 @@ if len(sys.argv) < 2:
     sys.exit("Usage: train.py <configuration_name>")
 
 config_name = sys.argv[1]
-set_configuration('configs_fpred_patch', config_name)
+set_configuration('configs_size_patch', config_name)
 expid = utils.generate_expid(config_name)
 print
 print "Experiment ID: %s" % expid

@@ -11,11 +11,11 @@ for v in id2annotations.itervalues():
 
 diameters = np.array(diameters)
 
-print 0.5 * len(np.where(diameters > 30)[0]) / len(diameters)
-print 0.5 * len(np.where((diameters < 30) * (diameters > 20))[0]) / len(diameters)
-print 0.5 * len(np.where((diameters < 20) * (diameters > 8))[0]) / len(diameters)
-print 0.5 * len(np.where((diameters < 8) * (diameters > 4))[0]) / len(diameters)
-# print 1. * len(np.where(np.array(diameters) < 4)[0]) / len(diameters)
+print 1. * len(np.where(diameters > 30)[0]) / len(diameters)
+print 1. * len(np.where((diameters < 30) * (diameters > 20))[0]) / len(diameters)
+print 1. * len(np.where((diameters < 20) * (diameters > 8))[0]) / len(diameters)
+print 1. * len(np.where((diameters < 8) * (diameters > 4))[0]) / len(diameters)
+print 1. * len(np.where(np.array(diameters) < 4)[0]) / len(diameters)
 
 n = (2038 + 1034 + 268 + 16)
 
