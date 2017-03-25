@@ -376,6 +376,14 @@ def read_luna_annotations(file_path):
 
 
 
+def get_aapm_ids(file_path):
+    
+    
+    id2xyzd = read_aapm_annotations(file_path)
+
+    return id2xyzd.keys()
+
+
 def read_aapm_annotations(file_path):
     id2xyzd = defaultdict(list)
     train_csv = open(file_path)

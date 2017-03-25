@@ -40,6 +40,7 @@ def write_aapm_candidates(candidates_path):
                 if np.sqrt(np.sum((current_annotation-candidate)**2)) > 64:
                     neg_candidates.append(candidate)
 
+        print "pid: {}".format(pid)
         print "number of annotations: {}".format(len(patient_annotations))
         print "number of candidates: {}".format(len(candidates))
         print "number of negative candidates: {}".format(len(neg_candidates))
@@ -47,21 +48,15 @@ def write_aapm_candidates(candidates_path):
         pid2negcandidates[pid]=neg_candidates
 
         with open(pathfinder.AAPM_CANDIDATES_PATH,'wb') as csvfile:
-            writer=csv.writer(csvfile, delimiter=';',
+            writer=csv.writer(csvfile, delimiter=',',
                             quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
             writer.writerow(['id', 'z', 'y', 'x'])
             for (pid,candidate_list) in pid2negcandidates.iteritems():
                 for candidate in candidate_list:
                    
-                    writer.writerow([pid,candidate[0],candidate[1],candidate[2],candidate[3]])
-    #spamwriter.writerow(['Spam', 'Lovely Spam', 'Wonderful Spam'])
-
-    # now write them out to a csv
-    
-
-
-
+                    writer.writerow([pid,candidate[0],candidate[1],candidate[2],0.0])
+  
 
 
         
