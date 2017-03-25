@@ -328,7 +328,8 @@ class CandidatesLunaDataGenerator(object):
 
 class CandidatesLunaDataGeneratorBetter(object):
     def __init__(self, data_path, batch_size, transform_params, patient_ids, data_prep_fun, rng,
-                 full_batch, random, infinite, positive_proportion, nodule_size_bins=None, **kwargs):
+                 full_batch, random, infinite, positive_proportion,
+                 label_prep_fun=None, **kwargs):
 
         id2positive_annotations = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
         id2negative_annotations = utils_lung.read_luna_negative_candidates(pathfinder.LUNA_CANDIDATES_PATH)
@@ -373,15 +374,9 @@ class CandidatesLunaDataGeneratorBetter(object):
         self.data_prep_fun = data_prep_fun
         self.transform_params = transform_params
         self.positive_proportion = positive_proportion
-        self.nodule_size_bins = nodule_size_bins
-        if nodule_size_bins is not None:
+        self.label_prep_fun = label_prep_fun
+        if label_prep_fun is not None:
             assert self.transform_params['pixel_spacing'] == (1., 1., 1.)
-
-    def find_nodule_size_bin(self, diameter):
-        if diameter == 0:
-            return 0
-        else:
-            return np.digitize(diameter, self.nodule_size_bins)
 
     def generate(self):
         while True:
@@ -404,8 +399,8 @@ class CandidatesLunaDataGeneratorBetter(object):
                     img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
                         if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
 
-                    y_batch[i] = float(patch_center[-1] > 0) if self.nodule_size_bins is None else \
-                        self.find_nodule_size_bin(patch_center[-1])
+                    y_batch[i] = float(patch_center[-1] > 0) if self.label_prep_fun is None else \
+                        self.label_prep_fun(patch_center[-1])
                     x_batch[i, 0, :, :, :] = self.data_prep_fun(data=img,
                                                                 patch_center=patch_center,
                                                                 pixel_spacing=pixel_spacing,
@@ -584,7 +579,7 @@ class CandidatesMTValidLunaDataGenerator(object):
 
 
 class CandidatesLunaValidDataGenerator(object):
-    def __init__(self, data_path, transform_params, patient_ids, data_prep_fun, nodule_size_bins=None,
+    def __init__(self, data_path, transform_params, patient_ids, data_prep_fun, label_prep_fun=None,
                  **kwargs):
         rng = np.random.RandomState(42)  # do not change this!!!
 
@@ -620,15 +615,9 @@ class CandidatesLunaValidDataGenerator(object):
         self.rng = rng
         self.data_prep_fun = data_prep_fun
         self.transform_params = transform_params
-        self.nodule_size_bins = nodule_size_bins
-        if nodule_size_bins is not None:
+        self.label_prep_fun = label_prep_fun
+        if label_prep_fun is not None:
             assert self.transform_params['pixel_spacing'] == (1., 1., 1.)
-
-    def find_nodule_size_bin(self, diameter):
-        if diameter == 0:
-            return 0
-        else:
-            return np.digitize(diameter, self.nodule_size_bins)
 
     def generate(self):
 
@@ -638,10 +627,10 @@ class CandidatesLunaValidDataGenerator(object):
 
                 img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
                     if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
-                if self.nodule_size_bins is None:
+                if self.label_prep_fun is None:
                     y_batch = np.array([[1.]], dtype='float32')
                 else:
-                    y_batch = np.array([[self.find_nodule_size_bin(patch_center[-1])]], dtype='float32')
+                    y_batch = np.array([[self.label_prep_fun(patch_center[-1])]], dtype='float32')
                 x_batch = np.float32(self.data_prep_fun(data=img,
                                                         patch_center=patch_center,
                                                         pixel_spacing=pixel_spacing,

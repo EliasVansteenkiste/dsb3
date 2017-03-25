@@ -6,7 +6,6 @@ from itertools import izip
 import lasagne as nn
 import numpy as np
 import theano
-from datetime import datetime, timedelta
 import utils
 import logger
 import theano.tensor as T
@@ -26,8 +25,7 @@ if len(sys.argv) < 2:
     sys.exit("Usage: train.py <configuration_name>")
 
 config_name = sys.argv[1]
-config_name = 'dsb_a04_c3ns_s5_p8a1'
-set_configuration('configs_class_dsb', config_name)
+set_configuration('configs_size_dsb', config_name)
 
 malignancy = np.array([0., 0.01, 0.15, 0.75, 1.])
 malignancy = np.reshape(malignancy, (5, 1))
@@ -71,13 +69,6 @@ print
 print 'Data'
 print 'n train: %d' % train_data_iterator.nsamples
 print 'n validation: %d' % valid_data_iterator.nsamples
-print 'n chunks per epoch', config().nchunks_per_epoch
-
-chunk_idx = 0
-start_time = time.time()
-prev_time = start_time
-tmp_losses_train = []
-losses_train_print = []
 
 data_iter = config().test_data_iterator
 
@@ -90,11 +81,13 @@ for x_chunk_train, y_chunk_train, id_train in buffering.buffered_gen_threaded(
     x_shared.set_value(x_chunk_train)
     y_shared.set_value(y_chunk_train)
 
+    print pid, pid2label[pid]
+
     predictions = iter_validate()
-    # print predictions
+    print predictions
     p = 1. - np.prod(1. - predictions.dot(malignancy))
     pid2prediction[pid] = p
     # pid2label[pid] = y_chunk_train[0]
-    print pid, pid2label[pid], p
+    print p
 
 print  utils_lung.evaluate_log_loss(pid2prediction, pid2label)

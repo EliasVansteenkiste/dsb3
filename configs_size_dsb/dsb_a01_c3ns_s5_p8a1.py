@@ -1,15 +1,14 @@
 from collections import namedtuple
 from functools import partial
-
 import lasagne as nn
 import numpy as np
 import theano.tensor as T
-
 import data_iterators
 import data_transforms
 import pathfinder
 import utils
 import utils_lung
+import string
 
 # TODO: import correct config here
 candidates_config = 'dsb_c3_s5_p8a1'
@@ -86,90 +85,30 @@ test_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinde
                                                              patient_ids=test_pids,
                                                              random=False, infinite=False)
 
-nchunks_per_epoch = train_data_iterator.nsamples / batch_size
-max_nchunks = nchunks_per_epoch * 10
 
-validate_every = int(nchunks_per_epoch)
-save_every = int(0.25 * nchunks_per_epoch)
-
-learning_rate_schedule = {
-    0: 1e-5,
-    int(5 * nchunks_per_epoch): 2e-6,
-    int(6 * nchunks_per_epoch): 1e-6,
-    int(7 * nchunks_per_epoch): 5e-7,
-    int(9 * nchunks_per_epoch): 2e-7
-}
-
-untrained_weigths_grad_scale = 10
-
-
-# model
-def build_nodule_classification_model(l_in):
+def build_model():
     metadata_dir = utils.get_dir_path('models', pathfinder.METADATA_PATH)
     metadata_path = utils.find_model_metadata(metadata_dir, patch_class_config.__name__.split('.')[-1])
     metadata = utils.load_pkl(metadata_path)
 
-    model = patch_class_config.build_model(l_in)
-    print 'setting parameters from ', metadata_path
-    nn.layers.set_all_param_values(model.l_out, metadata['param_values'])
-    return model
-
-
-def build_model():
+    print 'Build model'
     l_in = nn.layers.InputLayer((None, n_candidates_per_patient, 1,) + p_transform['patch_size'])
     l_in_rshp = nn.layers.ReshapeLayer(l_in, (-1, 1,) + p_transform['patch_size'])
-    l_target = nn.layers.InputLayer((batch_size,))
 
-    nodule_classification_model = build_nodule_classification_model(l_in_rshp)
+    model_patch = patch_class_config.build_model(l_in=l_in_rshp)
+    all_layers = nn.layers.get_all_layers(model_patch.l_out, treat_as_input=[model_patch.l_in])
+    num_params = nn.layers.count_params(model_patch.l_out)
+    print '  number of parameters: %d' % num_params
+    print string.ljust('  layer output shapes:', 36),
+    print string.ljust('#params:', 10),
+    print 'output shape:'
+    for layer in all_layers:
+        name = string.ljust(layer.__class__.__name__, 32)
+        num_param = sum([np.prod(p.get_value().shape) for p in layer.get_params()])
+        num_param = string.ljust(num_param.__str__(), 10)
+        print '    %s %s %s' % (name, num_param, layer.output_shape)
+    nn.layers.set_all_param_values(all_layers, metadata['param_values'])
 
-    l_roi = nn.layers.ReshapeLayer(nodule_classification_model.l_out,
-                                   (-1, n_candidates_per_patient))
+    l_target = nn.layers.InputLayer((None,))
 
-    l_out = nodule_classification_model.l_out
-
-    return namedtuple('Model', ['l_in', 'l_out', 'l_target', 'l_roi', 'l_roi_dense_out'])(l_in, l_out, l_target,
-                                                                                          l_roi,
-                                                                                          nodule_classification_model.l_out)
-
-
-def build_objective(model, deterministic=False, epsilon=1e-12):
-    if deterministic:
-        loss = build_validation_objective(model, deterministic=True, epsilon=1e-12)
-        return loss
-    else:
-        targets = nn.layers.get_output(model.l_target)
-
-        # for negative examples
-        p0 = nn.layers.get_output(model.l_roi_p0, deterministic=deterministic)
-        p0 = T.clip(p0, epsilon, 1.)
-        p0 = T.sum(T.log(p0), axis=-1)
-
-        # for positive examples
-        p1 = nn.layers.get_output(model.l_out, deterministic=deterministic)[:, 0]
-        p1 = T.log(p1)
-
-        loss = -1. * T.mean((1 - targets) * p0 + targets * p1, axis=0)
-    return loss
-
-
-def build_validation_objective(model, deterministic=True, epsilon=1e-12):
-    targets = nn.layers.get_output(model.l_target)
-    predictions = nn.layers.get_output(model.l_out, deterministic=deterministic)[:, 0]
-    predictions = T.clip(predictions, epsilon, 1. - epsilon)
-    p1 = T.log(predictions)
-    p0 = T.log(1. - predictions)
-
-    loss = -1. * T.mean((1 - targets) * p0 + targets * p1, axis=0)
-    return loss
-
-
-def build_updates(train_loss, model, learning_rate):
-    params = nn.layers.get_all_params(model.l_out)
-    grads = T.grad(train_loss, params)
-    for idx, param in enumerate(params):
-        grad_scale = getattr(param.tag, 'grad_scale', 1)
-        if grad_scale != 1:
-            grads[idx] *= grad_scale
-
-    updates = nn.updates.adam(grads, params, learning_rate)
-    return updates
+    return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, model_patch.l_out, l_target)

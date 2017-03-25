@@ -51,6 +51,13 @@ def data_prep_function(data, patch_center, pixel_spacing, luna_origin, p_transfo
     return x
 
 
+def label_prep_fun(label):
+    if label == 0:
+        return 0
+    else:
+        return np.digitize(label, nodule_size_bins)
+
+
 data_prep_function_train = partial(data_prep_function, p_transform_augment=p_transform_augment,
                                    p_transform=p_transform, world_coord_system=True)
 data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
@@ -72,13 +79,13 @@ train_data_iterator = data_iterators.CandidatesLunaDataGenerator(data_path=pathf
                                                                  patient_ids=train_pids,
                                                                  full_batch=True, random=True, infinite=True,
                                                                  positive_proportion=positive_proportion,
-                                                                 nodule_size_bins=nodule_size_bins)
+                                                                 label_prep_fun=label_prep_fun)
 
 valid_data_iterator = data_iterators.CandidatesLunaValidDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                       transform_params=p_transform,
                                                                       data_prep_fun=data_prep_function_valid,
                                                                       patient_ids=valid_pids,
-                                                                      nodule_size_bins=nodule_size_bins)
+                                                                      label_prep_fun=label_prep_fun)
 
 nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
 max_nchunks = nchunks_per_epoch * 100

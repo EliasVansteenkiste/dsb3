@@ -5,7 +5,6 @@ import pathfinder
 import lasagne as nn
 from collections import namedtuple
 from functools import partial
-import lasagne.layers.dnn as dnn
 import lasagne
 import theano.tensor as T
 import utils
@@ -52,6 +51,13 @@ def data_prep_function(data, patch_center, pixel_spacing, luna_origin, p_transfo
     return x
 
 
+def label_prep_fun(label):
+    if label == 0:
+        return 0
+    else:
+        return np.digitize(label, nodule_size_bins)
+
+
 data_prep_function_train = partial(data_prep_function, p_transform_augment=p_transform_augment,
                                    p_transform=p_transform, world_coord_system=True)
 data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
@@ -73,13 +79,14 @@ train_data_iterator = data_iterators.CandidatesLunaDataGenerator(data_path=pathf
                                                                  patient_ids=train_pids,
                                                                  full_batch=True, random=True, infinite=True,
                                                                  positive_proportion=positive_proportion,
-                                                                 nodule_size_bins=nodule_size_bins)
+                                                                 label_prep_fun=label_prep_fun)
 
 valid_data_iterator = data_iterators.CandidatesLunaValidDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                       transform_params=p_transform,
                                                                       data_prep_fun=data_prep_function_valid,
                                                                       patient_ids=valid_pids,
-                                                                      nodule_size_bins=nodule_size_bins)
+                                                                      nodule_size_bins=nodule_size_bins,
+                                                                      label_prep_fun=label_prep_fun)
 
 nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
 max_nchunks = nchunks_per_epoch * 100
@@ -109,13 +116,8 @@ def build_nodule_classification_model(l_in):
     metadata_dir = utils.get_dir_path('models', pathfinder.METADATA_PATH)
     metadata_path = utils.find_model_metadata(metadata_dir, patch_class_config.__name__.split('.')[-1])
     metadata = utils.load_pkl(metadata_path)
-
     model = patch_class_config.build_model(l_in)
     nn.layers.set_all_param_values(model.l_out, metadata['param_values'])
-
-    l_out = model.l_out.input_layer
-    l_out.W.tag.grad_scale = untrained_weigths_grad_scale / 2.
-    l_out.b.tag.grad_scale = untrained_weigths_grad_scale / 2.
     return model
 
 
@@ -126,11 +128,14 @@ def build_model(l_in=None):
     nodule_classification_model = build_nodule_classification_model(l_in)
 
     softmax_bias = np.log(size_priors)
-    l_out = nn.layers.DenseLayer(nodule_classification_model.l_out, num_units=n_size_classes,
+    l_out = nn.layers.DenseLayer(nodule_classification_model.l_out.input_layer,
+                                 num_units=n_size_classes,
                                  W=nn.init.Constant(0.),
                                  b=np.array(softmax_bias, dtype='float32'),
                                  nonlinearity=nn.nonlinearities.softmax)
 
+    nodule_classification_model.l_out.input_layer.W.tag.grad_scale = untrained_weigths_grad_scale / 2.
+    nodule_classification_model.l_out.input_layer.b.tag.grad_scale = untrained_weigths_grad_scale / 2.
     l_out.W.tag.grad_scale = untrained_weigths_grad_scale
     l_out.b.tag.grad_scale = untrained_weigths_grad_scale
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)

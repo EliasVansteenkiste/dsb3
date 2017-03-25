@@ -1,8 +1,6 @@
 ## TODO
 
-- 
-- dsb_a04 ?
-- luna_c4
+- add augmentation noise to luna
 
 ## LUNA
 * generate blobs: test_seg_scan.py  
