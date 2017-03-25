@@ -56,7 +56,7 @@ data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
                                    p_transform=p_transform)
 
 # data iterators
-batch_size = 1
+batch_size = 2
 
 train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
 train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
@@ -216,8 +216,8 @@ def build_model():
     #
     # l = nn.layers.DropoutLayer(l)
     #
-    # l = nn.layers.DenseLayer(l, num_units=128, W=nn.init.Orthogonal(),
-    #                          nonlinearity=nn.nonlinearities.rectify)
+    l = nn.layers.DenseLayer(l, num_units=256, W=nn.init.Orthogonal(),
+                             nonlinearity=nn.nonlinearities.rectify)
 
     #l = nn.layers.DropoutLayer(l)
 

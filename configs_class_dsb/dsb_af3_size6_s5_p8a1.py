@@ -56,7 +56,7 @@ data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
                                    p_transform=p_transform)
 
 # data iterators
-batch_size = 1
+batch_size = 2
 
 train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
 train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
@@ -193,11 +193,8 @@ def load_pretrained_model(l_in):
     l = inrn_v2_red(l)
     l = inrn_v2_red(l)
 
-    l = dense(drop(l), 512)
-
-
     metadata = utils.load_pkl(os.path.join("/home/frederic/kaggle-dsb3/metadata/models/frederic/","t_el_6-20170324-021750.pkl"))
-    nn.layers.set_all_param_values(l, metadata['param_values'][:-2])
+    nn.layers.set_all_param_values(l, metadata['param_values'][:-4])
 
     return l
 
@@ -214,10 +211,10 @@ def build_model():
     # #l = feat_red(l)
     #
     #
-    # l = nn.layers.DropoutLayer(l)
+    l = nn.layers.DropoutLayer(l)
     #
-    # l = nn.layers.DenseLayer(l, num_units=128, W=nn.init.Orthogonal(),
-    #                          nonlinearity=nn.nonlinearities.rectify)
+    l = nn.layers.DenseLayer(l, num_units=256, W=nn.init.Orthogonal(),
+                             nonlinearity=nn.nonlinearities.rectify)
 
     #l = nn.layers.DropoutLayer(l)
 

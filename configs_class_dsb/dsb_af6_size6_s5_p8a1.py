@@ -23,8 +23,8 @@ candidates_path = predictions_dir + '/%s' % candidates_config
 id2candidates_path = utils_lung.get_candidates_paths(candidates_path)
 
 # transformations
-p_transform = {'patch_size': (48, 48, 48),
-               'mm_patch_size': (48, 48, 48),
+p_transform = {'patch_size': (72, 72, 72),
+               'mm_patch_size': (72, 72, 72),
                'pixel_spacing': (1., 1., 1.)
                }
 
@@ -56,7 +56,7 @@ data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
                                    p_transform=p_transform)
 
 # data iterators
-batch_size = 1
+batch_size = 2
 
 train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
 train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
@@ -197,7 +197,7 @@ def load_pretrained_model(l_in):
 
 
     metadata = utils.load_pkl(os.path.join("/home/frederic/kaggle-dsb3/metadata/models/frederic/","t_el_6-20170324-021750.pkl"))
-    nn.layers.set_all_param_values(l, metadata['param_values'][:-2])
+    nn.layers.set_all_param_values(l, metadata['param_values'][:-4])
 
     return l
 
@@ -215,8 +215,8 @@ def build_model():
     #
     #
     # l = nn.layers.DropoutLayer(l)
-    #
-    # l = nn.layers.DenseLayer(l, num_units=128, W=nn.init.Orthogonal(),
+    # #
+    # l = nn.layers.DenseLayer(l, num_units=256, W=nn.init.Orthogonal(),
     #                          nonlinearity=nn.nonlinearities.rectify)
 
     #l = nn.layers.DropoutLayer(l)
@@ -240,10 +240,5 @@ def build_objective(model, deterministic=False, epsilon=1e-12):
 
 
 def build_updates(train_loss, model, learning_rate):
-    final_layer=nn.layers.get_all_layers(model.l_out)[-3]
-    param_final=final_layer.get_params(trainable=True)
-    final_layer=nn.layers.get_all_layers(model.l_out)[-4]
-    param_final.extend(final_layer.get_params(trainable=True))
 
-    updates = nn.updates.adam(train_loss, param_final, learning_rate)
-    return updates
+    return nn.updates.adam(train_loss, nn.layers.get_all_params(model.l_out, trainable=True), learning_rate)
