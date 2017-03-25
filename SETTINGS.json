@@ -11,7 +11,8 @@
   "LUNA_CANDIDATES_PATH": "/mnt/storage/data/dsb3/luna/candidates_V2.csv",
   "LUNA_VALIDATION_SPLIT_PATH": "/mnt/storage/data/dsb3/luna/validation_split.pkl",
   "AAPM_DATA_PATH":"/data/dsb3/SPIE-AAPM/test/",
-  "AAPM_LABELS_PATH":"/data/dsb3/SPIE-AAPM/test.csv" 
+  "AAPM_LABELS_PATH":"/data/dsb3/SPIE-AAPM/test.csv", 
+  "AAPM_CANDIDATES_PATH":"/mnt/storage/data/dsb3/SPIE-AAPM/aapm_neg_candidates.csv"
 
 
 }

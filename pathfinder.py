@@ -60,3 +60,8 @@ AAPM_LABELS_PATH = paths["AAPM_LABELS_PATH"]
 print "lung seg path: {}".format(LUNA_LUNG_SEG_PATH)
 if not os.path.isfile(AAPM_LABELS_PATH):
     raise ValueError('no AAPM labels csv found!')
+
+AAPM_CANDIDATES_PATH = paths["AAPM_CANDIDATES_PATH"]
+print "lung seg path: {}".format(AAPM_CANDIDATES_PATH)
+if not os.path.isfile(AAPM_CANDIDATES_PATH):
+    raise ValueError('no AAPM candidates csv found!')

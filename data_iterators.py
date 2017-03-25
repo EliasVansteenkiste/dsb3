@@ -819,6 +819,126 @@ class MixedPatientsDataGenerator(object):
             if not self.infinite:
                 break
 
+class CandidatesMixedMalignantBenignGenerator(object):
+    def __init__(self, data_path,aapm_data_path, batch_size, transform_params, patient_ids, aapm_patient_ids, data_prep_fun,
+                 rng, full_batch, random, infinite, positive_proportion,bin_borders = [4,8,20,50], **kwargs):
+        
+        # just the labels
+        id2positive_annotations = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
+        id2positive_annotations_aapm = utils_lung.read_aapm_annotations(pathfinder.AAPM_LABELS_PATH)
+        
+        id2negative_annotations = utils_lung.read_luna_negative_candidates(pathfinder.LUNA_CANDIDATES_PATH)
 
+        id2negative_annotations_aapm = utils_lung.read_luna_negative_candidates(pathfinder.AAPM_CANDIDATES_PATH)
+
+
+        self.file_extension = '.pkl' if 'pkl' in data_path else '.mhd'
+        self.id2positive_annotations = {}
+        self.id2negative_annotations = {}
+        self.patient_paths = []
+        n_positive, n_negative = 0, 0
+
+        # just build the labels beforehand, up here, per pid?
+
+
+        for pid in patient_ids:
+
+            if pid in id2positive_annotations:
+
+                self.id2positive_annotations[pid] = id2positive_annotations[pid]
+                self.id2negative_annotations[pid] = id2negative_annotations[pid]
+                self.patient_paths.append((pid,data_path + '/' + pid + self.file_extension))
+                n_positive += len(id2positive_annotations[pid])
+                n_negative += len(id2negative_annotations[pid])
+
+
+        for pid in aapm_patient_ids:
+
+            if pid in id2positive_annotations_aapm:
+
+                self.id2positive_annotations[pid] = id2positive_annotations_aapm[pid]
+
+                self.id2negative_annotations[pid] = id2negative_annotations_aapm[pid]
+                self.patient_paths.append((pid,utils_lung.get_path_to_image_from_patient(aapm_data_path,pid)))
+                n_positive += len(id2positive_annotations[pid])
+                n_negative += len(id2negative_annotations[pid])
+
+        print 'n positive', n_positive
+        print 'n negative', n_negative
+
+        self.nsamples = len(self.patient_paths)
+
+        print 'n patients', self.nsamples
+        self.aapm_patient_ids=aapm_patient_ids
+        self.data_path = data_path
+        self.batch_size = batch_size
+        self.rng = rng
+        self.full_batch = full_batch
+        self.random = random
+        self.infinite = infinite
+        self.data_prep_fun = data_prep_fun
+        self.transform_params = transform_params
+        self.positive_proportion = positive_proportion
+        self.bin_borders = bin_borders
+
+    def generate(self):
+        while True:
+            rand_idxs = np.arange(self.nsamples)
+            if self.random:
+                self.rng.shuffle(rand_idxs)
+            for pos in xrange(0, len(rand_idxs), self.batch_size):
+                idxs_batch = rand_idxs[pos:pos + self.batch_size]
+                nb = len(idxs_batch)
+                # allocate batches
+                x_batch = np.zeros((nb, 1) + self.transform_params['patch_size'], dtype='float32')
+                y_batch = np.zeros((nb, 1), dtype='float32')
+                patients_ids = []
+
+                for i, idx in enumerate(idxs_batch):
+                    patient_path = self.patient_paths[idx]
+
+                    id = utils_lung.extract_pid_filename(patient_path, self.file_extension)
+                    patients_ids.append(id)
+
+
+                    img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
+                        if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
+
+                    y_batch[i] = np.zeros((1,3))
+
+
+
+                    if i < np.rint(self.batch_size * self.positive_proportion):
+                        patient_annotations = self.id2positive_annotations[id]
+                        y_batch=[i][0]=1
+                    else:
+                        patient_annotations = self.id2negative_annotations[id]
+                        y_batch=[i][0]=0
+
+                    patch_center = patient_annotations[self.rng.randint(len(patient_annotations))]
+
+                    if y_batch[i][0]==1 and id in self.aapm_patient_ids:
+                        y_batch=[i][1]=1
+                        y_batch=[i][2]=patient_annotations[-1]
+                    
+
+                    x_batch[i, 0, :, :, :] = self.data_prep_fun(data=img,
+                                                                patch_center=patch_center,
+                                                                pixel_spacing=pixel_spacing,
+                                                                luna_origin=origin)
+
+                if self.full_batch:
+                    if nb == self.batch_size:
+                        yield x_batch, y_batch, patients_ids
+                else:
+                    yield x_batch, y_batch, patients_ids
+
+            if not self.infinite:
+                break
+
+
+
+
+    
 
 
