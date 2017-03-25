@@ -4,6 +4,42 @@ import pathfinder
 import utils
 
 
+# 6% to 28% for nodules 5 to 10 mm,
+prob5 = (0.01+0.06)/2.
+slope10 = (0.28-prob5) / (10.-5.)
+offset10 = prob5 - slope10*5.
+
+slope20 = (0.64-0.28) / (20.-10.)
+offset20 = 0.28 - slope20*10.
+
+# and 64% to 82% for nodules >20 mm in diameter
+slope25 = (0.82-0.64) / (25.-20.)
+offset25 = 0.64 - slope25*20.
+
+slope30 = (0.93-0.82) / (30.-25.)
+offset30 = 0.82 - slope30*25.
+
+# For nodules more than 3 cm in diameter, 93% to 97% are malignant
+slope40 = (0.97-0.93) / (40.-30.)
+offset40 = 0.93 - slope40*30.
+
+def diameter_to_prob(diam):
+    # The prevalence of malignancy is 0% to 1% for nodules <5 mm,
+    if diam < 5:
+        p = prob5*diam/5.
+    elif diam < 10:
+        p = slope10*diam+offset10
+    elif diam < 20:
+        p = slope20*diam+offset20
+    elif diam < 25:
+        p = slope25*diam+offset25
+    elif diam < 30:
+        p = slope30*diam+offset30
+    else:
+        p = slope40 * diam + offset40
+    return np.clip(p ,0.,1.)
+
+
 class LunaDataGenerator(object):
     def __init__(self, data_path, transform_params, data_prep_fun, rng,
                  random, infinite, patient_ids=None, **kwargs):
@@ -435,7 +471,7 @@ class CandidatesLunaDataGenerator(object):
 
 class CandidatesLunaDataGenerator(object):
     def __init__(self, data_path, batch_size, transform_params, patient_ids, data_prep_fun, rng,
-                 full_batch, random, infinite, positive_proportion, **kwargs):
+                 full_batch, random, infinite, positive_proportion, return_malignancy=False, **kwargs):
 
         id2positive_annotations = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
         id2negative_annotations = utils_lung.read_luna_negative_candidates(pathfinder.LUNA_CANDIDATES_PATH)
@@ -468,6 +504,7 @@ class CandidatesLunaDataGenerator(object):
         self.data_prep_fun = data_prep_fun
         self.transform_params = transform_params
         self.positive_proportion = positive_proportion
+        self.return_malignancy = return_malignancy
 
     def generate(self):
         while True:
@@ -478,8 +515,8 @@ class CandidatesLunaDataGenerator(object):
                 idxs_batch = rand_idxs[pos:pos + self.batch_size]
                 nb = len(idxs_batch)
                 # allocate batches
-                x_batch = np.zeros((nb, 1) + self.transform_params['patch_size'], dtype='float32')
-                y_batch = np.zeros((nb, 1), dtype='float32')
+                x_batch = np.zeros((nb,) + self.transform_params['patch_size'], dtype='float32')
+                y_batch = np.zeros((nb,), dtype='float32')
                 patients_ids = []
 
                 for i, idx in enumerate(idxs_batch):
@@ -497,8 +534,11 @@ class CandidatesLunaDataGenerator(object):
 
                     patch_center = patient_annotations[self.rng.randint(len(patient_annotations))]
 
-                    y_batch[i] = float(patch_center[-1] > 0)
-                    x_batch[i, 0, :, :, :] = self.data_prep_fun(data=img,
+                    if self.return_malignancy:
+                        y_batch[i] = np.float32(diameter_to_prob(patch_center[-1]))
+                    else:
+                        y_batch[i] = float(patch_center[-1] > 0) 
+                    x_batch[i, :, :, :] = self.data_prep_fun(data=img,
                                                                 patch_center=patch_center,
                                                                 pixel_spacing=pixel_spacing,
                                                                 luna_origin=origin)
@@ -514,7 +554,7 @@ class CandidatesLunaDataGenerator(object):
 
 
 class CandidatesLunaValidDataGenerator(object):
-    def __init__(self, data_path, transform_params, patient_ids, data_prep_fun, **kwargs):
+    def __init__(self, data_path, transform_params, patient_ids, data_prep_fun, return_malignancy=False, **kwargs):
         rng = np.random.RandomState(42)  # do not change this!!!
 
         id2positive_annotations = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
@@ -549,6 +589,7 @@ class CandidatesLunaValidDataGenerator(object):
         self.rng = rng
         self.data_prep_fun = data_prep_fun
         self.transform_params = transform_params
+        self.return_malignancy = return_malignancy
 
     def generate(self):
 
@@ -558,11 +599,16 @@ class CandidatesLunaValidDataGenerator(object):
 
                 img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
                     if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
-                y_batch = np.array([[1.]], dtype='float32')
+                
+                if self.return_malignancy:
+                    y_batch = np.array([diameter_to_prob(patch_center[-1])], dtype='float32')
+                else:
+                    y_batch = np.array([1.], dtype='float32')
+
                 x_batch = np.float32(self.data_prep_fun(data=img,
                                                         patch_center=patch_center,
                                                         pixel_spacing=pixel_spacing,
-                                                        luna_origin=origin))[None, None, :, :, :]
+                                                        luna_origin=origin))[None, :, :, :]
 
                 yield x_batch, y_batch, [pid]
 
@@ -571,11 +617,11 @@ class CandidatesLunaValidDataGenerator(object):
 
                 img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
                     if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
-                y_batch = np.array([[0.]], dtype='float32')
+                y_batch = np.array([0.], dtype='float32')
                 x_batch = np.float32(self.data_prep_fun(data=img,
                                                         patch_center=patch_center,
                                                         pixel_spacing=pixel_spacing,
-                                                        luna_origin=origin))[None, None, :, :, :]
+                                                        luna_origin=origin))[None, :, :, :]
 
                 yield x_batch, y_batch, [pid]
 
@@ -814,8 +860,8 @@ class CandidatesLunaSizeBinDataGenerator(object):
                 idxs_batch = rand_idxs[pos:pos + self.batch_size]
                 nb = len(idxs_batch)
                 # allocate batches
-                x_batch = np.zeros((nb, 1) + self.transform_params['patch_size'], dtype='float32')
-                y_batch = np.zeros((nb, 1), dtype='float32')
+                x_batch = np.zeros((nb,) + self.transform_params['patch_size'], dtype='float32')
+                y_batch = np.zeros((nb,), dtype='float32')
                 patients_ids = []
 
                 for i, idx in enumerate(idxs_batch):
@@ -845,7 +891,7 @@ class CandidatesLunaSizeBinDataGenerator(object):
                         y_batch[i] = 0. 
                     #print 'y_batch[i]', y_batch[i], 'diameter', diameter
 
-                    x_batch[i, 0, :, :, :] = self.data_prep_fun(data=img,
+                    x_batch[i, :, :, :] = self.data_prep_fun(data=img,
                                                                 patch_center=patch_center,
                                                                 pixel_spacing=pixel_spacing,
                                                                 luna_origin=origin)
@@ -913,11 +959,11 @@ class CandidatesLunaSizeBinValidDataGenerator(object):
                         ybin = idx
                         break  
 
-                y_batch = np.array([[1. + ybin]], dtype='float32')
+                y_batch = np.array([1. + ybin], dtype='float32')
                 x_batch = np.float32(self.data_prep_fun(data=img,
                                                         patch_center=patch_center,
                                                         pixel_spacing=pixel_spacing,
-                                                        luna_origin=origin))[None, None, :, :, :]
+                                                        luna_origin=origin))[None, :, :, :]
 
                 yield x_batch, y_batch, [pid]
 
@@ -926,11 +972,11 @@ class CandidatesLunaSizeBinValidDataGenerator(object):
 
                 img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
                     if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
-                y_batch = np.array([[0.]], dtype='float32')
+                y_batch = np.array([0.], dtype='float32')
                 x_batch = np.float32(self.data_prep_fun(data=img,
                                                         patch_center=patch_center,
                                                         pixel_spacing=pixel_spacing,
-                                                        luna_origin=origin))[None, None, :, :, :]
+                                                        luna_origin=origin))[None, :, :, :]
 
                 yield x_batch, y_batch, [pid]
 
@@ -1068,7 +1114,7 @@ class DSBPatientsDataGenerator(object):
             for pos in xrange(0, len(rand_idxs), self.batch_size):
                 idxs_batch = rand_idxs[pos:pos + self.batch_size]
 
-                x_batch = np.zeros((self.batch_size, self.n_candidates_per_patient, 1,)
+                x_batch = np.zeros((self.batch_size, self.n_candidates_per_patient,)
                                    + self.transform_params['patch_size'], dtype='float32')
 
                 if self.return_patch_locs:
@@ -1094,7 +1140,7 @@ class DSBPatientsDataGenerator(object):
 
                     x_batch[i] = np.float32(self.data_prep_fun(data=img,
                                                                patch_centers=top_candidates,
-                                                               pixel_spacing=pixel_spacing))[:, None, :, :, :]
+                                                               pixel_spacing=pixel_spacing))[:, :, :, :]
                     y_batch[i] = self.id2label.get(pid)
                     pids_batch.append(pid)
 
