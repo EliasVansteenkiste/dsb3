@@ -27,7 +27,7 @@ def load_patient_data(path):
 def voxel_to_world_coordinates(voxel_coord, origin, spacing):
 
     stretched_voxel_coord = voxel_coord *spacing
-    world_coord = np.absolute(stretched_voxel_coord + origin)
+    world_coord = stretched_voxel_coord + origin
     return world_coord
 
 
