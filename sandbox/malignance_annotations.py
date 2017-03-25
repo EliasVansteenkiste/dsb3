@@ -1,8 +1,30 @@
 import xml.etree.ElementTree as ET
 import cPickle
 import os
+from bs4 import BeautifulSoup
+import numpy
+
 rootdir = "/home/frederic/kaggle-dsb3/data/luna_xml"
 dumpdir = "/home/frederic/kaggle-dsb3/data/luna/nodule_annotations"
+list_luna = "/home/frederic/kaggle-dsb3/data/LUNA - List of included scans.html"
+
+#### LUNA ids #####
+soup = BeautifulSoup(open(list_luna,"r"), 'html.parser')
+
+rows = soup.find("tbody").find_all("tr")
+
+serie_study = []
+for row in rows:
+    cells = row.find_all("td")
+    if cells[0].get_text().strip()!="PatientID":
+        study = cells[1].get_text().strip()
+        serie = cells[2].get_text().strip()
+        serie_study.append((serie,study))
+
+#### nodule annotations ####
+print(len(set(serie_study)))
+
+serie = [x[0] for x in serie_study]
 
 ids = {}
 id_list = []
@@ -15,55 +37,64 @@ for rootd, subdirs, files in os.walk(rootdir):
         root = tree.getroot()
         rh=root.findall("{http://www.nih.gov}ResponseHeader")
         if len(rh) > 0:
-            id=rh[0].findall("{http://www.nih.gov}SeriesInstanceUid")
-            if len(id) > 0:
+            serie_id=rh[0].findall("{http://www.nih.gov}SeriesInstanceUid")
+            study_id = rh[0].findall("{http://www.nih.gov}StudyInstanceUID")
+            if len(serie_id) > 0 and len(study_id)>0:
 
-                id=id[0].text.strip()
+                ser_id = serie_id[0].text.strip()
+                stu_id = study_id[0].text.strip()
+                #print(ser_id)
 
-                sessions = []
-                for reading_session in root.findall("{http://www.nih.gov}readingSession"):
+                if ser_id in serie:
+                    sessions = []
+                    for reading_session in root.findall("{http://www.nih.gov}readingSession"):
 
-                    reading_session_list =[]
-                    for unblinded_nodule in reading_session.findall("{http://www.nih.gov}unblindedReadNodule"):
+                        reading_session_list =[]
+                        for unblinded_nodule in reading_session.findall("{http://www.nih.gov}unblindedReadNodule"):
 
-                        characteristics = unblinded_nodule.findall("{http://www.nih.gov}characteristics")
+                            characteristics = unblinded_nodule.findall("{http://www.nih.gov}characteristics")
 
-                        if len(characteristics)>0:
-                            char_dict = {}
-                            for el in characteristics[0]._children:
-                                char_dict[el.tag[20:]]=float(el.text.strip())
+                            if len(characteristics)>0:
+                                char_dict = {}
+                                for el in characteristics[0]._children:
+                                    char_dict[el.tag[20:]]=float(el.text.strip())
 
-                            roi_dict = {}
+                                roi_dict = {}
 
-                            rois = unblinded_nodule.findall("{http://www.nih.gov}roi")
-                            xyz = []
-                            for roi in rois:
-                                z = float(roi.find("{http://www.nih.gov}imageZposition").text)
-
-
-                                for edge in roi.findall("{http://www.nih.gov}edgeMap"):
-                                    x = float(edge.find("{http://www.nih.gov}xCoord").text)
-                                    y = float(edge.find("{http://www.nih.gov}xCoord").text)
-                                    xyz.append((x,y,z))
+                                rois = unblinded_nodule.findall("{http://www.nih.gov}roi")
+                                xyz = []
+                                for roi in rois:
+                                    z = float(roi.find("{http://www.nih.gov}imageZposition").text)
 
 
-                            nodule = {}
-                            nodule["characteristics"] = char_dict
-                            nodule["rois"]=xyz
+                                    for edge in roi.findall("{http://www.nih.gov}edgeMap"):
+                                        x = float(edge.find("{http://www.nih.gov}xCoord").text)
+                                        y = float(edge.find("{http://www.nih.gov}yCoord").text)
+                                        xyz.append((x,y,z))
 
-                            reading_session_list.append(nodule)
-                    sessions.append(reading_session_list)
 
-                with open(os.path.join(dumpdir,str(id)+".pkl"),"wb") as f:
-                    cPickle.dump(sessions,f)
+                                nodule = {}
+                                nodule["characteristics"] = char_dict
+                                nodule["rois"]=xyz
+                                nodule["centroid"]=(numpy.mean([x[0] for x in xyz]),
+                                                    numpy.mean([x[1] for x in xyz]),
+                                                    numpy.mean([x[2] for x in xyz]),
+                                                    )
+
+                                reading_session_list.append(nodule)
+                        sessions.append(reading_session_list)
+
+                    with open(os.path.join(dumpdir,str(ser_id)+".pkl"),"wb") as f:
+                        cPickle.dump(sessions,f)
 
                 # if id in id_list:
                 #     print()
                 #
-                id_list.append(id)
+                    id_list.append(ser_id)
                 #ids[id]=sessions
 
 
 # test = ids["1.3.6.1.4.1.14519.5.2.1.6279.6001.303494235102183795724852353824"]
 print(len(id_list))
 print(len(set(id_list)))
+
