@@ -72,7 +72,7 @@ givens_valid = {}
 givens_valid[model.l_in.input_var] = x_shared
 givens_valid[model.l_target.input_var] = y_shared
 # at this moment we do not use the enable target
-#givens_valid[model.l_enable_target.input_var] = z_shared
+givens_valid[model.l_enable_target.input_var] = z_shared
 
 
 #first make ordered list of objective functions
@@ -165,7 +165,7 @@ for chunk_idx, (x_chunk_train, y_chunk_train, z_chunk_train, id_train) in izip(c
             means.append(train_mean)
             print obj_name, train_mean
         tmp_losses_train = defaultdict(list)
-        print
+        print 'Sum of train losses:', sum(means)
         print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks), sum(means)
 
         # load validation data to GPU
@@ -190,7 +190,7 @@ for chunk_idx, (x_chunk_train, y_chunk_train, z_chunk_train, id_train) in izip(c
             losses_eval_valid[obj_name] = valid_mean
             means.append(valid_mean)
             print obj_name, valid_mean
-        print 'Validation loss:', sum(means) 
+        print 'Sum of mean losses:', sum(means) 
 
 
         now = time.time()
