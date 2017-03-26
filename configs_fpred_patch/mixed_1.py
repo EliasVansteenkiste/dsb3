@@ -6,7 +6,7 @@ import lasagne as nn
 from collections import namedtuple
 from functools import partial
 import lasagne.layers.dnn as dnn
-import lasagne
+
 import theano.tensor as T
 import utils
 import utils_lung
@@ -115,11 +115,11 @@ conv3d = partial(dnn.Conv3DDNNLayer,
 max_pool3d = partial(dnn.MaxPool3DDNNLayer,
                      pool_size=2)
 
-drop = lasagne.layers.DropoutLayer
+drop = nn.layers.DropoutLayer
 
-dense = partial(lasagne.layers.DenseLayer,
-                W=lasagne.init.Orthogonal(),
-                nonlinearity=lasagne.nonlinearities.very_leaky_rectify)
+dense = partial(nn.layers.DenseLayer,
+                W=nn.init.Orthogonal(),
+                nonlinearity=nn.nonlinearities.very_leaky_rectify)
 
 
 def inrn_v2(lin):
@@ -134,13 +134,13 @@ def inrn_v2(lin):
     l3 = conv3d(l3, n_base_filter, filter_size=3)
     l3 = conv3d(l3, n_base_filter, filter_size=3)
 
-    l = lasagne.layers.ConcatLayer([l1, l2, l3])
+    l = nn.layers.ConcatLayer([l1, l2, l3])
 
     l = conv3d(l, lin.output_shape[1], filter_size=1)
 
-    l = lasagne.layers.ElemwiseSumLayer([l, lin])
+    l = nn.layers.ElemwiseSumLayer([l, lin])
 
-    l = lasagne.layers.NonlinearityLayer(l, nonlinearity=lasagne.nonlinearities.rectify)
+    l = nn.layers.NonlinearityLayer(l, nonlinearity=nn.nonlinearities.rectify)
 
     return l
 
@@ -166,7 +166,7 @@ def inrn_v2_red(lin):
     l4 = conv3d(l4, ins // den * nom3, filter_size=3)
     l4 = conv3d(l4, ins // den * nom4, filter_size=3, stride=2)
 
-    l = lasagne.layers.ConcatLayer([l1, l2, l3, l4])
+    l = nn.layers.ConcatLayer([l1, l2, l3, l4])
 
     return l
 
@@ -197,27 +197,29 @@ def build_model():
 
     l = dense(drop(l), 128)
 
-    l_out = nn.layers.DenseLayer(l, num_units=4,
+
+    l_out = nn.layers.DenseLayer(l, num_units=2,
                                  W=nn.init.Constant(0.),
-                                 nonlinearity=nn.nonlinearities.softmax)
+                                 b=nn.init.Constant(0.5),
+                                 nonlinearity=nn.nonlinearities.sigmoid)
 
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 
 
 def build_objective(model, deterministic=False, epsilon=1e-12):
     predictions = nn.layers.get_output(model.l_out, deterministic=deterministic)
-    targets = T.cast(nn.layers.get_output(model.l_target), 'int32')
-    
+    targets = nn.layers.get_output(model.l_target).astype('float32')
 
-    aapm_bias=T.constant(2,'int32')
     enum_batch=T.arange(predictions.shape[0])
-    p = predictions[enum_batch, targets[enum_batch,0]]
-    
-    score_cancer=T.cast(targets[enum_batch,1],'float32')
-    q = score_cancer*predictions[enum_batch, targets[enum_batch,2]+aapm_bias]
-    p = T.clip(p, epsilon, 1.)
-    loss = T.mean(T.log(p))+T.mean(T.log(q))
-    return -loss
+    p_1 = predictions[enum_batch,0]
+    p_2 = predictions[enum_batch,1]
+    t_1=targets[enum_batch,0]
+    t_2=targets[enum_batch,2]
+    inc_mb=targets[enum_batch,1]
+
+    loss_fp=T.mean(nn.objectives.binary_crossentropy(p_1,t_1))
+    loss_mb=T.mean(inc_mb*nn.objectives.binary_crossentropy(p_2,t_2))
+    return loss_fp + loss_mb
 
 
 def build_updates(train_loss, model, learning_rate):
