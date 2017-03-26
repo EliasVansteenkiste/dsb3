@@ -1023,6 +1023,7 @@ class CandidatesLunaPropsDataGenerator(object):
 
         self.order_objectives = order_objectives
         self.property_bin_borders = property_bin_borders
+        self.return_enable_target_vector = return_enable_target_vector
 
     def L2(self, a,b):
         return ((a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2)**(0.5)
@@ -1068,7 +1069,6 @@ class CandidatesLunaPropsDataGenerator(object):
                 print 'feature_vector', feature_vector
             
             return feature_vector
-
 
         else:
             return feature_vector
@@ -1159,17 +1159,18 @@ class CandidatesLunaPropsValidDataGenerator(object):
 
         self.order_objectives = order_objectives
         self.property_bin_borders = property_bin_borders
+    
 
-    def L2(a,b):
+    def L2(self, a,b):
         return ((a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2)**(0.5)
 
-    def build_ground_truth_vector(pid, patch_center):
+    def build_ground_truth_vector(self, pid, patch_center):
         properties={}
         feature_vector = np.zeros((len(self.order_objectives)), dtype='float32')
         diameter = patch_center[-1]
         is_nodule  = diameter>0.01
         if is_nodule:
-            properties['nodule'] = np.float32(diameter>0.01)
+            properties['nodule'] = np.float32(is_nodule)
             properties['size'] = np.digitize(diameter, self.property_bin_borders['size'])
             
             patient = utils_lung.read_patient_annotations_luna(pid, pathfinder.LUNA_NODULE_ANNOTATIONS_PATH)
@@ -1178,25 +1179,32 @@ class CandidatesLunaPropsValidDataGenerator(object):
             nodule_characteristics = []
             for doctor in patient:
                 for nodule in doctor:
-                    dist = self.L2(patch_center[:3],nodule["centroid_xyz"][::-1])
-                    if  dist < 5:
-                        print 'found a very close nodule at', dist, ': ', patch_center[:3]
-                        nodule_characteristics.append(nodule['characteristics'])
+                    if "centroid_xyz" in nodule:
+                        dist = self.L2(patch_center[:3],nodule["centroid_xyz"][::-1])
+                        if  dist < 5:
+                            #print 'found a very close nodule at', dist, ': ', patch_center[:3]
+                            nodule_characteristics.append(nodule['characteristics'])
 
-            #calculate the median property values
-            for prop in nodule_characteristics[0]:
-                prop_values = []
-                for nchar in nodule_characteristics:
-                    prop_values.append(float(nchar[prop]))
-                median_value = np.median(np.array(prop_values))
-                properties[prop] = np.digitize(median_value, self.property_bin_borders[prop])
+            if len(nodule_characteristics)==0:
+                print 'WARNING: no nodule found in doctor annotations for ', patch_center
+            else:
+                #calculate the median property values
+                for prop in nodule_characteristics[0]:
+                    if prop in self.order_objectives:
+                        prop_values = []
+                        for nchar in nodule_characteristics:
+                            prop_values.append(float(nchar[prop]))
+                        median_value = np.median(np.array(prop_values))
+                        properties[prop] = np.digitize(median_value, self.property_bin_borders[prop])
 
             for idx, prop in enumerate(self.order_objectives):
-                feature_vector[idx] = properties[prop]
-
-            print 'feature_vector', feature_vector
+                if prop in properties:
+                    feature_vector[idx] = properties[prop]
+            
+            if len(nodule_characteristics)==0:
+                print 'feature_vector', feature_vector
+            
             return feature_vector
-
 
         else:
             return feature_vector
@@ -1211,7 +1219,8 @@ class CandidatesLunaPropsValidDataGenerator(object):
                 img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
                     if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
 
-                y_batch = self.build_ground_truth_vector(pid, patch_center)
+                y_batch = np.array([self.build_ground_truth_vector(pid, patch_center)], dtype='float32')
+                print 'positive', y_batch
                 x_batch = np.float32(self.data_prep_fun(data=img,
                                                         patch_center=patch_center,
                                                         pixel_spacing=pixel_spacing,

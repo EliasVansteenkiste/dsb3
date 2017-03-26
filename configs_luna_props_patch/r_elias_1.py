@@ -106,7 +106,7 @@ valid_data_iterator = data_iterators.CandidatesLunaPropsValidDataGenerator(data_
 nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
 max_nchunks = nchunks_per_epoch * 100
 
-validate_every = int(5. * nchunks_per_epoch)
+validate_every = int(.5 * nchunks_per_epoch)
 save_every = int(5. * nchunks_per_epoch)
 
 learning_rate_schedule = {
@@ -226,7 +226,7 @@ def build_model():
 
         final_layers.append(l_fin)
 
-    print 'for debug purposes: unit_ptr', unit_ptr
+    #print 'for debug purposes: unit_ptr', unit_ptr
 
 
     l_out = nn.layers.ConcatLayer(final_layers, name = 'final_concat_layer')

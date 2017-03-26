@@ -175,7 +175,7 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
         # calculate validation loss across validation set
         means = [] 
         for obj_idx, obj_name in enumerate(config().order_objectives):
-            valid_mean = np.mean(valid_loss[obj_name])
+            valid_mean = np.mean(tmp_losses_valid[obj_name])
             losses_eval_valid[obj_name] = valid_mean
             means.append(valid_mean)
             print obj_name, valid_mean
