@@ -1045,12 +1045,11 @@ class CandidatesLunaPropsDataGenerator(object):
                     if "centroid_xyz" in nodule:
                         dist = self.L2(patch_center[:3],nodule["centroid_xyz"][::-1])
                         if  dist < 5:
-                            print 'found a very close nodule at', dist, ': ', patch_center[:3]
+                            #print 'found a very close nodule at', dist, ': ', patch_center[:3]
                             nodule_characteristics.append(nodule['characteristics'])
 
             if len(nodule_characteristics)==0:
                 print 'WARNING: no nodule found in doctor annotations for ', patch_center
-
             else:
                 #calculate the median property values
                 for prop in nodule_characteristics[0]:
@@ -1064,8 +1063,10 @@ class CandidatesLunaPropsDataGenerator(object):
             for idx, prop in enumerate(self.order_objectives):
                 if prop in properties:
                     feature_vector[idx] = properties[prop]
-
-            print 'feature_vector', feature_vector
+            
+            if len(nodule_characteristics)==0:
+                print 'feature_vector', feature_vector
+            
             return feature_vector
 
 

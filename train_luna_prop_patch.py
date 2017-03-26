@@ -136,24 +136,27 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
             losses_train_print[obj_name].append(losses[obj_idx])
 
     if (chunk_idx + 1) % 10 == 0:
-        print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks)
+        means = []
         for obj_idx, obj_name in enumerate(config().order_objectives):
-            print obj_name, np.mean(tmp_losses_print[obj_name])
+            mean = np.mean(losses_train_print[obj_name])
+            means.append(mean)
+            print obj_name, mean
+        print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks), sum(means)
+        
         losses_train_print = defaultdict(list)
 
     if ((chunk_idx + 1) % config().validate_every) == 0:
-        print
-        print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks)
         # calculate mean train loss since the last validation phase
-        sum_of_means = 0
+        means = []
         print 'Mean train losses:'
         for obj_idx, obj_name in enumerate(config().order_objectives):
             train_mean = np.mean(tmp_losses_train[obj_name])
             losses_eval_train[obj_name] = train_mean
-            sum_of_means += train_mean
+            means.append(train_mean)
             print obj_name, train_mean
-        print 'Train sum of mean losses:', sum_of_means 
         tmp_losses_train = defaultdict(list)
+        print
+        print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks), sum(means)
 
         # load validation data to GPU
         tmp_losses_valid = defaultdict(list)
@@ -170,14 +173,13 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
 
 
         # calculate validation loss across validation set
-        sum_of_means = 0
-        print 'Validation losses: ' 
+        means = [] 
         for obj_idx, obj_name in enumerate(config().order_objectives):
             valid_mean = np.mean(valid_loss[obj_name])
             losses_eval_valid[obj_name] = valid_mean
-            sum_of_means += valid_mean
+            means.append(valid_mean)
             print obj_name, valid_mean
-        print 'Valid sum of mean losses:', sum_of_means 
+        print 'Validation loss:', sum(means) 
 
 
         now = time.time()
