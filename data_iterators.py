@@ -1165,11 +1165,12 @@ class CandidatesLunaPropsValidDataGenerator(object):
     def build_ground_truth_vector(self, pid, patch_center):
         properties={}
         feature_vector = np.zeros((len(self.order_objectives)), dtype='float32')
-        enable_target_vector = np.zeros((len(self.order_objectives)), dtype='float32')
+        enable_target_vector = None
         diameter = patch_center[-1]
         is_nodule  = diameter>0.01
-        properties['nodule'] = np.float32(is_nodule)
         if is_nodule:
+            enable_target_vector = np.zeros((len(self.order_objectives)), dtype='float32')
+            properties['nodule'] = np.float32(is_nodule)
             properties['size'] = np.digitize(diameter, self.property_bin_borders['size'])
             
             patient = utils_lung.read_patient_annotations_luna(pid, pathfinder.LUNA_NODULE_ANNOTATIONS_PATH)
@@ -1196,10 +1197,13 @@ class CandidatesLunaPropsValidDataGenerator(object):
                         median_value = np.median(np.array(prop_values))
                         properties[prop] = np.digitize(median_value, self.property_bin_borders[prop])
 
-        for idx, prop in enumerate(self.order_objectives):
-            if prop in properties:
-                feature_vector[idx] = properties[prop]
-                enable_target_vector[idx] = 1.
+            for idx, prop in enumerate(self.order_objectives):
+                if prop in properties:
+                    feature_vector[idx] = properties[prop]
+                    enable_target_vector[idx] = 1.
+        else:
+            enable_target_vector = np.ones((len(self.order_objectives)), dtype='float32')
+
             
         return feature_vector, enable_target_vector
 
