@@ -210,6 +210,9 @@ def get_patient_data_paths(data_dir):
     pids = sorted(os.listdir(data_dir))
     return [data_dir + '/' + p for p in pids]
 
+def read_patient_annotations_luna(pid, directory):
+    return pickle.load(open(os.path.join(directory,pid+'.pkl'),"rb"))
+
 
 def read_labels(file_path):
     id2labels = {}

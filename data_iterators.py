@@ -980,6 +980,258 @@ class CandidatesLunaSizeBinValidDataGenerator(object):
 
                 yield x_batch, y_batch, [pid]
 
+
+
+class CandidatesLunaPropsDataGenerator(object):
+    def __init__(self, data_path, batch_size, transform_params, patient_ids, data_prep_fun, rng,
+                 full_batch, random, infinite, 
+                 positive_proportion,
+                 order_objectives,
+                 property_bin_borders, **kwargs):
+
+        id2positive_annotations = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
+        id2negative_annotations = utils_lung.read_luna_negative_candidates(pathfinder.LUNA_CANDIDATES_PATH)
+
+        self.file_extension = '.pkl' if 'pkl' in data_path else '.mhd'
+        self.id2positive_annotations = {}
+        self.id2negative_annotations = {}
+        self.patient_paths = []
+        n_positive, n_negative = 0, 0
+        for pid in patient_ids:
+            if pid in id2positive_annotations:
+                self.id2positive_annotations[pid] = id2positive_annotations[pid]
+                self.id2negative_annotations[pid] = id2negative_annotations[pid]
+                self.patient_paths.append(data_path + '/' + pid + self.file_extension)
+                n_positive += len(id2positive_annotations[pid])
+                n_negative += len(id2negative_annotations[pid])
+
+        print 'n positive', n_positive
+        print 'n negative', n_negative
+
+        self.nsamples = len(self.patient_paths)
+
+        print 'n patients', self.nsamples
+        self.data_path = data_path
+        self.batch_size = batch_size
+        self.rng = rng
+        self.full_batch = full_batch
+        self.random = random
+        self.infinite = infinite
+        self.data_prep_fun = data_prep_fun
+        self.transform_params = transform_params
+        self.positive_proportion = positive_proportion
+
+        self.order_objectives = order_objectives
+        self.property_bin_borders = property_bin_borders
+
+    def L2(self, a,b):
+        return ((a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2)**(0.5)
+
+    def build_ground_truth_vector(self, pid, patch_center):
+        properties={}
+        feature_vector = np.zeros((len(self.order_objectives)), dtype='float32')
+        diameter = patch_center[-1]
+        is_nodule  = diameter>0.01
+        if is_nodule:
+            properties['nodule'] = np.float32(is_nodule)
+            properties['size'] = np.digitize(diameter, self.property_bin_borders['size'])
+            
+            patient = utils_lung.read_patient_annotations_luna(pid, pathfinder.LUNA_NODULE_ANNOTATIONS_PATH)
+
+            #find the nodules in the doctor's annotations
+            nodule_characteristics = []
+            for doctor in patient:
+                for nodule in doctor:
+                    if "centroid_xyz" in nodule:
+                        dist = self.L2(patch_center[:3],nodule["centroid_xyz"][::-1])
+                        if  dist < 5:
+                            print 'found a very close nodule at', dist, ': ', patch_center[:3]
+                            nodule_characteristics.append(nodule['characteristics'])
+
+            if len(nodule_characteristics)==0:
+                print 'WARNING: no nodule found in doctor annotations for ', patch_center
+
+            else:
+                #calculate the median property values
+                for prop in nodule_characteristics[0]:
+                    if prop in self.order_objectives:
+                        prop_values = []
+                        for nchar in nodule_characteristics:
+                            prop_values.append(float(nchar[prop]))
+                        median_value = np.median(np.array(prop_values))
+                        properties[prop] = np.digitize(median_value, self.property_bin_borders[prop])
+
+            for idx, prop in enumerate(self.order_objectives):
+                if prop in properties:
+                    feature_vector[idx] = properties[prop]
+
+            print 'feature_vector', feature_vector
+            return feature_vector
+
+
+        else:
+            return feature_vector
+
+    def generate(self):
+        while True:
+            rand_idxs = np.arange(self.nsamples)
+            if self.random:
+                self.rng.shuffle(rand_idxs)
+            for pos in xrange(0, len(rand_idxs), self.batch_size):
+                idxs_batch = rand_idxs[pos:pos + self.batch_size]
+                nb = len(idxs_batch)
+                # allocate batches
+                x_batch = np.zeros((nb,) + self.transform_params['patch_size'], dtype='float32')
+                y_batch = np.zeros((nb, len(self.order_objectives)), dtype='float32')
+                patients_ids = []
+
+                for i, idx in enumerate(idxs_batch):
+                    patient_path = self.patient_paths[idx]
+
+                    id = utils_lung.extract_pid_filename(patient_path, self.file_extension)
+                    patients_ids.append(id)
+
+                    img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
+                        if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
+
+                    if i < np.rint(self.batch_size * self.positive_proportion):
+                        patient_annotations = self.id2positive_annotations[id]
+                    else:
+                        patient_annotations = self.id2negative_annotations[id]
+
+                    patch_center = patient_annotations[self.rng.randint(len(patient_annotations))]
+
+                    y_batch[i] = self.build_ground_truth_vector(id, patch_center)
+
+                    x_batch[i, :, :, :] = self.data_prep_fun(data=img,
+                                                                patch_center=patch_center,
+                                                                pixel_spacing=pixel_spacing,
+                                                                luna_origin=origin)
+
+                if self.full_batch:
+                    if nb == self.batch_size:
+                        yield x_batch, y_batch, patients_ids
+                else:
+                    yield x_batch, y_batch, patients_ids
+
+            if not self.infinite:
+                break
+
+
+class CandidatesLunaPropsValidDataGenerator(object):
+    def __init__(self, data_path, transform_params, patient_ids, data_prep_fun, 
+                    order_objectives, property_bin_borders, **kwargs):
+        rng = np.random.RandomState(42)  # do not change this!!!
+
+        id2positive_annotations = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
+        id2negative_annotations = utils_lung.read_luna_negative_candidates(pathfinder.LUNA_CANDIDATES_PATH)
+
+        self.file_extension = '.pkl' if 'pkl' in data_path else '.mhd'
+        self.id2positive_annotations = {}
+        self.id2negative_annotations = {}
+        self.id2patient_path = {}
+        n_positive, n_negative = 0, 0
+        for pid in patient_ids:
+            if pid in id2positive_annotations:
+                self.id2positive_annotations[pid] = id2positive_annotations[pid]
+                negative_annotations = id2negative_annotations[pid]
+                n_pos = len(id2positive_annotations[pid])
+                n_neg = len(id2negative_annotations[pid])
+                neg_idxs = rng.choice(n_neg, size=n_pos, replace=False)
+                negative_annotations_selected = []
+                for i in neg_idxs:
+                    negative_annotations_selected.append(negative_annotations[i])
+                self.id2negative_annotations[pid] = negative_annotations_selected
+
+                self.id2patient_path[pid] = data_path + '/' + pid + self.file_extension
+                n_positive += n_pos
+                n_negative += n_pos
+
+        print 'n positive', n_positive
+        print 'n negative', n_negative
+
+        self.nsamples = len(self.id2patient_path)
+        self.data_path = data_path
+        self.rng = rng
+        self.data_prep_fun = data_prep_fun
+        self.transform_params = transform_params
+
+        self.order_objectives = order_objectives
+        self.property_bin_borders = property_bin_borders
+
+    def L2(a,b):
+        return ((a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2)**(0.5)
+
+    def build_ground_truth_vector(pid, patch_center):
+        properties={}
+        feature_vector = np.zeros((len(self.order_objectives)), dtype='float32')
+        diameter = patch_center[-1]
+        is_nodule  = diameter>0.01
+        if is_nodule:
+            properties['nodule'] = np.float32(diameter>0.01)
+            properties['size'] = np.digitize(diameter, self.property_bin_borders['size'])
+            
+            patient = utils_lung.read_patient_annotations_luna(pid, pathfinder.LUNA_NODULE_ANNOTATIONS_PATH)
+
+            #find the nodules in the doctor's annotations
+            nodule_characteristics = []
+            for doctor in patient:
+                for nodule in doctor:
+                    dist = self.L2(patch_center[:3],nodule["centroid_xyz"][::-1])
+                    if  dist < 5:
+                        print 'found a very close nodule at', dist, ': ', patch_center[:3]
+                        nodule_characteristics.append(nodule['characteristics'])
+
+            #calculate the median property values
+            for prop in nodule_characteristics[0]:
+                prop_values = []
+                for nchar in nodule_characteristics:
+                    prop_values.append(float(nchar[prop]))
+                median_value = np.median(np.array(prop_values))
+                properties[prop] = np.digitize(median_value, self.property_bin_borders[prop])
+
+            for idx, prop in enumerate(self.order_objectives):
+                feature_vector[idx] = properties[prop]
+
+            print 'feature_vector', feature_vector
+            return feature_vector
+
+
+        else:
+            return feature_vector
+
+
+    def generate(self):
+
+        for pid in self.id2positive_annotations.iterkeys():
+            for patch_center in self.id2positive_annotations[pid]:
+                patient_path = self.id2patient_path[pid]
+
+                img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
+                    if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
+
+                y_batch = self.build_ground_truth_vector(pid, patch_center)
+                x_batch = np.float32(self.data_prep_fun(data=img,
+                                                        patch_center=patch_center,
+                                                        pixel_spacing=pixel_spacing,
+                                                        luna_origin=origin))[None, :, :, :]
+
+                yield x_batch, y_batch, [pid]
+
+            for patch_center in self.id2negative_annotations[pid]:
+                patient_path = self.id2patient_path[pid]
+
+                img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
+                    if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
+                y_batch = np.array([np.zeros((len(self.order_objectives)))], dtype='float32')
+                x_batch = np.float32(self.data_prep_fun(data=img,
+                                                        patch_center=patch_center,
+                                                        pixel_spacing=pixel_spacing,
+                                                        luna_origin=origin))[None, :, :, :]
+
+                yield x_batch, y_batch, [pid]
+
+
 class DSBScanDataGenerator(object):
     def __init__(self, data_path, transform_params, data_prep_fun, **kwargs):
         self.patient_paths = utils_lung.get_patient_data_paths(data_path)
