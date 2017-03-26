@@ -9,10 +9,12 @@ def L2(a,b):
 
 dumpdir = "/home/frederic/kaggle-dsb3/data/luna/nodule_annotations"
 
+characteristics = ["calcification","internalStructure","lobulation","malignancy","margin","sphericity","spiculation","subtlety","texture"]
+
 anno = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
 
-cancers = 0
-distances_centroids = []
+cancers=0
+luna_lines = []
 for f_name in os.listdir(dumpdir):
 
     pid = f_name[:-4]
@@ -38,9 +40,9 @@ for f_name in os.listdir(dumpdir):
                 min_distance_index = np.argmin(distances)
                 if distances[min_distance_index] < 10:
                     if min_distance_index in found:
-                        found[min_distance_index].append(nodule["centroid_xyz"][::-1])
+                        found[min_distance_index].append(nodule)
                     else:
-                        found[min_distance_index] = [nodule["centroid_xyz"][::-1]]
+                        found[min_distance_index] = [nodule]
                 else:
                     # print("Not so close")
                     pass
@@ -53,7 +55,7 @@ for f_name in os.listdir(dumpdir):
                 # find 3 closest ones to centroid
                 distances = []
                 for c in centroids:
-                    distances.append((L2(luna_nodules[i][0:3], c),c))
+                    distances.append((L2(luna_nodules[i][0:3], c["centroid_xyz"][::-1]),c))
                 d_sorted=sorted(distances, key=lambda x: x[0])
 
                 selection_centroids=[]
@@ -66,28 +68,25 @@ for f_name in os.listdir(dumpdir):
                         print("Too big")
 
 
-                centroids = selection_centroids
+                luna_line = str(pid)+","\
+                            +str(luna_nodules[i][2])+","\
+                            +str(luna_nodules[i][1])+","+\
+                            str(luna_nodules[i][0])+","+str(luna_nodules[i][3])+","
+                for characteristic in characteristics:
+                    value = np.mean([x["characteristics"][characteristic] for x in selection_centroids])
+                    luna_line+=str(value)+","
 
-
+                luna_lines.append(luna_line[:-1])
                 cancers+=1
-                local_counts += 1
 
 
-                centroid = (np.mean([c[0] for c in centroids]),
-                                                        np.mean([c[1] for x in centroids]),
-                                                        np.mean([c[2] for x in centroids]),
-                                                        )
-                distance = L2(luna_nodules[i][0:3],centroid)
-
-                if distance > 5:
-                    print("So Large dude")
-
-                distances_centroids.append(distance)
-
-
-        if local_counts!=len(luna_nodules):
-            print(pid)
 
 print("Number of different nodules: "+str(cancers))
-print("Median centroid difference: "+str(np.median(distances_centroids)))
-print("Max centroid difference: "+str(max(distances_centroids)))
+
+luna_header = "seriesuid,coordX,coordY,coordZ,diameter_mm,"
+luna_header += ",".join(characteristics)
+
+file = open("/home/frederic/kaggle-dsb3/data/luna/annotations_extended_mean.csv","w")
+file.write(luna_header+"\n")
+file.write("\n".join(luna_lines))
+file.close()
