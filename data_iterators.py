@@ -987,7 +987,8 @@ class CandidatesLunaPropsDataGenerator(object):
                  full_batch, random, infinite, 
                  positive_proportion,
                  order_objectives,
-                 property_bin_borders, **kwargs):
+                 property_bin_borders,
+                 return_enable_target_vector = False, **kwargs):
 
         id2positive_annotations = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
         id2negative_annotations = utils_lung.read_luna_negative_candidates(pathfinder.LUNA_CANDIDATES_PATH)
@@ -1023,7 +1024,7 @@ class CandidatesLunaPropsDataGenerator(object):
 
         self.order_objectives = order_objectives
         self.property_bin_borders = property_bin_borders
-        self.return_enable_target_vector = return_enable_target_vector
+        #self.return_enable_target_vector = return_enable_target_vector
 
     def L2(self, a,b):
         return ((a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2)**(0.5)
@@ -1031,10 +1032,11 @@ class CandidatesLunaPropsDataGenerator(object):
     def build_ground_truth_vector(self, pid, patch_center):
         properties={}
         feature_vector = np.zeros((len(self.order_objectives)), dtype='float32')
+        enable_target_vector = np.zeros((len(self.order_objectives)), dtype='float32')
         diameter = patch_center[-1]
         is_nodule  = diameter>0.01
+        properties['nodule'] = np.float32(is_nodule)
         if is_nodule:
-            properties['nodule'] = np.float32(is_nodule)
             properties['size'] = np.digitize(diameter, self.property_bin_borders['size'])
             
             patient = utils_lung.read_patient_annotations_luna(pid, pathfinder.LUNA_NODULE_ANNOTATIONS_PATH)
@@ -1061,17 +1063,12 @@ class CandidatesLunaPropsDataGenerator(object):
                         median_value = np.median(np.array(prop_values))
                         properties[prop] = np.digitize(median_value, self.property_bin_borders[prop])
 
-            for idx, prop in enumerate(self.order_objectives):
-                if prop in properties:
-                    feature_vector[idx] = properties[prop]
+        for idx, prop in enumerate(self.order_objectives):
+            if prop in properties:
+                feature_vector[idx] = properties[prop]
+                enable_target_vector[idx] = 1.
             
-            if len(nodule_characteristics)==0:
-                print 'feature_vector', feature_vector
-            
-            return feature_vector
-
-        else:
-            return feature_vector
+        return feature_vector, enable_target_vector
 
     def generate(self):
         while True:
@@ -1084,6 +1081,7 @@ class CandidatesLunaPropsDataGenerator(object):
                 # allocate batches
                 x_batch = np.zeros((nb,) + self.transform_params['patch_size'], dtype='float32')
                 y_batch = np.zeros((nb, len(self.order_objectives)), dtype='float32')
+                z_batch = np.zeros((nb, len(self.order_objectives)), dtype='float32')
                 patients_ids = []
 
                 for i, idx in enumerate(idxs_batch):
@@ -1102,7 +1100,7 @@ class CandidatesLunaPropsDataGenerator(object):
 
                     patch_center = patient_annotations[self.rng.randint(len(patient_annotations))]
 
-                    y_batch[i] = self.build_ground_truth_vector(id, patch_center)
+                    y_batch[i], z_batch[i] = self.build_ground_truth_vector(id, patch_center)
 
                     x_batch[i, :, :, :] = self.data_prep_fun(data=img,
                                                                 patch_center=patch_center,
@@ -1111,9 +1109,9 @@ class CandidatesLunaPropsDataGenerator(object):
 
                 if self.full_batch:
                     if nb == self.batch_size:
-                        yield x_batch, y_batch, patients_ids
+                        yield x_batch, y_batch, z_batch, patients_ids
                 else:
-                    yield x_batch, y_batch, patients_ids
+                    yield x_batch, y_batch, z_batch, patients_ids
 
             if not self.infinite:
                 break
@@ -1167,10 +1165,11 @@ class CandidatesLunaPropsValidDataGenerator(object):
     def build_ground_truth_vector(self, pid, patch_center):
         properties={}
         feature_vector = np.zeros((len(self.order_objectives)), dtype='float32')
+        enable_target_vector = np.zeros((len(self.order_objectives)), dtype='float32')
         diameter = patch_center[-1]
         is_nodule  = diameter>0.01
+        properties['nodule'] = np.float32(is_nodule)
         if is_nodule:
-            properties['nodule'] = np.float32(is_nodule)
             properties['size'] = np.digitize(diameter, self.property_bin_borders['size'])
             
             patient = utils_lung.read_patient_annotations_luna(pid, pathfinder.LUNA_NODULE_ANNOTATIONS_PATH)
@@ -1197,17 +1196,12 @@ class CandidatesLunaPropsValidDataGenerator(object):
                         median_value = np.median(np.array(prop_values))
                         properties[prop] = np.digitize(median_value, self.property_bin_borders[prop])
 
-            for idx, prop in enumerate(self.order_objectives):
-                if prop in properties:
-                    feature_vector[idx] = properties[prop]
+        for idx, prop in enumerate(self.order_objectives):
+            if prop in properties:
+                feature_vector[idx] = properties[prop]
+                enable_target_vector[idx] = 1.
             
-            if len(nodule_characteristics)==0:
-                print 'feature_vector', feature_vector
-            
-            return feature_vector
-
-        else:
-            return feature_vector
+        return feature_vector, enable_target_vector
 
 
     def generate(self):
@@ -1219,27 +1213,33 @@ class CandidatesLunaPropsValidDataGenerator(object):
                 img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
                     if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
 
-                y_batch = np.array([self.build_ground_truth_vector(pid, patch_center)], dtype='float32')
-                print 'positive', y_batch
                 x_batch = np.float32(self.data_prep_fun(data=img,
                                                         patch_center=patch_center,
                                                         pixel_spacing=pixel_spacing,
                                                         luna_origin=origin))[None, :, :, :]
 
-                yield x_batch, y_batch, [pid]
+                feature_vector, enable_target_vector = self.build_ground_truth_vector(pid, patch_center)
+                y_batch = np.array([feature_vector], dtype='float32')
+                z_batch = np.array([enable_target_vector], dtype='float32')
+
+                yield x_batch, y_batch, z_batch, [pid]
 
             for patch_center in self.id2negative_annotations[pid]:
                 patient_path = self.id2patient_path[pid]
 
                 img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
                     if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
-                y_batch = np.array([np.zeros((len(self.order_objectives)))], dtype='float32')
+
                 x_batch = np.float32(self.data_prep_fun(data=img,
                                                         patch_center=patch_center,
                                                         pixel_spacing=pixel_spacing,
                                                         luna_origin=origin))[None, :, :, :]
 
-                yield x_batch, y_batch, [pid]
+                feature_vector, enable_target_vector = self.build_ground_truth_vector(pid, patch_center)
+                y_batch = np.array([feature_vector], dtype='float32')
+                z_batch = np.array([enable_target_vector], dtype='float32')
+
+                yield x_batch, y_batch, z_batch, [pid]
 
 
 class DSBScanDataGenerator(object):

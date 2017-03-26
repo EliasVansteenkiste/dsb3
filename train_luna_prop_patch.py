@@ -60,15 +60,19 @@ updates = config().build_updates(train_loss, model, learning_rate)
 
 x_shared = nn.utils.shared_empty(dim=len(model.l_in.shape))
 y_shared = nn.utils.shared_empty(dim=len(model.l_target.shape))
+z_shared = nn.utils.shared_empty(dim=len(model.l_enable_target.shape))
 
 idx = T.lscalar('idx')
 givens_train = {}
 givens_train[model.l_in.input_var] = x_shared[idx * config().batch_size:(idx + 1) * config().batch_size]
 givens_train[model.l_target.input_var] = y_shared[idx * config().batch_size:(idx + 1) * config().batch_size]
+givens_train[model.l_enable_target.input_var] =  z_shared[idx * config().batch_size:(idx + 1) * config().batch_size]
 
 givens_valid = {}
 givens_valid[model.l_in.input_var] = x_shared
 givens_valid[model.l_target.input_var] = y_shared
+# at this moment we do not use the enable target
+#givens_valid[model.l_enable_target.input_var] = z_shared
 
 
 #first make ordered list of objective functions
@@ -76,6 +80,11 @@ train_objectives = [config().d_objectives[obj_name] for obj_name in config().ord
 test_objectives = [config().d_objectives_deterministic[obj_name] for obj_name in config().order_objectives]
 # theano functions
 iter_train = theano.function([idx], train_objectives, givens=givens_train, updates=updates)
+
+print 'test_objectives'
+print config().d_objectives_deterministic
+print 'givens_valid'
+print givens_valid
 iter_validate = theano.function([], test_objectives, givens=givens_valid)
 
 if config().restart_from_save:
@@ -115,7 +124,7 @@ tmp_losses_train = defaultdict(list)
 losses_train_print = defaultdict(list)
 
 # use buffering.buffered_gen_threaded()
-for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buffering.buffered_gen_threaded(
+for chunk_idx, (x_chunk_train, y_chunk_train, z_chunk_train, id_train) in izip(chunk_idxs, buffering.buffered_gen_threaded(
         train_data_iterator.generate())):
     if chunk_idx in learning_rate_schedule:
         lr = np.float32(learning_rate_schedule[chunk_idx])
@@ -126,6 +135,7 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
     # load chunk to GPU
     x_shared.set_value(x_chunk_train)
     y_shared.set_value(y_chunk_train)
+    z_shared.set_value(z_chunk_train)
 
     # make nbatches_chunk iterations
     for b in xrange(config().nbatches_chunk):
@@ -160,11 +170,12 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
 
         # load validation data to GPU
         tmp_losses_valid = defaultdict(list)
-        for i, (x_chunk_valid, y_chunk_valid, ids_batch) in enumerate(
+        for i, (x_chunk_valid, y_chunk_valid, z_chunk_valid, ids_batch) in enumerate(
                 buffering.buffered_gen_threaded(valid_data_iterator.generate(),
                                                 buffer_size=2)):
             x_shared.set_value(x_chunk_valid)
             y_shared.set_value(y_chunk_valid)
+            z_shared.set_value(z_chunk_valid)
             losses_valid = iter_validate()
             print i, losses_valid[0]
             for obj_idx, obj_name in enumerate(config().order_objectives):
