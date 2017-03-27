@@ -996,21 +996,34 @@ class CandidatesLunaPropsDataGenerator(object):
         self.file_extension = '.pkl' if 'pkl' in data_path else '.mhd'
         self.id2positive_annotations = {}
         self.id2negative_annotations = {}
-        self.patient_paths = []
+        self.all_pids = patient_ids
+        self.pos_pids = []
+        self.neg_pids = []
         n_positive, n_negative = 0, 0
         for pid in patient_ids:
             if pid in id2positive_annotations:
                 self.id2positive_annotations[pid] = id2positive_annotations[pid]
                 self.id2negative_annotations[pid] = id2negative_annotations[pid]
-                self.patient_paths.append(data_path + '/' + pid + self.file_extension)
+                self.pos_pids.append(pid)
                 n_positive += len(id2positive_annotations[pid])
                 n_negative += len(id2negative_annotations[pid])
+            elif pid in id2negative_annotations:
+                self.id2negative_annotations[pid] = id2negative_annotations[pid]
+                self.neg_pids.append(pid)
+                n_negative += len(id2negative_annotations[pid])
+            else:
+                print 'WARNING something weird happens'
 
         print 'n positive', n_positive
         print 'n negative', n_negative
 
-        self.nsamples = len(self.patient_paths)
+        self.n_neg_cans = n_negative
+        self.n_pos_cans = n_positive
 
+        self.n_pos_pids = len(self.pos_pids)
+        self.n_neg_pids = len(self.neg_pids)
+
+        self.nsamples = len(self.all_pids)
         print 'n patients', self.nsamples
         self.data_path = data_path
         self.batch_size = batch_size
@@ -1078,40 +1091,66 @@ class CandidatesLunaPropsDataGenerator(object):
 
     def generate(self):
         while True:
-            rand_idxs = np.arange(self.nsamples)
+            # Construct pid set with
+            rand_pos_idxs = np.arange(self.n_pos_pids)
+            rand_neg_idxs = np.arange(self.n_neg_pids)
+            ptr_pos_idcs = 0
+            ptr_neg_idcs = 0
+
             if self.random:
-                self.rng.shuffle(rand_idxs)
-            for pos in xrange(0, len(rand_idxs), self.batch_size):
-                idxs_batch = rand_idxs[pos:pos + self.batch_size]
-                nb = len(idxs_batch)
+                self.rng.shuffle(rand_pos_idxs)
+                self.rng.shuffle(rand_neg_idxs)
+
+            n_pos_batch = np.rint(self.batch_size * self.positive_proportion)
+            n_neg_batch = self.batch_size * (1.-self.positive_proportion)
+            for _idx, pos_pos in xrange(0, len(rand_idxs), n_pos_batch):
+                pos_idxs_batch = rand_pos_idxs[pos_pos:pos_pos + n_pos_batch]
+                neg_idxs_batch = rand_neg_idxs[_idx * n_neg_batch:(_idx+1) * n_neg_batch]
+
+                nb = len(pos_idxs_batch) + len(neg_idxs_batch)
                 # allocate batches
                 x_batch = np.zeros((nb,) + self.transform_params['patch_size'], dtype='float32')
                 y_batch = np.zeros((nb, len(self.order_objectives)), dtype='float32')
                 z_batch = np.zeros((nb, len(self.order_objectives)), dtype='float32')
                 patients_ids = []
 
-                for i, idx in enumerate(idxs_batch):
-                    patient_path = self.patient_paths[idx]
-
-                    id = utils_lung.extract_pid_filename(patient_path, self.file_extension)
-                    patients_ids.append(id)
+                batch_ptr = 0
+                for idx in pos_idxs_batch:
+                    pid  = self.pos_pids[idx]
+                    patient_path = self.data_path + '/' + pid + self.file_extension
+                    patients_ids.append(pid)
 
                     img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
                         if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
 
-                    if i < self.rng.rint(self.batch_size * self.positive_proportion):
-                        patient_annotations = self.id2positive_annotations[id]
-                    else:
-                        patient_annotations = self.id2negative_annotations[id]
-
+                    patient_annotations = self.id2positive_annotations[pid]
                     patch_center = patient_annotations[self.rng.randint(len(patient_annotations))]
 
-                    y_batch[i], z_batch[i] = self.build_ground_truth_vector(id, patch_center)
-
-                    x_batch[i, :, :, :] = self.data_prep_fun(data=img,
+                    y_batch[batch_ptr], z_batch[batch_ptr] = self.build_ground_truth_vector(pid, patch_center)
+                    x_batch[batch_ptr, :, :, :] = self.data_prep_fun(data=img,
                                                                 patch_center=patch_center,
                                                                 pixel_spacing=pixel_spacing,
                                                                 luna_origin=origin)
+                    batch_ptr += 1
+
+                for idx in neg_idxs_batch:
+                    pid  = self.neg_pids[idx]
+                    patient_path = self.data_path + '/' + pid + self.file_extension
+                    patients_ids.append(pid)
+
+                    img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
+                        if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
+
+                    patient_annotations = self.id2negative_annotations[pid]
+                    patch_center = patient_annotations[self.rng.randint(len(patient_annotations))]
+
+                    y_batch[batch_ptr], z_batch[batch_ptr] = self.build_ground_truth_vector(pid, patch_center)
+                    x_batch[batch_ptr, :, :, :] = self.data_prep_fun(data=img,
+                                                                patch_center=patch_center,
+                                                                pixel_spacing=pixel_spacing,
+                                                                luna_origin=origin)
+                    batch_ptr += 1
+
 
                 if self.full_batch:
                     if nb == self.batch_size:
