@@ -32,7 +32,8 @@ metadata_path = metadata_dir + '/%s.pkl' % expid
 
 # logs
 logs_dir = utils.get_dir_path('logs', pathfinder.METADATA_PATH)
-sys.stdout = logger.Logger(logs_dir + '/%s.log' % expid)
+log = logger.Logger(logs_dir + '/%s.log' % expid)
+sys.stdout = log
 sys.stderr = sys.stdout
 
 print 'Build model'
@@ -154,6 +155,7 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
         valid_loss = np.mean(tmp_losses_valid)
         print 'Validation loss: ', valid_loss
         losses_eval_valid.append(valid_loss)
+        log.flush()
 
         now = time.time()
         time_since_start = now - start_time

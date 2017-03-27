@@ -10,9 +10,17 @@ else:
     with open('SETTINGS.json') as data_file:
         paths = json.load(data_file)
 
+
+
 METADATA_PATH = paths["METADATA_PATH"]
 
 # kaggle data
+
+SEGM_PATH = paths["SEGM_PATH"]
+# if not os.path.isfile(SEGM_PATH):
+    # raise ValueError('no file with segmentation maps')
+
+
 DATA_PATH = paths["DATA_PATH"]
 utils.check_data_paths(DATA_PATH)
 

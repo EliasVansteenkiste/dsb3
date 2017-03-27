@@ -197,9 +197,9 @@ def transform_dsb_candidates(data, patch_centers, pixel_spacing, p_transform,
 
 def transform_dsb(data, pixel_spacing, p_transform, p_transform_augment=None):
     mm_patch_size = np.asarray(p_transform['mm_patch_size'], dtype='float32')
-    out_pixel_spacing = np.asarray(p_transform['pixel_spacing'])
+    out_pixel_spacing = np.asarray(p_transform['pixel_spacing'], dtype='float32')
 
-    input_shape = np.asarray(data.shape)
+    input_shape = np.asarray(data.shape, dtype='float32')
     mm_shape = input_shape * pixel_spacing / out_pixel_spacing
     output_shape = p_transform['patch_size']
 
@@ -217,6 +217,28 @@ def transform_dsb(data, pixel_spacing, p_transform, p_transform_augment=None):
         tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_shift_uncenter).dot(tf_output_scale)
 
     return apply_affine_transform(data, tf_total, order=1, output_shape=output_shape)
+
+
+def transform_dsb_segm(data, p_transform, p_transform_augment=None):
+    input_shape = np.asarray(data.shape, dtype='float32')
+    output_shape = np.asarray(p_transform['patch_size'], dtype='float32')
+    # print input_shape, output_shape, output_shape / input_shape
+
+    tf_shift_center = affine_transform(translation=-(input_shape / 2. - 0.5))
+    tf_shift_uncenter = affine_transform(translation=input_shape / 2. - 0.5)
+    tf_output_scale = affine_transform(scale=output_shape / input_shape)
+
+    if p_transform_augment:
+        augment_params_sample = sample_augmentation_parameters(p_transform_augment)
+        tf_augment = affine_transform(translation=augment_params_sample.translation,
+                                      rotation=augment_params_sample.rotation)
+        tf_total = tf_shift_center.dot(tf_augment).dot(tf_shift_uncenter).dot(tf_output_scale)
+    else:
+        tf_total = tf_shift_center.dot(tf_shift_uncenter).dot(tf_output_scale)
+
+    return apply_affine_transform(data, tf_total, order=1, output_shape=output_shape.astype("int"))
+
+
 
 
 def make_3d_mask(img_shape, center, radius, shape='sphere'):

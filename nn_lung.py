@@ -291,6 +291,28 @@ class NormalCDFLayer(nn.layers.MergeLayer):
         return cdf
 
 
+class LogMeanExpScaled(nn.layers.Layer):
+    """
+    ln(mean(exp( r * x ))) /  r
+    """
+
+    def __init__(self, incoming, r=1, n_cand=8, axis=-1, **kwargs):
+        super(LogMeanExpScaled, self).__init__(incoming, **kwargs)
+        self.r = np.float32(r)
+        self.axis = axis
+        self.n_cand = np.float32(n_cand)
+
+    def get_output_shape_for(self, input_shape):
+        assert(len(input_shape)==3)
+        assert(input_shape[2]==1)
+        return (input_shape[0], 1)
+
+    def get_output_for(self, input, **kwargs):
+        lme = T.log(T.mean(T.exp(self.r * input), axis=self.axis) + 1e-7) / self.r
+        # denom = np.float32(np.log(np.exp(self.r)/self.n_cand)/self.r)
+        # return lme/denom
+        return T.power(lme, 1-T.sqrt(lme+1e-7))
+
 
 class LogMeanExp(nn.layers.Layer):
     """
@@ -311,19 +333,19 @@ class LogMeanExp(nn.layers.Layer):
         return T.log(T.mean(T.exp(self.r * input), axis=self.axis) + 1e-7) / self.r
 
 
-class ProbTheory(nn.layers.Layer):
+class SoftMax(nn.layers.Layer):
 
-    def __init__(self, incoming, axis=(1,2), **kwargs):
-        super(ProbTheory, self).__init__(incoming, **kwargs)
-        self.axis = axis
+    def __init__(self, incoming, **kwargs):
+        super(SoftMax, self).__init__(incoming, **kwargs)
 
     def get_output_shape_for(self, input_shape):
-        assert(len(input_shape)==3)
-        assert(input_shape[2]==1)
-        return (input_shape[0], 1)
+        assert(len(input_shape)==2)
+        return (input_shape[0],)
 
     def get_output_for(self, input, **kwargs):
-        return 1-T.prod(1-input, axis=self.axis)
+        y = input
+        return T.sum(T.nnet.sigmoid(y)*T.nnet.softmax(y), axis=1)
+
 
 class PushUpOnlyHighVals(nn.layers.Layer):
     def __init__(self, incoming, factor, power, axis=(1,2), **kwargs):

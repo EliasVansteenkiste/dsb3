@@ -1,0 +1,1001 @@
+{
+	"auto_complete":
+	{
+		"selected_items":
+		[
+			[
+				"outpu",
+				"output_shape"
+			],
+			[
+				"input",
+				"input_shape"
+			],
+			[
+				"ref",
+				"refr"
+			],
+			[
+				"WATER",
+				"WATER_REFL_OR_REFR"
+			],
+			[
+				"_BU",
+				"_BUMPENABLE_ON"
+			],
+			[
+				"_BUM",
+				"_BumpEnable"
+			],
+			[
+				"vert",
+				"vertexLight1"
+			],
+			[
+				"LPWLi",
+				"LPWLightingInput"
+			],
+			[
+				"_Fre",
+				"_FresPower"
+			],
+			[
+				"wo",
+				"worldPos"
+			],
+			[
+				"_SH",
+				"_SHADING_PIXELLIT"
+			],
+			[
+				"wor",
+				"worldNormal"
+			],
+			[
+				"Hid",
+				"HideInInspector"
+			],
+			[
+				"ver",
+				"vertexLight1"
+			],
+			[
+				"_Col",
+				"_ColorControl"
+			],
+			[
+				"_Depth",
+				"_DepthColor"
+			],
+			[
+				"_s",
+				"_Specular"
+			],
+			[
+				"_Fr",
+				"_FrequencyX"
+			],
+			[
+				"A",
+				"Amplitude"
+			],
+			[
+				"_Frequen",
+				"_FrequencyZ"
+			],
+			[
+				"hisc",
+				"hiscoreText"
+			],
+			[
+				"loc",
+				"localStorage"
+			],
+			[
+				"star",
+				"startButton"
+			],
+			[
+				"set",
+				"setTimeout"
+			],
+			[
+				"f",
+				"function"
+			],
+			[
+				"fo",
+				"for\tfor (…) {…}"
+			],
+			[
+				"score",
+				"scoreText"
+			],
+			[
+				"bo",
+				"bottombar"
+			],
+			[
+				"te",
+				"textureFrames"
+			],
+			[
+				"un",
+				"unselectAll"
+			],
+			[
+				"se",
+				"selectedBlocks"
+			]
+		]
+	},
+	"buffers":
+	[
+		{
+			"file": "configs_class_dsb/dsb_lio_segm.py",
+			"settings":
+			{
+				"buffer_size": 6036,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "configs_class_dsb/dsb_a_liolme16_c3_s2_p8a1.py",
+			"settings":
+			{
+				"buffer_size": 10407,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "configs_class_dsb/dsb_a_liolrlme16_c3_s2_p8a1.py",
+			"settings":
+			{
+				"buffer_size": 10327,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "train_class_dsb.py",
+			"settings":
+			{
+				"buffer_size": 6814,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "configs_class_dsb/dsb_a_liolmes16_c3_s5_p8a1.py",
+			"settings":
+			{
+				"buffer_size": 10582,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "nn_lung.py",
+			"settings":
+			{
+				"buffer_size": 14689,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "configs_class_dsb/dsb_a_liomax_c3_s5_p8a1.py",
+			"settings":
+			{
+				"buffer_size": 10397,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "SETTINGS.json",
+			"settings":
+			{
+				"buffer_size": 759,
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "pathfinder.py",
+			"settings":
+			{
+				"buffer_size": 1631,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "data_iterators.py",
+			"settings":
+			{
+				"buffer_size": 55834,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		},
+		{
+			"file": "data_transforms.py",
+			"settings":
+			{
+				"buffer_size": 14575,
+				"encoding": "UTF-8",
+				"line_ending": "Unix"
+			}
+		}
+	],
+	"build_system": "Packages/Python/Python.sublime-build",
+	"build_system_choices":
+	[
+		[
+			[
+				[
+					"Packages/Python/Python.sublime-build",
+					""
+				],
+				[
+					"Packages/Python/Python.sublime-build",
+					"Syntax Check"
+				]
+			],
+			[
+				"Packages/Python/Python.sublime-build",
+				""
+			]
+		]
+	],
+	"build_varint": "",
+	"command_palette":
+	{
+		"height": 357.0,
+		"last_filter": "inst",
+		"selected_items":
+		[
+			[
+				"inst",
+				"Package Control: Install Package"
+			],
+			[
+				"ins",
+				"Package Control: Install Package"
+			],
+			[
+				"pack",
+				"Package Control: Remove Package"
+			],
+			[
+				"instl",
+				"Package Control: Install Package"
+			],
+			[
+				"install",
+				"Package Control: Install Package"
+			],
+			[
+				"install ",
+				"Package Control: Install Package"
+			]
+		],
+		"width": 400.0
+	},
+	"console":
+	{
+		"height": 126.0,
+		"history":
+		[
+			"import urllib.request,os,hashlib; h = 'eb2297e1a458f27d836c04bb0cbaf282' + 'd0e7a3098092775ccb37ca9d6b2e4b7d'; pf = 'Package Control.sublime-package'; ipp = sublime.installed_packages_path(); urllib.request.install_opener( urllib.request.build_opener( urllib.request.ProxyHandler()) ); by = urllib.request.urlopen( 'http://packagecontrol.io/' + pf.replace(' ', '%20')).read(); dh = hashlib.sha256(by).hexdigest(); print('Error validating download (got %s instead of %s), please try manual install' % (dh, h)) if dh != h else open(os.path.join( ipp, pf), 'wb' ).write(by)"
+		]
+	},
+	"distraction_free":
+	{
+		"menu_visible": true,
+		"show_minimap": false,
+		"show_open_files": false,
+		"show_tabs": false,
+		"side_bar_visible": false,
+		"status_bar_visible": false
+	},
+	"expanded_folders":
+	[
+		"/C/Users/lio/drive/dsb3",
+		"/C/Users/lio/drive/dsb3/configs_class_dsb",
+		"/C/Users/lio/drive/dsb3/scripts"
+	],
+	"file_history":
+	[
+		"/C/Users/lio/drive/dsb3/train_class_dsb.py",
+		"/C/Users/lio/drive/dsb3/configs_class_dsb/dsb_a_liolmes16_c3_s5_p8a1.py",
+		"/C/Users/lio/drive/dsb3/scripts/save_segmentation_maps2.py",
+		"/C/Users/lio/drive/dsb3/data_iterators.py",
+		"/C/Users/lio/drive/dsb3/SETTINGS.json",
+		"/C/Users/lio/drive/dsb3/SETTINGS_user.json",
+		"/C/Users/lio/drive/dsb3/configs_class_dsb/dsb_lio.py",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Shaders/CGIncludes/LPWNoise.cginc",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/ExtraShaders/LowPolyWaterv103.shader",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/Standard Assets/Environment/Water/Water4/Shaders/WaterInclude.cginc",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Shaders/CGIncludes/LPWShoreBlend.cginc",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/Standard Assets/Environment/Water/Water4/Shaders/FXWater4Advanced.shader",
+		"/C/Users/lio/drive/unity/Built-in Shaders/5.5.0f3/CGIncludes/UnityShaderVariables.cginc",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/Standard Assets/Environment/Water/Water/Shaders/FXWaterPro.shader",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Shaders/CGIncludes/LPWLighting.cginc",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Shaders/CGIncludes/LPWReflection.cginc",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Shaders/LowPolyWaterHighQuality.shader",
+		"/C/Users/lio/drive/unity/Built-in Shaders/5.5.0f3/CGIncludes/UnityStandardCore.cginc",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Shaders/CGIncludes/LPWWaves.cginc",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Shaders/CGIncludes/LPWRipples.cginc",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Shaders/CGincludes/LPWReflection.cginc",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/Plugins/AQUAS-Lite/Shaders/AQUAS-Lite.shader",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Shaders/CGincludes/LPWLighting.cginc",
+		"/C/Users/lio/drive/unity/Built-in Shaders/5.5.0f3/DefaultResourcesExtra/Mobile/Mobile-VertexLit-OnlyDirectionalLights.shader",
+		"/C/Users/lio/drive/unity/Built-in Shaders/5.5.0f3/CGIncludes/AutoLight.cginc",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Shaders/CGincludes/LPWWaves.cginc",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Shaders/CGincludes/LPWNoise.cginc",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Shaders/CGincludes/LPWRipples.cginc",
+		"/C/Users/lio/drive/unity/Built-in Shaders/5.5.0f3/CGIncludes/UnityCG.cginc",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Shaders/LowPolyWaterDefault.shader",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Shaders/LowPolyWaterShadow.shader",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Shaders/CGincludes/LPWShadows.cginc",
+		"/C/Users/lio/drive/unity/Built-in Shaders/5.5.0f3/CGIncludes/UnityShadowLibrary.cginc",
+		"/C/Users/lio/drive/unity/Built-in Shaders/5.5.0f3/CGIncludes/UnityGlobalIllumination.cginc",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/ExtraShaders/LowPolyWaterHxVol.shader",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Scripts/LowPolyWaterCustomShape.cs",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Shaders/LowPolyWaterCustomShape.shader",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Shaders/LowPolyWaterInfinity.shader",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Shaders/CGincludes/LPWLOD.cginc",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/ExtraShaders/LowPolyWaterCustomPlane.shader",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/ExtraScripts/LowPolyWaterCustomPlane.cs",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Shaders/LowPolyWaterGeom.shader",
+		"/C/Users/lio/drive/unity/Built-in Shaders/5.5.0f3/DefaultResourcesExtra/Mobile/Mobile-VertexLit.shader",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Shaders/LowPolyWater.shader",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/ExtraShaders/MobileTest.shader",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Shaders/CGincludes/LPWShoreBlend.cginc",
+		"/C/Users/lio/drive/unity/Built-in Shaders/5.5.0f3/CGIncludes/UnityInstancing.cginc",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Shaders/CGincludes/LPWCompatibility.cginc",
+		"/C/Users/lio/drive/unity/Built-in Shaders/5.5.0f3/CGIncludes/UnityStandardUtils.cginc",
+		"/C/Users/lio/drive/unity/Built-in Shaders/5.5.0f3/CGIncludes/UnityStandardInput.cginc",
+		"/C/Users/lio/drive/unity/Built-in Shaders/5.5.0f3/CGIncludes/UnityPBSLighting.cginc",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Shaders/CGincludes/LPWTexNoise.cginc",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Shaders/LPWShoreBlend.cginc",
+		"/C/Users/lio/drive/unity/Built-in Shaders/5.5.0f3/CGIncludes/UnityBuiltin2xTreeLibrary.cginc",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/ExtraShaders/LowPolyWaterGeom.shader",
+		"/C/Users/lio/drive/unity/Built-in Shaders/5.5.0f3/CGIncludes/SpeedTreeBillboardCommon.cginc",
+		"/C/Users/lio/drive/unity/Built-in Shaders/5.5.0f3/CGIncludes/HLSLSupport.cginc",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Scripts/LowPolyWater.cs",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/ExtraShaders/LowPolyWaterCurvedWorld.shader",
+		"/C/Users/lio/drive/unity/Built-in Shaders/5.5.0f3/DefaultResourcesExtra/Internal-ScreenSpaceShadows.shader",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/ExtraShaders/LowPolyWaterXY.shader",
+		"/C/Users/lio/drive/unity/Built-in Shaders/5.5.0f3/CGIncludes/SpeedTreeWind.cginc",
+		"/C/Users/lio/drive/unity/Built-in Shaders/5.5.0f3/CGIncludes/UnityDeprecated.cginc",
+		"/C/Users/lio/drive/unity/Built-in Shaders/5.5.0f3/DefaultResourcesExtra/Cubemaps/CubeBlurOdd.shader",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/ExtraShaders/TransBill.shader",
+		"/C/Users/lio/drive/unity/Built-in Shaders/5.5.0f3/DefaultResourcesExtra/Particle MultiplyDouble.shader",
+		"/C/Users/lio/Desktop/Unity/LowPolyWater/Assets/LowPolyWater/Shaders/LowPolyWaterCurvedWorld.shader",
+		"/C/Users/lio/Desktop/Unity/Low Poly Water/Assets/Shaders/oldcode.txt",
+		"/C/Users/lio/drive/unity/Built-in Shaders/5.5.0f3/Editor/StandardShaderGUI.cs",
+		"/C/Users/lio/drive/unity/Built-in Shaders/5.5.0f3/CGIncludes/Lighting.cginc",
+		"/C/Users/lio/drive/unity/Built-in Shaders/5.5.0f3/DefaultResourcesExtra/Standard.shader",
+		"/C/Users/lio/Desktop/Unity/Low Poly Water/Assets/LowPolyWater/Shaders/LowPolyWater.shader",
+		"/C/Users/lio/Desktop/Unity/Low Poly Water/Assets/Shaders/LowPolyWater.shader",
+		"/C/Users/lio/Desktop/Unity/Low Poly Water/Assets/Standard Assets/Environment/Water/Water4/Shaders/WaterInclude.cginc",
+		"/C/Users/lio/Desktop/Unity/Low Poly Water/Assets/Standard Assets/Environment/Water/Water4/Shaders/FXWater4Simple.shader",
+		"/C/Users/lio/drive/unity/Built-in Shaders/5.5.0f3/DefaultResourcesExtra/Mobile/Mobile-BumpSpec-1DirectionalLight.shader",
+		"/C/Users/lio/Desktop/Unity/Low Poly Water/Assets/Plugins/AQUAS-Lite/Shaders/AQUAS-Lite.shader",
+		"/C/Users/lio/Desktop/Unity/Low Poly Water/Assets/Shaders/NewSurfaceShader.shader",
+		"/C/Users/lio/Desktop/Unity/Low Poly Water/Assets/Shaders/LowPolyWaterStd.shader",
+		"/C/Users/lio/drive/unity/Built-in Shaders/5.5.0f3/DefaultResourcesExtra/Mobile/Mobile-Diffuse.shader",
+		"/C/Users/lio/Desktop/Unity/Low Poly Water/Assets/Scripts/SplitVertices.cs",
+		"/C/Users/lio/Dropbox/quad/js/color.js",
+		"/C/Users/lio/Dropbox/quad/js/config.js",
+		"/C/Users/lio/Dropbox/quad/js/main.js",
+		"/C/Users/lio/Dropbox/quad/index.html",
+		"/C/Users/lio/Desktop/sep.py",
+		"/C/Users/lio/Dropbox/quad/todo",
+		"/C/Users/lio/Dropbox/quad/js/init.js",
+		"/C/Users/lio/Desktop/subl/Data/Packages/User/Preferences.sublime-settings",
+		"/C/Users/lio/Dropbox/quad/js/pixi.js",
+		"/C/Users/lio/Desktop/subl/Data/Packages/Default/Preferences.sublime-settings",
+		"/C/Users/lio/Dropbox/quad/js/ready.js",
+		"/C/Users/lio/Desktop/subl/Data/Packages/User/LiveReload.sublime-settings",
+		"/C/Users/lio/Desktop/subl/Data/Packages/Default/Default (Windows).sublime-keymap",
+		"/C/Users/lio/Desktop/subl/Data/Packages/User/Default (Windows).sublime-keymap",
+		"/C/Users/lio/Desktop/subl/Data/Packages/LiveReload/LiveReload.sublime-settings",
+		"/C/Users/lio/Desktop/subl/Data/Packages/User/Package Control.sublime-settings"
+	],
+	"find":
+	{
+		"height": 34.0
+	},
+	"find_in_files":
+	{
+		"height": 90.0,
+		"where_history":
+		[
+			""
+		]
+	},
+	"find_state":
+	{
+		"case_sensitive": false,
+		"find_history":
+		[
+			"4",
+			"scaled",
+			"fresPow",
+			"alpha",
+			"ambient",
+			"LIGHTING_COORDS",
+			"UNITY_PROJ_COORD",
+			"VERTEXLIGHT_ON",
+			"unity_OrthoParams",
+			"COMPUTESCREENPOS",
+			"SHADOWS",
+			"ShadeSH9",
+			"LPW_SHADOWS",
+			"refle",
+			"_ShoreDistance",
+			"reflectVector",
+			"_LPW_REFLECT",
+			"SAMPLE_NOISE_TEX",
+			"_time",
+			"_Time",
+			"TRANSFORM_TEX",
+			"UNITY_SAMPLE_1CHANNEL",
+			"LPW_RIPPLES",
+			"LIGHTING_COORDS",
+			"TRANSFER_VERTEX_TO_FRAGMENT",
+			"LIGHT_ATTENUATION",
+			"UNITY_TRANSFER_FOG",
+			"LIGHTING_COORDS",
+			"shadowAtten",
+			"specPower",
+			"fresPower",
+			"SHADOWS_OFF",
+			"UnitySampleShadowmap",
+			"SHADOW_ATTEN",
+			"gi.",
+			"gi",
+			"gi.atten",
+			"GI",
+			"\nUNITY_BRDF_GI",
+			"UNITY_BRDF_GI",
+			"FragmentGI",
+			"SHADOW_ATT",
+			"SHADOWS_",
+			"SHADOWS_OFF",
+			"TRANSFER_SHADOW",
+			"_Scale",
+			"_USE_LOD",
+			"UNITY_TRANSFER_FOG",
+			"uv0s.Add(new Vector4(va.x, va.z, vb.x, vb.z));\n            uv1s.Add(new Vector2(va.y, vb.y));",
+			":",
+			"pos0",
+			"UNITY_SETUP_INSTANCE_ID",
+			"_GETINSTANCEID",
+			"UNITY_SETUP_INSTANCE_ID",
+			"UNITY_TRANSFER_INSTANCE_ID",
+			"appdata",
+			"v2f",
+			"OutputStream",
+			"LPW_LIGHTING",
+			"pos",
+			"pos0",
+			"\t",
+			"LPW_WAVES",
+			"LPW_NOISE",
+			"ripple",
+			"gerstner",
+			"hash",
+			"lighting",
+			"LPW_NOISE",
+			"LPW_LIGHTING",
+			"LPW_SHORE_BLEND",
+			"ComputeScreenPos",
+			"SPEEDTREE_BILLBOARD_COMMON_INCLUDED",
+			"speed",
+			"SHADER_TARGET < 25",
+			"30",
+			"SHADER_TARGET",
+			"tex2dlod",
+			"tex2dlof",
+			"texlod",
+			"EYE",
+			"_ZBufferParams",
+			"LinearEyeDepth",
+			"UNITY_Z_0_FAR_FROM_CLIPSPACE",
+			"__",
+			"__Speed",
+			"__TexSize",
+			"_RHeight",
+			"__RHeight",
+			"__Scale",
+			"__Direction",
+			"__Height",
+			"RSpeed",
+			"__RSpeed",
+			"_Time",
+			"OPEN",
+			"noiseTex",
+			"(SHADER_TARGET < 30)",
+			"TARGET",
+			"UnityObjectToViewPos",
+			"COMPUTE_EYE",
+			"half",
+			"_WorldSpaceLightPos0",
+			"fixed",
+			"zdepth",
+			"DEPTH",
+			"INVERT",
+			"INVERTED",
+			"DEPTH_INVERT",
+			"SAMPLE_DEPTH_TEXTURE_PROJ",
+			"COMPUTE_EYE",
+			"COMPUTE_ETE",
+			"_ShoreColor",
+			"DiffuseAndSpecularFromMetallic",
+			"oneMinusReflectivity",
+			"PreMultiplyAlpha",
+			"PREMUL",
+			"diff",
+			"COMPUTE_",
+			"UnityObjectToViewPos",
+			"UnityObject2ViewPos",
+			"COMPUTE_EYEDEPTH",
+			"worldspace",
+			"ortho",
+			"LinearEyeDepth",
+			"UNITY_PROJ_COORD",
+			"worldPos",
+			"SAMPLE_DEPTH_TEXTURE"
+		],
+		"highlight": true,
+		"in_selection": false,
+		"preserve_case": false,
+		"regex": false,
+		"replace_history":
+		[
+		],
+		"reverse": false,
+		"show_context": true,
+		"use_buffer2": true,
+		"whole_word": false,
+		"wrap": true
+	},
+	"folders":
+	[
+		{
+			"path": "C:\\Users\\lio\\drive\\dsb3"
+		}
+	],
+	"groups":
+	[
+		{
+			"selected": 2,
+			"sheets":
+			[
+				{
+					"buffer": 0,
+					"file": "configs_class_dsb/dsb_lio_segm.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 6036,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 788.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 2,
+					"type": "text"
+				},
+				{
+					"buffer": 1,
+					"file": "configs_class_dsb/dsb_a_liolme16_c3_s2_p8a1.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 10407,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								5563,
+								5563
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 1110.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 1,
+					"type": "text"
+				},
+				{
+					"buffer": 2,
+					"file": "configs_class_dsb/dsb_a_liolrlme16_c3_s2_p8a1.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 10327,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								5726,
+								5726
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 1372.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 0,
+					"type": "text"
+				},
+				{
+					"buffer": 3,
+					"file": "train_class_dsb.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 6814,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								3336,
+								3336
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 1455.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 5,
+					"type": "text"
+				},
+				{
+					"buffer": 4,
+					"file": "configs_class_dsb/dsb_a_liolmes16_c3_s5_p8a1.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 10582,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								9284,
+								9300
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 3105.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 4,
+					"type": "text"
+				},
+				{
+					"buffer": 5,
+					"file": "nn_lung.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 14689,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								9954,
+								9954
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 4083.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 3,
+					"type": "text"
+				},
+				{
+					"buffer": 6,
+					"file": "configs_class_dsb/dsb_a_liomax_c3_s5_p8a1.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 10397,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								8925,
+								8946
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 3150.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 6,
+					"type": "text"
+				},
+				{
+					"buffer": 7,
+					"file": "SETTINGS.json",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 759,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								0,
+								0
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/JavaScript/JSON.sublime-syntax",
+							"tab_size": 2,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 10,
+					"type": "text"
+				},
+				{
+					"buffer": 8,
+					"file": "pathfinder.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 1631,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								676,
+								676
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 0.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 9,
+					"type": "text"
+				},
+				{
+					"buffer": 9,
+					"file": "data_iterators.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 55834,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								48477,
+								48477
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 990.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 8,
+					"type": "text"
+				},
+				{
+					"buffer": 10,
+					"file": "data_transforms.py",
+					"semi_transient": false,
+					"settings":
+					{
+						"buffer_size": 14575,
+						"regions":
+						{
+						},
+						"selection":
+						[
+							[
+								10671,
+								10671
+							]
+						],
+						"settings":
+						{
+							"syntax": "Packages/Python/Python.sublime-syntax",
+							"tab_size": 4,
+							"translate_tabs_to_spaces": true
+						},
+						"translation.x": 0.0,
+						"translation.y": 3045.0,
+						"zoom_level": 1.0
+					},
+					"stack_index": 7,
+					"type": "text"
+				}
+			]
+		}
+	],
+	"incremental_find":
+	{
+		"height": 23.0
+	},
+	"input":
+	{
+		"height": 31.0
+	},
+	"layout":
+	{
+		"cells":
+		[
+			[
+				0,
+				0,
+				1,
+				1
+			]
+		],
+		"cols":
+		[
+			0.0,
+			1.0
+		],
+		"rows":
+		[
+			0.0,
+			1.0
+		]
+	},
+	"menu_visible": true,
+	"output.exec":
+	{
+		"height": 243.0
+	},
+	"output.find_results":
+	{
+		"height": 0.0
+	},
+	"pinned_build_system": "Packages/Python/Python.sublime-build",
+	"project": "",
+	"replace":
+	{
+		"height": 42.0
+	},
+	"save_all_on_build": true,
+	"select_file":
+	{
+		"height": 0.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 0.0
+	},
+	"select_project":
+	{
+		"height": 500.0,
+		"last_filter": "",
+		"selected_items":
+		[
+			[
+				"",
+				"C:\\Users\\lio\\Desktop\\Unity\\Low Poly Water\\lowpolywater.sublime-project"
+			]
+		],
+		"width": 380.0
+	},
+	"select_symbol":
+	{
+		"height": 392.0,
+		"last_filter": "",
+		"selected_items":
+		[
+		],
+		"width": 448.0
+	},
+	"selected_group": 0,
+	"settings":
+	{
+	},
+	"show_minimap": true,
+	"show_open_files": false,
+	"show_tabs": true,
+	"side_bar_visible": true,
+	"side_bar_width": 249.0,
+	"status_bar_visible": true,
+	"template_settings":
+	{
+	}
+}

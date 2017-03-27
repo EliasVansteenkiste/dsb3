@@ -1,4 +1,5 @@
 {
+  "SEGM_PATH": "/data/dsb3/compressed/segm/",
   "DATA_PATH": "/mnt/ssd/stage1/",
   "LABELS_PATH": "/mnt/storage/data/dsb3/stage1_labels.csv",
   "TEST_LABELS_PATH": "/mnt/storage/data/dsb3/test_labels.csv",
