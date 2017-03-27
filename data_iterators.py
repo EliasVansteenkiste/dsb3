@@ -329,7 +329,7 @@ class CandidatesLunaDataGenerator(object):
 class CandidatesLunaDataGeneratorBetter(object):
     def __init__(self, data_path, batch_size, transform_params, patient_ids, data_prep_fun, rng,
                  full_batch, random, infinite, positive_proportion,
-                 label_prep_fun=None, **kwargs):
+                 label_prep_fun=None, random_negative_samples=False, **kwargs):
 
         id2positive_annotations = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
         id2negative_annotations = utils_lung.read_luna_negative_candidates(pathfinder.LUNA_CANDIDATES_PATH)
@@ -357,12 +357,17 @@ class CandidatesLunaDataGeneratorBetter(object):
                 i += 1
         print 'n positive', len(self.idx2pid_annotation.keys())
 
-        while i < self.nsamples:
-            pid = rng.choice(self.id2negative_annotations.keys())
-            patient_annotations = self.id2negative_annotations[pid]
-            a = patient_annotations[rng.randint(len(patient_annotations))]
-            self.idx2pid_annotation[i] = (pid, a)
-            i += 1
+        if random_negative_samples:
+            while i < self.nsamples:
+                self.idx2pid_annotation[i] = (None, None)
+                i += 1
+        else:
+            while i < self.nsamples:
+                pid = rng.choice(self.id2negative_annotations.keys())
+                patient_annotations = self.id2negative_annotations[pid]
+                a = patient_annotations[rng.randint(len(patient_annotations))]
+                self.idx2pid_annotation[i] = (pid, a)
+                i += 1
         assert len(self.idx2pid_annotation) == self.nsamples
 
         self.data_path = data_path
@@ -393,14 +398,21 @@ class CandidatesLunaDataGeneratorBetter(object):
 
                 for i, idx in enumerate(idxs_batch):
                     pid, patch_center = self.idx2pid_annotation[idx]
+
+                    if pid is None:
+                        pid = self.rng.choice(self.id2negative_annotations.keys())
+                        patient_annotations = self.id2negative_annotations[pid]
+                        patch_center = patient_annotations[self.rng.randint(len(patient_annotations))]
+
                     patient_path = self.pid2patient_path[pid]
                     patients_ids.append(pid)
+
+                    y_batch[i] = float(patch_center[-1] > 0) if self.label_prep_fun is None else \
+                        self.label_prep_fun(patch_center[-1])
 
                     img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
                         if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
 
-                    y_batch[i] = float(patch_center[-1] > 0) if self.label_prep_fun is None else \
-                        self.label_prep_fun(patch_center[-1])
                     x_batch[i, 0, :, :, :] = self.data_prep_fun(data=img,
                                                                 patch_center=patch_center,
                                                                 pixel_spacing=pixel_spacing,

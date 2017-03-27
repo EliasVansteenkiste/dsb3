@@ -29,7 +29,7 @@ predictions_path = predictions_dir + '/%s' % config_name
 outputs_img_path = utils.get_dir_path('analysis', pathfinder.METADATA_PATH) + '/%s_img' % config_name
 utils.auto_make_dir(outputs_img_path)
 
-blob_files = sorted(glob.glob(predictions_path + '/fe45462987bacc32dbc7126119999392.pkl'))
+blob_files = sorted(glob.glob(predictions_path + '/fbae4d04285789dfa32124c86586dd09.pkl'))
 
 p_transform = {'patch_size': (64, 64, 64),
                'mm_patch_size': (64, 64, 64),
