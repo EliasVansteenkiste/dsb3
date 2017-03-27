@@ -79,7 +79,8 @@ for i, (x_chunk_test, _, id_test) in enumerate(buffering.buffered_gen_threaded(
         test_data_iterator.generate())):
     predictions = iter_test(x_chunk_test)
     pid = id_test[0]
-    pid2prediction[pid] = predictions.reshape((1,))[0]
+    #pid2prediction[pid] = predictions[0, 1]
+    pid2prediction[pid] = predictions[0]
     print i, pid, predictions
 
 utils.save_pkl(pid2prediction, output_pkl_file)

@@ -44,6 +44,9 @@ VALIDATION_SPLIT_PATH = paths["VALIDATION_SPLIT_PATH"]
 LUNA_DATA_PATH = paths["LUNA_DATA_PATH"]
 utils.check_data_paths(LUNA_DATA_PATH)
 
+LUNA_SEG_DATA_PATH = paths["LUNA_SEG_DATA_PATH"]
+utils.check_data_paths(LUNA_SEG_DATA_PATH)
+
 LUNA_LABELS_PATH = paths["LUNA_LABELS_PATH"]
 if not os.path.isfile(LUNA_LABELS_PATH):
     raise ValueError('no file with luna annotations')
@@ -55,3 +58,6 @@ if not os.path.isfile(LUNA_CANDIDATES_PATH):
 LUNA_VALIDATION_SPLIT_PATH = paths["LUNA_VALIDATION_SPLIT_PATH"]
 if not os.path.isfile(LUNA_VALIDATION_SPLIT_PATH):
     raise ValueError('no LUNA validation split file')
+
+LUNA_NODULE_ANNOTATIONS_PATH = paths["LUNA_NODULE_ANNOTATIONS"]
+utils.check_data_paths(LUNA_NODULE_ANNOTATIONS_PATH)

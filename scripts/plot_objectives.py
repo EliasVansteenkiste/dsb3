@@ -42,7 +42,7 @@ plt.plot(validation_errors, label='validation errors')
 plt.legend(loc="upper right")
 plt.title(sys.argv[1])
 plt.xlabel('Epoch')
-plt.ylim(0, 0.7)
+#plt.ylim(0, 0.7)
 plt.ylabel('Error')	
 plt.savefig(sys.argv[2])
 
