@@ -1101,9 +1101,9 @@ class CandidatesLunaPropsDataGenerator(object):
                 self.rng.shuffle(rand_pos_idxs)
                 self.rng.shuffle(rand_neg_idxs)
 
-            n_pos_batch = np.rint(self.batch_size * self.positive_proportion)
-            n_neg_batch = self.batch_size * (1.-self.positive_proportion)
-            for _idx, pos_pos in xrange(0, len(rand_idxs), n_pos_batch):
+            n_pos_batch = int(np.rint(self.batch_size * self.positive_proportion))
+            n_neg_batch = self.batch_size - n_pos_batch
+            for _idx, pos_pos in enumerate(xrange(0, len(rand_pos_idxs), n_pos_batch)):
                 pos_idxs_batch = rand_pos_idxs[pos_pos:pos_pos + n_pos_batch]
                 neg_idxs_batch = rand_neg_idxs[_idx * n_neg_batch:(_idx+1) * n_neg_batch]
 
