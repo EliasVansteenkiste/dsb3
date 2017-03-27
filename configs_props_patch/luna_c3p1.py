@@ -62,6 +62,9 @@ def label_prep_function(annotation):
         label = []
         properties_dict = annotation[-1]
         for p in properties:
+            if p in classes:
+                label.append(int(np.digitize(properties_dict[p], classes[p])))
+            else:
                 label.append(properties_dict[p])
     return label
 
