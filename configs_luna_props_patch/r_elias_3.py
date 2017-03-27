@@ -11,7 +11,7 @@ import lasagne
 import theano.tensor as T
 import utils
 
-restart_from_save = None #"/home/eavsteen/dsb3/storage/metadata/dsb3//models/eavsteen/t_el_4-20170323-010448.pkl"
+restart_from_save = False
 rng = np.random.RandomState(33)
 
 # transformations

@@ -177,10 +177,10 @@ for chunk_idx, (x_chunk_train, y_chunk_train, z_chunk_train, id_train) in izip(c
             y_shared.set_value(y_chunk_valid)
             z_shared.set_value(z_chunk_valid)
             losses_valid = iter_validate()
-            print i, losses_valid[0]
+            print i, losses_valid[0], np.sum(losses_valid)
             for obj_idx, obj_name in enumerate(config().order_objectives):
-                #print obj_name, losses_valid[obj_idx]
-                tmp_losses_valid[obj_name].append(losses_valid[obj_idx])
+                if z_chunk_valid[0, obj_idx]>0.5:
+                    tmp_losses_valid[obj_name].append(losses_valid[obj_idx])
 
 
         # calculate validation loss across validation set
