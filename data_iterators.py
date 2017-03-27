@@ -1037,7 +1037,7 @@ class CandidatesLunaPropsDataGenerator(object):
         is_nodule  = diameter>0.01
         properties['nodule'] = np.float32(is_nodule)
         if is_nodule:
-            if self.property_bin_borders is not None:
+            if 'size' in self.property_bin_borders:
                 properties['size'] = np.digitize(diameter, self.property_bin_borders['size'])
             else:
                 properties['size'] = diameter
@@ -1063,11 +1063,11 @@ class CandidatesLunaPropsDataGenerator(object):
                         prop_values = []
                         for nchar in nodule_characteristics:
                             prop_values.append(float(nchar[prop]))
-                        median_value = np.median(np.array(prop_values))
-                        if self.property_bin_borders is not None:
-                            properties[prop] = np.digitize(median_value, self.property_bin_borders[prop])
+                            random_value = self.rng.choice(np.array(prop_values))
+                        if prop in self.property_bin_borders:
+                            properties[prop] = np.digitize(random_value, self.property_bin_borders[prop])
                         else:
-                            properties[prop] = median_value
+                            properties[prop] = random_value
 
         for idx, prop in enumerate(self.order_objectives):
             if prop in properties:
@@ -1099,7 +1099,7 @@ class CandidatesLunaPropsDataGenerator(object):
                     img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
                         if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
 
-                    if i < np.rint(self.batch_size * self.positive_proportion):
+                    if i < self.rng.rint(self.batch_size * self.positive_proportion):
                         patient_annotations = self.id2positive_annotations[id]
                     else:
                         patient_annotations = self.id2negative_annotations[id]
@@ -1168,6 +1168,7 @@ class CandidatesLunaPropsValidDataGenerator(object):
     def L2(self, a,b):
         return ((a[0]-b[0])**2 + (a[1]-b[1])**2 + (a[2]-b[2])**2)**(0.5)
 
+
     def build_ground_truth_vector(self, pid, patch_center):
         properties={}
         feature_vector = np.zeros((len(self.order_objectives)), dtype='float32')
@@ -1176,7 +1177,7 @@ class CandidatesLunaPropsValidDataGenerator(object):
         is_nodule  = diameter>0.01
         properties['nodule'] = np.float32(is_nodule)
         if is_nodule:
-            if self.property_bin_borders is not None:
+            if 'size' in self.property_bin_borders:
                 properties['size'] = np.digitize(diameter, self.property_bin_borders['size'])
             else:
                 properties['size'] = diameter
@@ -1202,11 +1203,12 @@ class CandidatesLunaPropsValidDataGenerator(object):
                         prop_values = []
                         for nchar in nodule_characteristics:
                             prop_values.append(float(nchar[prop]))
-                        median_value = np.median(np.array(prop_values))
-                        if self.property_bin_borders is not None:
+                        if prop in self.property_bin_borders:
+                            median_value = np.median(np.array(prop_values))
                             properties[prop] = np.digitize(median_value, self.property_bin_borders[prop])
                         else:
-                            properties[prop] = median_value
+                            mean_value = np.mean(np.array(prop_values))
+                            properties[prop] = mean_value
 
         for idx, prop in enumerate(self.order_objectives):
             if prop in properties:
