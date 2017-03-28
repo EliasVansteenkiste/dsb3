@@ -29,14 +29,10 @@ p_transform_augment = {
 
 positive_proportion = 0.8
 
-properties = ['diameter', 'calcification', 'lobulation', 'malignancy', 'margin', 'sphericity',
-              'spiculation', 'texture']
+properties = ['diameter']
+properties_priors = {'diameter': 4.}
+classes = {}
 nproperties = len(properties)
-
-classes = {
-    'calcification': [1, 2, 3, 4, 5, 6],  # 0:nothing,1:popcorn,2:laminated,3:solid,4:non-central,5:central,6:absent
-    'texture': [1, 2, 4],  # 0:nothing, 1: non-solid/ground glass, 2: mixed, 3: solid
-}
 
 
 # data preparation function
@@ -56,17 +52,7 @@ def data_prep_function(data, patch_center, pixel_spacing, luna_origin, p_transfo
 
 def label_prep_function(annotation):
     patch_zyxd = annotation[:4]
-    if patch_zyxd[-1] == 0:
-        return np.asarray([0] * len(properties), dtype='float32')
-    else:
-        label = []
-        properties_dict = annotation[-1]
-        for p in properties:
-            if p in classes:
-                label.append(int(np.digitize(properties_dict[p], classes[p])))
-            else:
-                label.append(properties_dict[p])
-    return label
+    return patch_zyxd[-1]
 
 
 data_prep_function_train = partial(data_prep_function, p_transform_augment=p_transform_augment,
@@ -75,7 +61,7 @@ data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
                                    p_transform=p_transform, world_coord_system=True)
 
 # data iterators
-batch_size = 8
+batch_size = 16
 nbatches_chunk = 1
 chunk_size = batch_size * nbatches_chunk
 
@@ -116,7 +102,7 @@ learning_rate_schedule = {
     int(max_nchunks * 0.9): 2e-7
 }
 
-untrained_weigths_grad_scale = 5.
+untrained_weigths_grad_scale = 5
 
 # model
 
@@ -154,7 +140,7 @@ def build_model(l_in=None):
             l_outs.append(nn.layers.DenseLayer(nodule_classification_model.l_out.input_layer,
                                                num_units=1,
                                                W=nn.init.Constant(0.),
-                                               b=nn.init.Constant(3.),
+                                               b=nn.init.Constant(properties_priors.get(p, 3.)),
                                                nonlinearity=nn.nonlinearities.rectify))
         l_outs[-1].W.tag.grad_scale = untrained_weigths_grad_scale
         l_outs[-1].b.tag.grad_scale = untrained_weigths_grad_scale
