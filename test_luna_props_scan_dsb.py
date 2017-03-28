@@ -67,14 +67,15 @@ for n, (x, candidate_zyxd, id) in enumerate(data_iterator.generate()):
         patients_count += 1
         candidates = []
 
+    #print 'x.shape', x.shape
     x_shared.set_value(x)
     predictions = get_predictions_patch()
-    print 'predictions.shape', predictions.shape
-    print 'candidate_zyxd', candidate_zyxd.shape
+    #print 'predictions.shape', predictions.shape
+    #print 'candidate_zyxd', candidate_zyxd.shape
 
     candidate_zyxd_pred = np.append(candidate_zyxd, [predictions])
-    candidate_zyxd_pred_mal = np.append(candidate_zyxd_pred, [[total_malignancy]])
-    candidates.append(candidate_zyxd_pred_mal)
+    #print 'candidate_zyxd_pred', candidate_zyxd_pred
+    candidates.append(candidate_zyxd_pred)
 
     prev_pid = pid
 

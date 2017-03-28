@@ -1389,7 +1389,7 @@ class CandidatesDSBDataGenerator(object):
                 patch_center = candidate[:3]
                 x_batch = np.float32(self.data_prep_fun(data=img,
                                                         patch_center=patch_center,
-                                                        pixel_spacing=pixel_spacing))[None, None, :, :, :]
+                                                        pixel_spacing=pixel_spacing))[None, :, :, :]
 
                 yield x_batch, y_batch, [pid]
 
