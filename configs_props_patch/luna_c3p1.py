@@ -102,18 +102,19 @@ valid_data_iterator = data_iterators.CandidatesPropertiesLunaValidDataGenerator(
                                                                                 label_prep_fun=label_prep_function)
 
 nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
-max_nchunks = nchunks_per_epoch * 50
+max_nchunks = nchunks_per_epoch * 30
 
 validate_every = int(10. * nchunks_per_epoch)
 save_every = int(2. * nchunks_per_epoch)
 
 learning_rate_schedule = {
     0: 1e-4,
-    int(max_nchunks * 0.5): 5e-5,
-    int(max_nchunks * 0.6): 2e-5,
-    int(max_nchunks * 0.7): 1e-5,
-    int(max_nchunks * 0.8): 5e-6,
-    int(max_nchunks * 0.9): 2e-7
+    int(max_nchunks * 0.3): 5e-5,
+    int(max_nchunks * 0.4): 2e-5,
+    int(max_nchunks * 0.6): 1e-5,
+    int(max_nchunks * 0.7): 5e-6,
+    int(max_nchunks * 0.8): 2e-6,
+    int(max_nchunks * 0.9): 1e-7
 }
 
 untrained_weigths_grad_scale = 5.
@@ -142,6 +143,8 @@ def build_model(l_in=None):
     nodule_classification_model.l_out.input_layer.W.tag.grad_scale = untrained_weigths_grad_scale / 2.
     nodule_classification_model.l_out.input_layer.b.tag.grad_scale = untrained_weigths_grad_scale / 2.
 
+    l_dense = nodule_classification_model.l_out.input_layer
+
     l_outs, l_targets = [], []
     for i, p in enumerate(properties):
         l_targets.append(nn.layers.SliceLayer(l_target, indices=slice(i, i + 1), axis=-1))
@@ -161,8 +164,8 @@ def build_model(l_in=None):
 
     l_out = nn.layers.ConcatLayer(l_outs)
 
-    return namedtuple('Model', ['l_in', 'l_out', 'l_target', 'l_outs', 'l_targets'])(
-        l_in, l_out, l_target, l_outs, l_targets)
+    return namedtuple('Model', ['l_in', 'l_out', 'l_target', 'l_outs', 'l_targets', 'l_dense'])(
+        l_in, l_out, l_target, l_outs, l_targets, l_dense)
 
 
 def build_objective(model, deterministic=False, epsilon=1e-12):

@@ -31,7 +31,7 @@ expid = metadata['experiment_id']
 
 # logs
 logs_dir = utils.get_dir_path('logs', pathfinder.METADATA_PATH)
-sys.stdout = logger.Logger(logs_dir + '/%s-test.log' % expid)
+sys.stdout = logger.Logger(logs_dir + '/%s-%s.log' % (expid, set))
 sys.stderr = sys.stdout
 
 # predictions path
