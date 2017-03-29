@@ -49,7 +49,7 @@ def data_prep_function(data, patch_centers, pixel_spacing, p_transform,
                                                  p_transform=p_transform,
                                                  p_transform_augment=p_transform_augment,
                                                  pixel_spacing=pixel_spacing)
-    x = data_transforms.pixelnormHU(x)
+    x = data_transforms.hu2normHU(x)
     return x
 
 
