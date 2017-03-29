@@ -296,9 +296,9 @@ def build_model():
     l = nn.layers.DenseLayer(penultimate_layer, num_units=1, W=nn.init.Orthogonal(),
                              nonlinearity=nn.nonlinearities.sigmoid, name='dense_p_benign')
 
-    l = nn.layers.ReshapeLayer(l, (-1, n_candidates_per_patient, 1), name='reshape2patients')
+    l = nn.layers.ReshapeLayer(l, (-1, n_candidates_per_patient), name='reshape2patients')
 
-    l_out = nn_lung.LogMeanExp(l, r=8, axis=(1, 2), name='LME')
+    l_out = nn_lung.LogMeanExp(l, r=8, axis=(1,), name='LME')
 
 
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
