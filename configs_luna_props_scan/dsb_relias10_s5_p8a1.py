@@ -31,14 +31,15 @@ id2candidates_path = utils_lung.get_candidates_paths(segmentation_outputs_path)
 
 # filter our those, who are already generated
 predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
-outputs_path = predictions_dir + '/dsb_tel6_s5_p8a1'  # TODO write it here correctly
+outputs_path = predictions_dir + '/dsb_relias10_s5_p8a1'  # TODO write it here correctly
 exclude_pids = []
 if os.path.isdir(outputs_path):
     exclude_pids = os.listdir(outputs_path)
     exclude_pids = [utils_lung.extract_pid_filename(p) for p in exclude_pids]
     print exclude_pids
-    # for pid in exclude_pids:
-    #     id2candidates_path.pop(pid, None)
+    for pid in exclude_pids:
+        id2candidates_path.pop(pid, None)
+
 
 data_iterator = data_iterators.CandidatesDSBDataGenerator(data_path=pathfinder.DATA_PATH,
                                                           transform_params=p_transform,
