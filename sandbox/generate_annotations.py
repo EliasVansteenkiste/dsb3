@@ -9,7 +9,21 @@ def L2(a,b):
 
 dumpdir = "/home/frederic/kaggle-dsb3/data/luna/nodule_annotations"
 
+def median(x):
+    return int(np.median(x))
+
 characteristics = ["calcification","internalStructure","lobulation","malignancy","margin","sphericity","spiculation","subtlety","texture"]
+func = {
+        "calcification":median,
+        "internalStructure":median,
+        "lobulation": np.mean,
+        "malignancy": np.mean,
+        "margin":np.mean,
+        "sphericity":np.mean,
+        "spiculation":np.mean,
+        "subtlety":np.mean,
+        "texture":median
+        }
 
 anno = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
 
@@ -73,7 +87,7 @@ for f_name in os.listdir(dumpdir):
                             +str(luna_nodules[i][1])+","+\
                             str(luna_nodules[i][0])+","+str(luna_nodules[i][3])+","
                 for characteristic in characteristics:
-                    value = np.mean([x["characteristics"][characteristic] for x in selection_centroids])
+                    value = func[characteristic]([x["characteristics"][characteristic] for x in selection_centroids])
                     luna_line+=str(value)+","
 
                 luna_lines.append(luna_line[:-1])
@@ -86,7 +100,7 @@ print("Number of different nodules: "+str(cancers))
 luna_header = "seriesuid,coordX,coordY,coordZ,diameter_mm,"
 luna_header += ",".join(characteristics)
 
-file = open("/home/frederic/kaggle-dsb3/data/luna/annotations_extended_mean.csv","w")
+file = open("/home/frederic/kaggle-dsb3/data/luna/annotations_extended_mixed.csv","w")
 file.write(luna_header+"\n")
 file.write("\n".join(luna_lines))
 file.close()

@@ -6,6 +6,7 @@ test_data_1 = cPickle.load(open("/home/frederic/kaggle-dsb3/metadata/model-predi
 
 test_data_2 = cPickle.load(open("/home/frederic/kaggle-dsb3/metadata/model-predictions/frederic/dsb_af4_c3_s5_p8a1-20170323-101206/dsb_af4_c3_s5_p8a1-20170323-101206-test.pkl","rb"))
 #test_data_2 = cPickle.load(open("/home/frederic/kaggle-dsb3/metadata/model-predictions/frederic/dsb_af4_c3_s2_p8a1-20170319-123808/dsb_af4_c3_s2_p8a1-20170319-123808-test.pkl","rb"))
+#test_data_2 = cPickle.load(open("/home/frederic/kaggle-dsb3/metadata/model-predictions/frederic/dsb_af4_size6_s5_p8a1-20170324-231152/dsb_af4_size6_s5_p8a1-20170324-231152-test.pkl","rb"))
 
 
 print("")
@@ -31,9 +32,16 @@ for line in open("/home/frederic/kaggle-dsb3/data/test_labels.csv","r"):
 print("Zeros test: "+str(sum(zero_list_t)/float(len(zero_list_t))))
 print("Ones test: "+str(sum(one_list_t)/float(len(one_list_t))))
 
+p = 1.05
 
-a = numpy.log(numpy.asarray(one_list_t))
-b = numpy.log(1-numpy.asarray(zero_list_t))
+a = numpy.asarray(one_list_t)
+#a = numpy.sign(a)*numpy.abs(a-0.5)**p+0.5
+
+b = numpy.asarray(zero_list_t)
+#b = numpy.sign(b)*numpy.abs(b-0.5)**p+0.5
+
+a = numpy.log(a)
+b = numpy.log(1-b)
 c = numpy.concatenate([a,b])
 
 print("Log loss "+str(-numpy.mean(c)))

@@ -43,6 +43,8 @@ valid_data = cPickle.load(open("/home/frederic/kaggle-dsb3/metadata/model-predic
 zero_list_v = []
 one_list_v = []
 
+
+
 first = True
 for line in open("/home/frederic/kaggle-dsb3/data/stage1_labels.csv","r"):
     parts = line.strip().split(",")

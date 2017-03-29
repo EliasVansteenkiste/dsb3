@@ -52,3 +52,11 @@ if not os.path.isfile(LUNA_CANDIDATES_PATH):
 LUNA_VALIDATION_SPLIT_PATH = paths["LUNA_VALIDATION_SPLIT_PATH"]
 if not os.path.isfile(LUNA_VALIDATION_SPLIT_PATH):
     raise ValueError('no LUNA validation split file')
+
+LUNA_PROPERTIES_PATH = paths['LUNA_PROPERTIES_PATH']
+if not os.path.isfile(LUNA_PROPERTIES_PATH):
+    raise ValueError('no LUNA properties file')
+
+VALIDATION_LB_MIXED_SPLIT_PATH = paths['VALIDATION_LB_MIXED_SPLIT_PATH']
+if not os.path.isfile(VALIDATION_LB_MIXED_SPLIT_PATH):
+    raise ValueError('no mixed validation and LB file')

@@ -5,8 +5,10 @@
   "METADATA_PATH": "/home/frederic/kaggle-dsb3/metadata",
   "SAMPLE_SUBMISSION_PATH": "/home/frederic/kaggle-dsb3/data/stage1_sample_submission.csv",
   "VALIDATION_SPLIT_PATH": "/home/frederic/kaggle-dsb3/data/dsb_validation_split.pkl",
+  "VALIDATION_LB_MIXED_SPLIT_PATH":"/home/frederic/kaggle-dsb3/data/dsb_validation_lb_mixed_split.pkl",
   "LUNA_DATA_PATH": "/home/frederic/kaggle-dsb3/data/luna/dataset_pkl/",
   "LUNA_LABELS_PATH": "/home/frederic/kaggle-dsb3/data/luna/annotations.csv",
+  "LUNA_PROPERTIES_PATH": "/home/frederic/kaggle-dsb3/data/luna/annotations_extended_mixed.csv",
   "LUNA_VALIDATION_SPLIT_PATH": "/home/frederic/kaggle-dsb3/data/luna/validation_split.pkl",
   "LUNA_CANDIDATES_PATH": "/home/frederic/kaggle-dsb3/data/luna/candidates_V2.csv",
   "TEST_LABELS_PATH": "/home/frederic/kaggle-dsb3/data/test_labels.csv"

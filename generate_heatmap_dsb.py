@@ -51,8 +51,8 @@ print 'n samples: %d' % data_iterator.nsamples
 prev_pid = None
 candidates = []
 patients_count = 0
-patch_size = 72
-#skip = 12
+patch_size = 48
+skip = 12
 for n, (x, id) in enumerate(data_iterator.generate()):
     pid = id
 

@@ -354,6 +354,28 @@ class AggAllBenignProd(nn.layers.Layer):
         output = 1 - prod
         return output
 
+
+class AggAllBenignProdF(nn.layers.Layer):
+    """
+    takes elementwise product between 2 layers
+    """
+
+    def __init__(self, incoming, **kwargs):
+        super(AggAllBenignProdF, self).__init__(incoming, **kwargs)
+
+    def get_output_shape_for(self, input_shape):
+        assert(len(input_shape)==3)
+        assert(input_shape[2]==1)
+        return (input_shape[0], 1)
+
+    def get_output_for(self, input, **kwargs):
+        ps = 1.0-input
+        prod = T.prod(ps, axis=(1,2))
+        output = 1 - prod
+        return output
+
+
+
 class AggAllBenignProdHard(nn.layers.Layer):
     """
     takes elementwise product between 2 layers
