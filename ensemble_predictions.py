@@ -1,6 +1,7 @@
 """
 This script ensembles predictions of all the models. No bagging atm. just plain simple averaging to get started.
 Final predictions are weighted average of all predictions. The weights are optimized on validation data.
+Mind that the terms 'models' and 'configs' are used interchangeably
 """
 import numpy as np
 import scipy
@@ -8,6 +9,12 @@ import theano
 import theano.tensor as T
 import collections
 from sklearn.model_selection import StratifiedKFold
+from sklearn.linear_model import LogisticRegression
+
+import utils_ensemble
+import utils_plots
+import matplotlib.pyplot as plt
+import scipy.stats
 
 import evaluate_submission
 import pathfinder
@@ -16,7 +23,9 @@ import utils_lung
 import os.path as path
 import os
 
-CONFIGS = ['dsb_a02_c3_s1e_p8a1', 'dsb_a03_c3_s1e_p8a1']
+CONFIGS = ['dsb_a04_c3ns2_mse_s5_p8a1', 'dsb_a07_c3ns3_mse_s5_p8a1', 'dsb_a08_c3ns3_mse_s5_p8a1',
+           'dsb_a_liolme16_c3_s2_p8a1', 'dsb_a_liox6_c3_s2_p8a1', 'dsb_a_liox7_c3_s2_p8a1']
+
 expid = utils.generate_expid('ensemble')
 
 
@@ -29,7 +38,7 @@ def ensemble():
 
     test_set_predictions = {config: get_predictions_of_config(config, 'test') for config in CONFIGS}
     y_test_pred = weighted_average(test_set_predictions, weights)
-    persist_predictions(y_test_pred, y_valid_pred)
+    utils_ensemble.persist_predictions(y_test_pred, y_valid_pred, expid)
     compare_test_performance_ind_vs_ensemble(test_set_predictions)
 
 
@@ -43,16 +52,13 @@ def load_validation_set():
 
 
 def get_predictions_of_config(config_name, which_set):
-    metadata_dir = utils.get_dir_path('models', pathfinder.METADATA_PATH)
-    metadata_path = utils.find_model_metadata(metadata_dir, config_name)
-    metadata = utils.load_pkl(metadata_path)
-    expid = metadata['experiment_id']
-    predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
-    outputs_path = predictions_dir + '/' + expid
+    predictions_dir = os.path.join(pathfinder.METADATA_PATH, 'model-predictions')
+    exp_id = utils.find_model_preds_expid(predictions_dir, config_name)
 
-    output_pkl_file = outputs_path + '/%s-%s.pkl' % (expid, which_set)
+    output_pkl_file = predictions_dir + '/%s-%s-%s.pkl' % (config_name, exp_id, which_set)
     preds = utils.load_pkl(output_pkl_file)  # pid2prediction
     preds = collections.OrderedDict(sorted(preds.items()))
+    print 'Passing predicions from {}'.format(output_pkl_file)
     return preds
 
 
@@ -78,16 +84,6 @@ def sanity_check(valid_set_predictions, valid_set_labels):
     pass
 
 
-def get_destination_path(filename):
-    ensemble_predictions_dir = utils.get_dir_path('ensemble-predictions', pathfinder.METADATA_PATH)
-    utils.auto_make_dir(ensemble_predictions_dir)
-
-    destination_folder = path.join(ensemble_predictions_dir, expid)
-    utils.auto_make_dir(destination_folder)
-    destination_path = path.join(destination_folder, filename)
-    return destination_path
-
-
 def optimize_weights(predictions, labels):
     """
 
@@ -98,36 +94,21 @@ def optimize_weights(predictions, labels):
     :return  optimized weights as dict: (config_name -> (weight) )
     """
     print 'Optimizing weights...'
-    # weights = simple_average(predictions.keys())
     X = predictions_dict_to_3d_array(predictions, labels)
     y = np.array(labels.values())
+    config_names = predictions.keys()
 
-    # k fold cv
-    n_folds = 5
-    skf = StratifiedKFold(n_splits=n_folds, random_state=0)
-    cv_result = []
-    for train_index, test_index in skf.split(np.zeros(y.shape[0]), y):
-        X_train, X_test = X[:, train_index, :], X[:, test_index, :]
-        y_train, y_test = y[train_index], y[test_index]
+    cv_results = {}
 
-        weights, loss = optimal_linear_weights(X_train, np.array(one_hot(y_train)))
+    cv_results['optimal_linear_weights'] = do_cross_validation(X, y, config_names, optimal_linear_weights)
+    cv_results['equal_weights'] = do_cross_validation(X, y, config_names, simple_average)
 
-        y_test_pred = np.zeros(len(test_index))
-        for i, weight in enumerate(weights):
-            y_test_pred += X_test[i, :, 1] * weights[i]  # this can probably be replaced with a tensor dot product
-
-        valid_loss = utils_lung.log_loss(y_test, y_test_pred)
-        cv_result.append({
-            'weights': weights,
-            'training_loss': loss,
-            'validation_loss': valid_loss,
-            'training_idx': train_index
-        })
+    analyse_cv_result(cv_results['optimal_linear_weights'], 'optimal_linear_weights')
+    analyse_cv_result(cv_results['equal_weights'], 'equal_weights')
 
     # TODO do something with CV results!
-    print cv_result
+    weights = optimal_linear_weights(X, np.array(utils_ensemble.one_hot(y)))
 
-    weights, loss = optimal_linear_weights(X, np.array(one_hot(y)))
     print 'Optimal weights'
     config2weights = {}
     for model_nr in range(len(predictions.keys())):
@@ -135,14 +116,71 @@ def optimize_weights(predictions, labels):
         print 'Weight for config {} is {}'.format(config, weights[model_nr])
         config2weights[config] = weights[model_nr]
 
-    print 'Ensemble will use following weights distribution:'
-    print config2weights
     return config2weights
+
+
+def do_cross_validation(X, y, config_names, ensemble_method):
+    n_folds = 10
+    skf = StratifiedKFold(n_splits=n_folds, random_state=0)
+    cv_result = []
+    for train_index, test_index in skf.split(np.zeros(y.shape[0]), y):
+        if np.any([test_sample in train_index for test_sample in test_index]):
+            raise ValueError('\n---------------\nData leak!\n---------------\n')
+
+        X_train, X_test = X[:, train_index, :], X[:, test_index, :]
+        y_train, y_test = y[train_index], y[test_index]
+
+        weights = ensemble_method(X_train, np.array(utils_ensemble.one_hot(y_train)))
+
+        y_train_pred = np.zeros(len(train_index))
+        y_test_pred = np.zeros(len(test_index))
+        for i, weight in enumerate(weights):
+            y_train_pred += X_train[i, :, 1] * weights[i]  # this can probably be replaced with a tensor dot product
+            y_test_pred += X_test[i, :, 1] * weights[i]  # this can probably be replaced with a tensor dot product
+
+        training_loss = utils_lung.log_loss(y_train, y_train_pred)
+        valid_loss = utils_lung.log_loss(y_test, y_test_pred)
+        cv_result.append({
+            'weights': weights,
+            'training_loss': training_loss,
+            'validation_loss': valid_loss,
+            'training_idx': train_index,
+            'test_idx': test_index,
+            'configs': config_names
+        })
+
+    return cv_result
+
+
+def analyse_cv_result(cv_result, ensemble_method_name):
+    img_dir = '/home/adverley/Code/Projects/Kaggle/dsb3/figures/'
+    colors = ['r', 'g', 'b', 'c', 'm', 'y', 'k', 'w']
+
+    # WEIGHT HISTOGRAM
+    weights = np.array([cv['weights'] for cv in cv_result])
+    print 'weight per config across folds: ', weights
+    for w in range(weights.shape[1]):
+        weight = weights[:, w]
+        plt.hist(weight, bins=np.linspace(0, 1, 10), facecolor=colors[w % len(colors)], alpha=0.5,
+                 label='config {}'.format(cv_result[0]['configs'][w]))
+
+    plt.title('Weight histogram of configs during CV')
+    plt.legend(loc='upper right')
+    plt.savefig(img_dir + 'ensemble_{}_weight_histograms.png'.format(ensemble_method_name))
+    plt.clf()
+    plt.close('all')
+
+    # PERFORMANCE COMPARISON ACROSS FOLDS
+    losses = np.array([cv['validation_loss'] for cv in cv_result])
+    print 'Validation set losses across folds: ', losses
+    print 'stats of ', ensemble_method_name, scipy.stats.describe(losses)
+    with open(img_dir + 'ensemble_{}_cv_performance.txt'.format(ensemble_method_name), 'w') as f:
+        f.write('stats: ')
+        f.write(str(scipy.stats.describe(losses)))
 
 
 def optimal_linear_weights(predictions_stack, targets):
     """
-
     :param predictions_stack:  predictions as numpy array with shape [num_configs x num_patients x 2]
     :param targets: target labels as one hot encoded 2D array with shape [num_patients x 2]
     :return:
@@ -152,7 +190,7 @@ def optimal_linear_weights(predictions_stack, targets):
     W = T.vector('W')
     s = T.nnet.softmax(W).reshape((W.shape[0], 1, 1))
     weighted_avg_predictions = T.sum(X * s, axis=0)  # T.tensordot(X, s, [[0], [0]])
-    error = log_loss(weighted_avg_predictions, t)
+    error = utils_ensemble.log_loss(weighted_avg_predictions, t)
     grad = T.grad(error, W)
     f = theano.function([W], error)
     g = theano.function([W], grad)
@@ -161,7 +199,7 @@ def optimal_linear_weights(predictions_stack, targets):
     out, loss, _ = scipy.optimize.fmin_l_bfgs_b(f, w_init, fprime=g, pgtol=1e-09, epsilon=1e-08, maxfun=10000)
     weights = np.exp(out)
     weights /= weights.sum()
-    return weights, loss
+    return weights
 
 
 def predictions_dict_to_3d_array(predictions, labels):
@@ -179,14 +217,11 @@ def predictions_dict_to_3d_array(predictions, labels):
     return predictions_stack
 
 
-def simple_average(configs):
-    amount_of_configs = len(configs)
+def simple_average(predictions_stack, targets):
+    amount_of_configs = predictions_stack.shape[0]
     equal_weight = 1.0 / amount_of_configs
 
-    weights = {}
-    for config in configs:
-        weights[config] = equal_weight
-
+    weights = [equal_weight for _ in range(amount_of_configs)]
     return weights
 
 
@@ -202,7 +237,7 @@ def weighted_average(predictions, weights):
     for config_name, config_predictions in predictions.iteritems():
         for pid, patient_prediction in config_predictions.iteritems():
             weighted_prediction = patient_prediction * weights[config_name]
-            if pid in predictions:
+            if pid in weighted_predictions:
                 weighted_predictions[pid] += weighted_prediction
             else:
                 weighted_predictions[pid] = weighted_prediction
@@ -210,58 +245,23 @@ def weighted_average(predictions, weights):
     return collections.OrderedDict(sorted(weighted_predictions.items()))
 
 
-def persist_predictions(y_test_pred, y_valid_pred):
-    utils.save_pkl(y_valid_pred, get_destination_path('validation_set_predictions.pkl'))
-    print 'Pickled ensemble predictions on validation set ({})'.format(
-        get_destination_path('validation_set_predictions.pkl'))
-    utils.save_pkl(y_test_pred, get_destination_path('test_set_predictions.pkl'))
-    print 'Pickled ensemble predictions on test set ({})'.format(get_destination_path('test_set_predictions.pkl'))
-    utils_lung.write_submission(y_test_pred, get_destination_path('test_set_predictions.csv'))
-    print 'Saved ensemble predictions into csv file ({})'.format(get_destination_path('test_set_predictions.csv'))
-
-
 def compare_test_performance_ind_vs_ensemble(test_set_predictions):
     individual_performance = {config: calc_test_performance(config, pred_test) for config, pred_test in
                               test_set_predictions.iteritems()}
     for config, performance in individual_performance.iteritems():
         print 'Logloss of config {} is {} on test set'.format(config, performance)
-    loss = evaluate_submission.leaderboard_performance(get_destination_path('test_set_predictions.csv'))
+    loss = evaluate_submission.leaderboard_performance(
+        utils_ensemble.get_destination_path('test_set_predictions.csv', expid))
     print('Ensemble test set performance as it would be on the leaderboard: ')
     print(loss)
 
 
 def calc_test_performance(config_name, predictions):
-    # make a tmp submission file to know leaderboard performance
     tmp_submission_file = '/tmp/submission_test_predictions_{}.csv'.format(config_name)
     utils_lung.write_submission(predictions, tmp_submission_file)
     loss = evaluate_submission.leaderboard_performance(tmp_submission_file)
     os.remove(tmp_submission_file)
     return loss
-
-
-def log_loss(y, t, eps=1e-15):
-    """
-    cross entropy loss, summed over classes, mean over batches
-    """
-    y = T.clip(y, eps, 1 - eps)
-    loss = -T.sum(t * T.log(y)) / y.shape[0].astype(theano.config.floatX)
-    return loss
-
-
-def log_losses(y, t, eps=1e-15):
-    """
-    cross entropy loss per example, summed over classes
-    """
-    y = T.clip(y, eps, 1 - eps)
-    losses = -T.sum(t * T.log(y), axis=1)
-    return losses
-
-
-def one_hot(vec, m=None):
-    if m is None:
-        m = int(np.max(vec)) + 1
-
-    return np.eye(m)[vec]
 
 
 if __name__ == '__main__':
