@@ -362,7 +362,9 @@ class Unbroadcast(nn.layers.Layer):
         return input_shape
 
     def get_output_for(self, input, **kwargs):
-        return T.unbroadcast(input, 0,1,2,3,4,5)
+        all_dims = range(len(T.shape(input)))
+        print all_dims
+        return T.Unbroadcast(input, *all_dims)
 
 class LogMeanExp(nn.layers.Layer):
     """

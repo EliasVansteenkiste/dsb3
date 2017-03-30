@@ -14,8 +14,8 @@ restart_from_save = None
 rng = np.random.RandomState(42)
 
 # transformations
-p_transform_data_in = {'patch_size': (512, 512, 512),
-               'mm_patch_size': (512, 512, 512),
+p_transform_data_in = {'patch_size': (432, 432, 432),
+               'mm_patch_size': (432, 432, 432),
                'pixel_spacing': (1., 1., 1.)
                }
 
@@ -155,10 +155,11 @@ def feat_red(lin):
 
 
 def build_model():
-    l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
+    l_in = nn.layers.InputLayer((None, ) + p_transform['patch_size'])
+    l_dim = nn.layers.DimshuffleLayer(l_in, pattern=[0,'x',1,2,3])
     l_target = nn.layers.InputLayer((None, 1))
 
-    l = conv3d(l_in, 64)
+    l = conv3d(l_dim, 64)
     l = inrn_v2_red(l)
     l = inrn_v2(l)
     l = feat_red(l)
