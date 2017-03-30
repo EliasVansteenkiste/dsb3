@@ -10,7 +10,7 @@ import lasagne
 import theano.tensor as T
 import utils
 
-restart_from_save = False  
+restart_from_save = None
 rng = np.random.RandomState(33)
 
 # transformations
@@ -18,6 +18,7 @@ p_transform = {'patch_size': (48, 48, 48),
                'mm_patch_size': (48, 48, 48),
                'pixel_spacing': (1., 1., 1.)
                }
+
 p_transform_augment = {
     'translation_range_z': [-3, 3],
     'translation_range_y': [-3, 3],
@@ -63,14 +64,15 @@ train_data_iterator = data_iterators.CandidatesLunaSizeBinDataGenerator(data_pat
                                                                  rng=rng,
                                                                  patient_ids=train_valid_ids['train'],
                                                                  full_batch=True, random=True, infinite=True,
-                                                                 positive_proportion=0.5,
-                                                                 size_borders=[4,8,12,16,20,24,28,32,36])
+                                                                 positive_proportion=0.5)
 
 valid_data_iterator = data_iterators.CandidatesLunaSizeBinValidDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                       transform_params=p_transform,
                                                                       data_prep_fun=data_prep_function_valid,
-                                                                      patient_ids=train_valid_ids['valid'],
-                                                                      size_borders=[4,8,12,16,20,24,28,32,36])
+                                                                      patient_ids=train_valid_ids['valid'])
+
+no_final_units = 1 + len(train_data_iterator.bin_borders)
+assert(len(train_data_iterator.bin_borders) == len(valid_data_iterator.bin_borders))
 
 nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
 max_nchunks = nchunks_per_epoch * 100
@@ -157,6 +159,13 @@ def inrn_v2_red(lin):
     return l
 
 
+
+def feat_red(lin):
+    # We want to reduce the feature maps by a factor of 2
+    ins = lin.output_shape[1]
+    l = conv3d(lin, ins // 2, filter_size=1)
+    return l
+
 def build_model():
     l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
     l_target = nn.layers.InputLayer((None, 1))
@@ -169,11 +178,12 @@ def build_model():
     l = inrn_v2(l)
 
     l = inrn_v2_red(l)
+    l = drop(l, p=0.3)
     l = inrn_v2_red(l)
 
     l = dense(drop(l), 512)
 
-    l_out = nn.layers.DenseLayer(l, num_units=10,
+    l_out = nn.layers.DenseLayer(l, num_units=no_final_units,
                                  W=lasagne.init.Orthogonal(),
                                  b=lasagne.init.Constant(0.1),
                                  nonlinearity=nn.nonlinearities.softmax)
@@ -187,15 +197,13 @@ def build_objective(model, deterministic=False, epsilon=1e-12):
     cc = nn.objectives.categorical_crossentropy(predictions,targets)
     return T.mean(cc)
 
-
 def build_objective2(model, deterministic=False, epsilon=1e-12):
     predictions = nn.layers.get_output(model.l_out, deterministic=deterministic)
     targets = T.flatten(nn.layers.get_output(model.l_target))
     targets = T.clip(targets, 0, 1)
     p_no_nodule = predictions[:,0]
     p_nodule = np.float32(1.)-p_no_nodule
-    p = T.clip(p_nodule, epsilon, 1.-epsilon)
-    bce = T.nnet.binary_crossentropy(p, targets)
+    bce = T.nnet.binary_crossentropy(p_nodule, targets)
     return T.mean(bce)
 
 

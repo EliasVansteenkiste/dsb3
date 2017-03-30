@@ -294,7 +294,7 @@ class NormalCDFLayer(nn.layers.MergeLayer):
 
 class AggAllBenignExp(nn.layers.Layer):
     """
-    takes elementwise product between 2 layers
+    Aggregates the chances
     """
 
     def __init__(self, incoming, **kwargs):
@@ -334,9 +334,8 @@ class AggAllBenignProd(nn.layers.Layer):
 
 class AggSoPP(nn.layers.Layer):
     """
-    takes elementwise product between 2 layers
+    Aggregates via Sum of powers
     """
-
     def __init__(self, incoming, exp=nn.init.Constant(2.),  **kwargs):
         super(AggSoPP, self).__init__(incoming, **kwargs)
         self.exp = self.add_param(exp, (1,), name='exp', regularizable=False)
@@ -383,8 +382,7 @@ class LogMeanExp(nn.layers.Layer):
         return (input_shape[0], 1)
 
     def get_output_for(self, input, **kwargs):
-        ps = nonlinearities.sigmoid(input)
-        return T.log(T.mean(T.exp(self.r * ps), axis=(1,2)) + 1e-7) / self.r
+        return T.log(T.mean(T.exp(self.r * input), axis=self.axis) + 1e-7) / self.r
 
 class AggMILLoss(nn.layers.Layer):
     """

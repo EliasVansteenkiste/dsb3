@@ -1,16 +1,19 @@
+#same as r_elias_5 but with extra layers
+
 import numpy as np
 import data_transforms
 import data_iterators
 import pathfinder
 import lasagne as nn
-from collections import namedtuple
+
+from collections import OrderedDict, namedtuple
 from functools import partial
 import lasagne.layers.dnn as dnn
 import lasagne
 import theano.tensor as T
 import utils
 
-restart_from_save = False  
+restart_from_save = False
 rng = np.random.RandomState(33)
 
 # transformations
@@ -18,6 +21,7 @@ p_transform = {'patch_size': (48, 48, 48),
                'mm_patch_size': (48, 48, 48),
                'pixel_spacing': (1., 1., 1.)
                }
+
 p_transform_augment = {
     'translation_range_z': [-3, 3],
     'translation_range_y': [-3, 3],
@@ -30,23 +34,24 @@ p_transform_augment = {
 
 # data preparation function
 def data_prep_function(data, patch_center, pixel_spacing, luna_origin, p_transform,
-                       p_transform_augment, **kwargs):
+                       p_transform_augment, world_coord_system, **kwargs):
     x, patch_annotation_tf = data_transforms.transform_patch3d(data=data,
                                                                luna_annotations=None,
                                                                patch_center=patch_center,
                                                                p_transform=p_transform,
                                                                p_transform_augment=p_transform_augment,
                                                                pixel_spacing=pixel_spacing,
-                                                               luna_origin=luna_origin)
+                                                               luna_origin=luna_origin,
+                                                               world_coord_system=world_coord_system)
     x = data_transforms.hu2normHU(x)
 
     return x
 
 
 data_prep_function_train = partial(data_prep_function, p_transform_augment=p_transform_augment,
-                                   p_transform=p_transform)
+                                   p_transform=p_transform, world_coord_system=True)
 data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
-                                   p_transform=p_transform)
+                                   p_transform=p_transform, world_coord_system=True)
 
 # data iterators
 batch_size = 16
@@ -56,7 +61,31 @@ chunk_size = batch_size * nbatches_chunk
 train_valid_ids = utils.load_pkl(pathfinder.LUNA_VALIDATION_SPLIT_PATH)
 train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['valid']
 
-train_data_iterator = data_iterators.CandidatesLunaSizeBinDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
+
+order_objectives = ['nodule', 
+                    'size', 
+                    'spiculation', 
+                    'sphericity', 
+                    'calcification',
+                    'subtlety', 
+                    'malignancy', 
+                    'lobulation',
+                    'texture',
+                    'margin'] 
+
+property_type = {'nodule': 'binary',
+            'size': 'continuous',
+            'spiculation': 'continuous',
+            'sphericity': 'continuous',
+            'calcification': 'continuous',
+            'subtlety': 'continuous',
+            'malignancy': 'continuous',
+            'lobulation': 'continuous',
+            'texture': 'continuous',
+            'margin': 'continuous'}
+
+
+train_data_iterator = data_iterators.CandidatesLunaPropsDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                  batch_size=chunk_size,
                                                                  transform_params=p_transform,
                                                                  data_prep_fun=data_prep_function_train,
@@ -64,13 +93,17 @@ train_data_iterator = data_iterators.CandidatesLunaSizeBinDataGenerator(data_pat
                                                                  patient_ids=train_valid_ids['train'],
                                                                  full_batch=True, random=True, infinite=True,
                                                                  positive_proportion=0.5,
-                                                                 size_borders=[4,8,12,16,20,24,28,32,36])
+                                                                 order_objectives = order_objectives,
+                                                                 return_enable_target_vector = True)
 
-valid_data_iterator = data_iterators.CandidatesLunaSizeBinValidDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
+valid_data_iterator = data_iterators.CandidatesLunaPropsValidDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                       transform_params=p_transform,
                                                                       data_prep_fun=data_prep_function_valid,
                                                                       patient_ids=train_valid_ids['valid'],
-                                                                      size_borders=[4,8,12,16,20,24,28,32,36])
+                                                                      order_objectives = order_objectives,
+                                                                      return_enable_target_vector = True)
+
+
 
 nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
 max_nchunks = nchunks_per_epoch * 100
@@ -79,12 +112,12 @@ validate_every = int(5. * nchunks_per_epoch)
 save_every = int(5. * nchunks_per_epoch)
 
 learning_rate_schedule = {
-    0: 1e-4,
-    int(max_nchunks * 0.5): 5e-5,
-    int(max_nchunks * 0.6): 2.5e-5,
-    int(max_nchunks * 0.7): 1.25e-5,
-    int(max_nchunks * 0.8): 0.625e-6,
-    int(max_nchunks * 0.9): 0.3125e-6
+    0: 4e-4,
+    int(max_nchunks * 0.5): 1e-4,
+    int(max_nchunks * 0.6): 5e-5,
+    int(max_nchunks * 0.7): 2.5e-5,
+    int(max_nchunks * 0.8): 1.25e-5,
+    int(max_nchunks * 0.9): 0.625e-5
 }
 
 # model
@@ -157,11 +190,22 @@ def inrn_v2_red(lin):
     return l
 
 
+
+def feat_red(lin):
+    # We want to reduce the feature maps by a factor of 2
+    ins = lin.output_shape[1]
+    l = conv3d(lin, ins // 2, filter_size=1)
+    return l
+
+no_properties = len(order_objectives)
+
 def build_model():
-    l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
-    l_target = nn.layers.InputLayer((None, 1))
+    l_in = nn.layers.InputLayer((None, ) + p_transform['patch_size'])
+    l_ds = nn.layers.DimshuffleLayer(l_in, pattern=[0,'x',1,2,3])
+    l_target = nn.layers.InputLayer((None, no_properties))
+    l_enable_target = nn.layers.InputLayer((None, no_properties))
 
-    l = conv3d(l_in, 64)
+    l = conv3d(l_ds, 64)
     l = inrn_v2_red(l)
     l = inrn_v2(l)
 
@@ -169,34 +213,79 @@ def build_model():
     l = inrn_v2(l)
 
     l = inrn_v2_red(l)
+    l = inrn_v2(l)
+    
     l = inrn_v2_red(l)
 
     l = dense(drop(l), 512)
 
-    l_out = nn.layers.DenseLayer(l, num_units=10,
-                                 W=lasagne.init.Orthogonal(),
-                                 b=lasagne.init.Constant(0.1),
-                                 nonlinearity=nn.nonlinearities.softmax)
+    final_layers = []
+    unit_ptr = 0
+    for obj_idx, obj_name in enumerate(order_objectives):
+        ptype = property_type[obj_name]
+        if ptype == 'binary':
+            nonlin = nn.nonlinearities.sigmoid
+        elif ptype == 'continuous':
+            nonlin = nn.nonlinearities.softplus
+        else:
+            raise
 
-    return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
+        l_fin = nn.layers.DenseLayer(l, num_units=1,
+                             W=lasagne.init.Orthogonal(),
+                             b=lasagne.init.Constant(0.1),
+                             nonlinearity=nonlin, name='dense_'+ptype+'_'+obj_name)
+
+        final_layers.append(l_fin)
+
+    l_out = nn.layers.ConcatLayer(final_layers, name = 'final_concat_layer')
+
+    return namedtuple('Model', ['l_in', 'l_out', 'l_target', 'l_enable_target'])(l_in, l_out, l_target, l_enable_target)
+
+
+d_objectives_deterministic = {} 
+d_objectives = {}
+
+def bce(target_idx, predictions, targets, epsilon):
+    predictions = predictions[:,target_idx]
+    predictions = T.cast(T.clip(predictions, epsilon, 1.-epsilon), 'float32')
+    targets = T.cast(targets[:,target_idx], 'float32')
+    out = nn.objectives.binary_crossentropy(predictions,targets)
+    return out
+
+def sqe(target_idx, predictions, targets):
+    predictions = predictions[:,target_idx]
+    targets = targets[:,target_idx]
+    out = nn.objectives.squared_error(predictions,targets)
+    return out
 
 
 def build_objective(model, deterministic=False, epsilon=1e-12):
     predictions = nn.layers.get_output(model.l_out, deterministic=deterministic)
-    targets = T.cast(T.flatten(nn.layers.get_output(model.l_target)), 'int32')
-    cc = nn.objectives.categorical_crossentropy(predictions,targets)
-    return T.mean(cc)
+    targets = nn.layers.get_output(model.l_target)
+    enable_targets = nn.layers.get_output(model.l_enable_target)
+    
+
+    sum_of_objectives = 0
+    for obj_idx, obj_name in enumerate(order_objectives):
+        ptype = property_type[obj_name]
+        if ptype == 'binary':
+            v_obj = bce(obj_idx, predictions, targets, epsilon)
+        elif ptype == 'continuous':
+            v_obj = sqe(obj_idx, predictions, targets)
+        else:
+            raise
+        
+        # take the mean of the objectives where it matters (enabled targets)
+        obj_scalar =  T.sum(enable_targets[:,obj_idx] * v_obj) / (0.00001 + T.sum(enable_targets[:,obj_idx]))
+        if deterministic:
+            d_objectives_deterministic[obj_name] = obj_scalar
+        else:
+            d_objectives[obj_name] = obj_scalar
+
+        sum_of_objectives += obj_scalar
 
 
-def build_objective2(model, deterministic=False, epsilon=1e-12):
-    predictions = nn.layers.get_output(model.l_out, deterministic=deterministic)
-    targets = T.flatten(nn.layers.get_output(model.l_target))
-    targets = T.clip(targets, 0, 1)
-    p_no_nodule = predictions[:,0]
-    p_nodule = np.float32(1.)-p_no_nodule
-    p = T.clip(p_nodule, epsilon, 1.-epsilon)
-    bce = T.nnet.binary_crossentropy(p, targets)
-    return T.mean(bce)
+    return sum_of_objectives
 
 
 def build_updates(train_loss, model, learning_rate):
