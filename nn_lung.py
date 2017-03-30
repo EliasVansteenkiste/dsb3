@@ -375,8 +375,8 @@ class LogMeanExp(nn.layers.Layer):
         self.axis = axis
 
     def get_output_shape_for(self, input_shape):
-        assert(len(input_shape)==3)
-        assert(input_shape[2]==1)
+        # assert(len(input_shape)==3)
+        # assert(input_shape[2]==1)
         return (input_shape[0], 1)
 
     def get_output_for(self, input, **kwargs):
