@@ -28,9 +28,12 @@ CONFIGS = ['dsb_a04_c3ns2_mse_s5_p8a1', 'dsb_a07_c3ns3_mse_s5_p8a1', 'dsb_a08_c3
 
 expid = utils.generate_expid('ensemble')
 
+img_dir = '/home/adverley/Code/Projects/Kaggle/dsb3/figures/'
+
 
 def ensemble():
     valid_set_predictions, valid_set_labels = load_validation_set()
+    analyse_predictions(valid_set_predictions, valid_set_labels)
 
     weights = optimize_weights(valid_set_predictions, valid_set_labels)  # (config_name -> (weight) )
 
@@ -51,9 +54,48 @@ def load_validation_set():
     return valid_set_predictions, valid_set_labels
 
 
+def analyse_predictions(valid_set_predictions, labels):
+    from scipy.stats import pearsonr
+
+    print 'Correlation between predictions: '
+    X = predictions_dict_to_3d_array(valid_set_predictions, labels)
+    X = X[:, :, 0]
+
+    config_names = valid_set_predictions.keys()
+    amount_configs = X.shape[0]
+    for config_nr in range(amount_configs):
+        compare_with_nr = config_nr + 1
+        while compare_with_nr < amount_configs:
+            corr = pearsonr(X[config_nr, :], X[compare_with_nr, :])
+            print 'Correlation between config {} and {} is {:0.2f} with p-value ({:f})' \
+                .format(config_names[config_nr], config_names[compare_with_nr], corr[0], corr[1])
+            compare_with_nr += 1
+
+    corr = np.corrcoef(X)
+    correlation_matrix(corr, config_names)
+
+
+def correlation_matrix(corr_matrix, config_names):
+    from matplotlib import pyplot as plt
+    from matplotlib import cm as cm
+
+    fig = plt.figure()
+    ax1 = fig.add_subplot(111)
+    cmap = cm.get_cmap('jet', 30)
+    cax = ax1.imshow(corr_matrix, interpolation="nearest", cmap=cmap)
+    plt.title('Config prediction Correlation')
+    labels = config_names
+    ax1.set_xticklabels(labels, fontsize=6)
+    ax1.set_yticklabels(labels, fontsize=6)
+    fig.colorbar(cax)
+
+    plt.savefig(img_dir + 'correlation_between_configs.png')
+    plt.close('all')
+
+
 def get_predictions_of_config(config_name, which_set):
     predictions_dir = os.path.join(pathfinder.METADATA_PATH, 'model-predictions')
-    exp_id = utils.find_model_preds_expid(predictions_dir, config_name)
+    exp_id = utils_ensemble.find_model_preds_expid(predictions_dir, config_name)
 
     output_pkl_file = predictions_dir + '/%s-%s-%s.pkl' % (config_name, exp_id, which_set)
     preds = utils.load_pkl(output_pkl_file)  # pid2prediction
@@ -106,7 +148,6 @@ def optimize_weights(predictions, labels):
     analyse_cv_result(cv_results['optimal_linear_weights'], 'optimal_linear_weights')
     analyse_cv_result(cv_results['equal_weights'], 'equal_weights')
 
-    # TODO do something with CV results!
     weights = optimal_linear_weights(X, np.array(utils_ensemble.one_hot(y)))
 
     print 'Optimal weights'
@@ -153,7 +194,6 @@ def do_cross_validation(X, y, config_names, ensemble_method):
 
 
 def analyse_cv_result(cv_result, ensemble_method_name):
-    img_dir = '/home/adverley/Code/Projects/Kaggle/dsb3/figures/'
     colors = ['r', 'g', 'b', 'c', 'm', 'y', 'k', 'w']
 
     # WEIGHT HISTOGRAM
