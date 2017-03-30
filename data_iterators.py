@@ -987,6 +987,7 @@ class CandidatesLunaPropsDataGenerator(object):
                  full_batch, random, infinite, 
                  positive_proportion,
                  order_objectives,
+                 property_type = None,
                  property_bin_borders = None,
                  return_enable_target_vector = False, **kwargs):
 
@@ -1080,7 +1081,11 @@ class CandidatesLunaPropsDataGenerator(object):
                         if prop in self.property_bin_borders:
                             properties[prop] = np.digitize(random_value, self.property_bin_borders[prop])
                         else:
-                            properties[prop] = random_value
+                            if self.property_type:
+                                if self.property_type[prop] == 'bounded_continuous':
+                                    properties[prop] = random_value / 5.
+                                else:
+                                    properties[prop] = random_value
 
         for idx, prop in enumerate(self.order_objectives):
             if prop in properties:
@@ -1164,7 +1169,7 @@ class CandidatesLunaPropsDataGenerator(object):
 
 class CandidatesLunaPropsValidDataGenerator(object):
     def __init__(self, data_path, transform_params, patient_ids, data_prep_fun, 
-                    order_objectives, property_bin_borders=None, **kwargs):
+                    order_objectives, property_type = None, property_bin_borders=None, **kwargs):
         rng = np.random.RandomState(42)  # do not change this!!!
 
         id2positive_annotations = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
@@ -1509,7 +1514,7 @@ class DSBPatientsDataGenerator(object):
 
                     all_candidates = utils.load_pkl(self.id2candidates_path[pid])
                     if self.candidates_prep_fun:
-                        top_candidates = self.candidates_prep_fun(all_candidates)[:self.n_candidates_per_patient]
+                        top_candidates = self.candidates_prep_fun(all_candidates, self.n_candidates_per_patient)
                     else:
                         top_candidates = all_candidates[:self.n_candidates_per_patient]
                         if self.shuffle_top_n:
@@ -1690,7 +1695,7 @@ class BalancedDSBPatientsDataGenerator(object):
         return x_batch, y_batch, batch_pids
 
 class DSBDataGenerator(object):
-    def __init__(self, data_path, transform_params, data_prep_fun, patient_pids=None, **kwargs):
+    def __init__(self, data_path, transform_params=None, data_prep_fun=None, patient_pids=None, **kwargs):
         self.patient_paths = utils_lung.get_patient_data_paths(data_path)
 
 
@@ -1707,7 +1712,8 @@ class DSBDataGenerator(object):
 
             img, pixel_spacing = utils_lung.read_dicom_scan(p)
 
-            x, tf_matrix = self.data_prep_fun(data=img, pixel_spacing=pixel_spacing)
+            if data_prep_fun:
+                x, tf_matrix = self.data_prep_fun(data=img, pixel_spacing=pixel_spacing)
 
-            x = np.float32(x)[None, None, :, :, :]
+            x = np.float32(x)
             yield x,  pid
