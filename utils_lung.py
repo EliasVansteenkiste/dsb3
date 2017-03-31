@@ -14,12 +14,13 @@ import utils
 def histogram_equalization(x, hist=None, bins=None):
     # hist is a normalized histogram, which means that the sum of the counts has to be one
     if hist is None and bins is None:
+        # For the case no target histogram is given
         bins = np.arange(-950,500,50)
         n_bins = bins.shape[0] -1
         hist = 1. * np.ones(n_bins) / n_bins
     elif hist is None or bins is None:
         raise
-    print bins
+        
     assert(len(bins) == (len(hist)+1))
 
     # init our target array 
