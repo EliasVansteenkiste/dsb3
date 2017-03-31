@@ -9,10 +9,55 @@ import glob
 import utils
 
 
+
+
+def histogram_equalization(x, hist=None, bins=None):
+    # hist is a normalized histogram, which means that the sum of the counts has to be one
+    if hist is None and bins is None:
+        bins = np.arange(-950,500,50)
+        n_bins = bins.shape[0] -1
+        hist = 1. * np.ones(n_bins) / n_bins
+    elif hist is None or bins is None:
+        raise
+    print bins
+    assert(len(bins) == (len(hist)+1))
+
+    # init our target array 
+    z = np.empty(x.shape)
+
+    # copy the values outside of the bins from the original
+    z[x<=bins[0]] = x[x<=bins[0]] 
+    z[x>=bins[-1]] = x[x>=bins[-1]] 
+
+    inside_bins = np.logical_and(x>bins[0], x<bins[-1])
+
+    n_bins = bins.shape[0] -1
+    prev_percentile = 0
+    for i in range(n_bins):
+        target_count = hist[i]
+        lower_bound = bins[i]
+        upper_bound = bins[i+1]
+        new_percentile = prev_percentile + target_count*100
+        low_orig = np.percentile(x[inside_bins], prev_percentile)
+        print new_percentile-100.0
+        if i == n_bins-1:
+            high_orig = bins[-1]
+        else:
+            high_orig = np.percentile(x[inside_bins], new_percentile)
+
+        prev_percentile = new_percentile
+        elements_to_rescale = np.logical_and(x>=low_orig, x<high_orig)
+        y = x[elements_to_rescale]
+        y_r = (y - low_orig)/(high_orig-low_orig)*(upper_bound-lower_bound) + lower_bound
+        z[elements_to_rescale] = y_r
+
+
+    return z
+
+
 def read_pkl(path):
     d = pickle.load(open(path, "rb"))
     return d['pixel_data'], d['origin'], d['spacing']
-
 
 def read_mhd(path):
     itk_data = sitk.ReadImage(path.encode('utf-8'))
