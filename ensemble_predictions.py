@@ -96,7 +96,7 @@ def get_predictions_of_config(config_name, which_set):
     output_pkl_file = predictions_dir + '/%s-%s-%s.pkl' % (config_name, exp_id, which_set)
     preds = utils.load_pkl(output_pkl_file)  # pid2prediction
     preds = collections.OrderedDict(sorted(preds.items()))
-    print 'Passing predicions from {}'.format(output_pkl_file)
+    # print 'Passing predicions from {}'.format(output_pkl_file)
     return preds
 
 
