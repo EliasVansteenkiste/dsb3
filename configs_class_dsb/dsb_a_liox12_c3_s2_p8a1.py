@@ -1,4 +1,4 @@
-# fred with order 0
+# fred with order 0, luna malignancy
 
 import numpy as np
 import data_transforms
@@ -41,13 +41,26 @@ n_candidates_per_patient = 8
 
 
 def data_prep_function(data, patch_centers, pixel_spacing, p_transform,
-                       p_transform_augment, **kwargs):
-    x = data_transforms.transform_dsb_candidates(data=data,
-                                                 patch_centers=patch_centers,
-                                                 p_transform=p_transform,
-                                                 p_transform_augment=p_transform_augment,
-                                                 pixel_spacing=pixel_spacing,
-                                                 order=0)
+                       p_transform_augment, luna_origin=None, **kwargs):
+    if luna_origin is None:
+        x = data_transforms.transform_dsb_candidates(data=data,
+                                                     patch_centers=patch_centers,
+                                                     p_transform=p_transform,
+                                                     p_transform_augment=p_transform_augment,
+                                                     pixel_spacing=pixel_spacing,
+                                                     order=0)
+    else:
+        patches_out = []
+        for zyxd in patch_centers:
+            x_, _ = data_transforms.transform_patch3d(data=data,
+                                                     patch_center=zyxd,
+                                                     luna_origin=luna_origin,
+                                                     p_transform=p_transform,
+                                                     p_transform_augment=p_transform_augment,
+                                                     pixel_spacing=pixel_spacing,
+                                                        order=0)
+            patches_out.append(x_[None, :, :, :])
+        x = np.concatenate(patches_out, axis=0)
     x = data_transforms.hu2normHU(x)
     return x
 
@@ -62,11 +75,12 @@ batch_size = 1
 
 train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
 train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
-# train_pids.extend(utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH).keys())
+train_pids.extend(utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH).keys())
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
 
-train_data_iterator = data_iterators.DSBPatientsDataGenerator(  data_path=pathfinder.DATA_PATH,
+train_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(  data_path_dsb=pathfinder.DATA_PATH,
+                                                            data_path_luna=pathfinder.LUNA_DATA_PATH,
                                                               batch_size=batch_size,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -76,7 +90,8 @@ train_data_iterator = data_iterators.DSBPatientsDataGenerator(  data_path=pathfi
                                                               patient_ids=train_pids,
                                                               random=True, infinite=True)
 
-valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
+valid_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(data_path_dsb=pathfinder.DATA_PATH,
+                                                            data_path_luna=pathfinder.LUNA_DATA_PATH,
                                                               batch_size=1,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -87,7 +102,8 @@ valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               random=False, infinite=False)
 
 
-test_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
+test_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(data_path_dsb=pathfinder.DATA_PATH,
+                                                            data_path_luna=pathfinder.LUNA_DATA_PATH,
                                                               batch_size=1,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -236,12 +252,6 @@ def build_model():
 
     l = nn.layers.ReshapeLayer(l, (-1, n_candidates_per_patient, 1))
     l_out = nn_lung.LogMeanExp(l, r=16, axis=(1, 2), name='LME')
-
-    #########
-    # THIS WAS NOT MAX BUT LME16
-    ###########"
-    # l = nn.layers.ReshapeLayer(l, (-1, n_candidates_per_patient))
-    # l_out = nn.layers.ExpressionLayer(l, lambda x: T.mean(x, axis=(1,2)), output_shape=(l.output_shape[0], 1))
 
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 
