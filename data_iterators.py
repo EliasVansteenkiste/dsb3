@@ -1712,8 +1712,10 @@ class DSBDataGenerator(object):
 
             img, pixel_spacing = utils_lung.read_dicom_scan(p)
 
-            if data_prep_fun:
+            if self.data_prep_fun:
                 x, tf_matrix = self.data_prep_fun(data=img, pixel_spacing=pixel_spacing)
+            else:
+                x = img
 
             x = np.float32(x)
             yield x,  pid
