@@ -1,3 +1,5 @@
+# fred with order 0, leaky_relus
+
 import numpy as np
 import data_transforms
 import data_iterators
@@ -13,7 +15,7 @@ import utils_lung
 import os
 
 # TODO: import correct config here
-candidates_config = 'dsb_c3_s2_p8a1_ls_elias'
+candidates_config = 'dsb_c3_s5_p8a1'
 
 restart_from_save = None
 rng = np.random.RandomState(42)
@@ -44,8 +46,9 @@ def data_prep_function(data, patch_centers, pixel_spacing, p_transform,
                                                  patch_centers=patch_centers,
                                                  p_transform=p_transform,
                                                  p_transform_augment=p_transform_augment,
-                                                 pixel_spacing=pixel_spacing)
-    x = data_transforms.pixelnormHU(x)
+                                                 pixel_spacing=pixel_spacing,
+                                                 order=0)
+    x = data_transforms.hu2normHU(x)
     return x
 
 
@@ -59,10 +62,11 @@ batch_size = 1
 
 train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
 train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
+# train_pids.extend(utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH).keys())
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
 
-train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
+train_data_iterator = data_iterators.DSBPatientsDataGenerator(  data_path=pathfinder.DATA_PATH,
                                                               batch_size=batch_size,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -81,6 +85,7 @@ valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               rng=rng,
                                                               patient_ids=valid_pids,
                                                               random=False, infinite=False)
+
 
 test_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
                                                               batch_size=1,
@@ -107,12 +112,15 @@ learning_rate_schedule = {
     int(9 * nchunks_per_epoch): 2e-7
 }
 
+# for key in learning_rate_schedule: learning_rate_schedule[key] *= 3.
+
 # model
 
 conv3d = partial(dnn.Conv3DDNNLayer,
                  filter_size=3,
                  pad='same',
                  W=nn.init.Orthogonal(),
+                 b=nn.init.Constant(0.01),
                  nonlinearity=nn.nonlinearities.very_leaky_rectify)
 
 max_pool3d = partial(dnn.MaxPool3DDNNLayer,
@@ -120,8 +128,11 @@ max_pool3d = partial(dnn.MaxPool3DDNNLayer,
 
 drop = nn.layers.DropoutLayer
 
+bn = nn.layers.batch_norm
+
 dense = partial(nn.layers.DenseLayer,
-                W=nn.init.Orthogonal(),
+                W=nn.init.Orthogonal('relu'),
+                b=nn.init.Constant(0.0),
                 nonlinearity=nn.nonlinearities.very_leaky_rectify)
 
 
@@ -143,7 +154,7 @@ def inrn_v2(lin):
 
     l = nn.layers.ElemwiseSumLayer([l, lin])
 
-    l = nn.layers.NonlinearityLayer(l, nonlinearity=nn.nonlinearities.rectify)
+    l = nn.layers.NonlinearityLayer(l, nonlinearity=nn.nonlinearities.very_leaky_rectify)
 
     return l
 
@@ -179,33 +190,29 @@ def feat_red(lin):
     ins = lin.output_shape[1]
     l = conv3d(lin, ins // 2, filter_size=1)
     return l
-def load_pretrained_model(l_in):
 
+def load_pretrained_model(l_in):
 
     l = conv3d(l_in, 64)
     l = inrn_v2_red(l)
     l = inrn_v2(l)
-    l = feat_red(l)
-    l = inrn_v2(l)
 
     l = inrn_v2_red(l)
     l = inrn_v2(l)
-    l = feat_red(l)
-    l = inrn_v2(l)
 
-    l = feat_red(l)
+    l = inrn_v2_red(l)
+    l = inrn_v2_red(l)
 
-    l = dense(l, 128, name='dense_fpr')
+    l = dense(drop(l), 512)
 
-    l_out = nn.layers.DenseLayer(l, num_units=2,
-                                 W=nn.init.Constant(0.),
-                                 nonlinearity=nn.nonlinearities.softmax)
+    l = nn.layers.DenseLayer(l,1,nonlinearity=nn.nonlinearities.sigmoid, W=nn.init.Orthogonal(),
+                b=nn.init.Constant(0))
 
 
-    metadata = utils.load_pkl(os.path.join("/mnt/storage/metadata/dsb3/models/ikorshun/","luna_c3-20170226-174919.pkl"))
-    nn.layers.set_all_param_values(l_out, metadata['param_values'])
+    metadata = utils.load_pkl(os.path.join("/mnt/storage/metadata/dsb3/models/frederic/","r_fred_malignancy_2-20170328-230443.pkl"))
+    nn.layers.set_all_param_values(l, metadata['param_values'])
 
-    return nn.layers.get_all_layers(l_out)[-3]
+    return l
 
 
 def build_model():
@@ -213,16 +220,21 @@ def build_model():
     l_in_rshp = nn.layers.ReshapeLayer(l_in, (-1, 1,) + p_transform['patch_size'])
     l_target = nn.layers.InputLayer((None,))
 
-    penultimate_layer = load_pretrained_model(l_in_rshp)
+    l = load_pretrained_model(l_in_rshp)
 
-    l = drop(penultimate_layer, name='drop_final')
+    # ins = penultimate_layer.output_shape[1]
+    # l = conv3d(penultimate_layer, ins, filter_size=3, stride=2)
+    # #l = feat_red(l)
+    #
+    #
+    # l = nn.layers.DropoutLayer(l)
+    # #
+    # l = nn.layers.DenseLayer(l, num_units=256, W=nn.init.Orthogonal(),
+    #                          nonlinearity=nn.nonlinearities.rectify)
 
-    l = dense(l, 128, name='dense_final')
+    # l = nn.layers.DropoutLayer(l)
 
-    l = nn.layers.DenseLayer(l, num_units=1, W=nn.init.Orthogonal(),
-                             nonlinearity=nn.nonlinearities.sigmoid, name='dense_p_benign')
-
-    l = nn.layers.ReshapeLayer(l, (-1, n_candidates_per_patient, 1), name='reshape2patients')
+    l = nn.layers.ReshapeLayer(l, (-1, n_candidates_per_patient, 1))
 
     l_out = nn_lung.LogMeanExp(l, r=16, axis=(1, 2), name='LME')
 

@@ -213,7 +213,7 @@ def transform_patch3d_ls(data, pixel_spacing, p_transform,
 
 
 def transform_dsb_candidates(data, patch_centers, pixel_spacing, p_transform,
-                             p_transform_augment=None):
+                             p_transform_augment=None, order=1):
     mm_patch_size = np.asarray(p_transform['mm_patch_size'], dtype='float32')
     out_pixel_spacing = np.asarray(p_transform['pixel_spacing'])
 
@@ -239,7 +239,7 @@ def transform_dsb_candidates(data, patch_centers, pixel_spacing, p_transform,
         else:
             tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_shift_uncenter).dot(tf_output_scale)
 
-        patch_out = apply_affine_transform(data, tf_total, order=1, output_shape=output_shape)
+        patch_out = apply_affine_transform(data, tf_total, order=order, output_shape=output_shape)
         patches_out.append(patch_out[None, :, :, :])
 
     return np.concatenate(patches_out, axis=0)

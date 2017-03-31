@@ -1,3 +1,5 @@
+# rotation = 2
+
 import numpy as np
 import data_transforms
 import data_iterators
@@ -11,6 +13,8 @@ import theano.tensor as T
 import utils
 import utils_lung
 import os
+
+
 
 # TODO: import correct config here
 candidates_config = 'dsb_c3_s2_p8a1_ls_elias'
@@ -31,9 +35,9 @@ p_transform_augment = {
     'translation_range_z': [-5, 5],
     'translation_range_y': [-5, 5],
     'translation_range_x': [-5, 5],
-    'rotation_range_z': [-10, 10],
-    'rotation_range_y': [-10, 10],
-    'rotation_range_x': [-10, 10]
+    'rotation_range_z': [-2, 2],
+    'rotation_range_y': [-2, 2],
+    'rotation_range_x': [-2, 2]
 }
 n_candidates_per_patient = 8
 

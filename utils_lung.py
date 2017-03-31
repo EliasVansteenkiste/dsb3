@@ -13,6 +13,21 @@ def read_pkl(path):
     d = pickle.load(open(path, "rb"))
     return d['pixel_data'], d['origin'], d['spacing']
 
+def evaluate_log_loss(pid2prediction, pid2label):
+    predictions, labels = [], []
+    assert set(pid2prediction.keys()) == set(pid2label.keys())
+    for k, v in pid2prediction.iteritems():
+        predictions.append(v)
+        labels.append(pid2label[k])
+    return log_loss(labels, predictions)
+
+
+def log_loss(y_real, y_pred, eps=1e-15):
+    y_pred = np.clip(y_pred, eps, 1 - eps)
+    y_real = np.array(y_real)
+    losses = y_real * np.log(y_pred) + (1 - y_real) * np.log(1 - y_pred)
+    return - np.average(losses)
+
 
 def read_mhd(path):
     itk_data = sitk.ReadImage(path.encode('utf-8'))
@@ -253,6 +268,39 @@ def read_luna_annotations(file_path):
             continue
         id, x, y, z, d = item.replace('\n', '').split(',')
         id2xyzd[id].append([float(z), float(y), float(x), float(d)])
+    return id2xyzd
+
+def read_luna_annotations_malignacy(file_path):
+    id2xyzd = defaultdict(list)
+    train_csv = open(file_path)
+    lines = train_csv.readlines()
+    i = 0
+    for item in lines:
+        if i == 0:
+            i = 1
+            continue
+        d = item.replace('\n', '').split(',')
+        id2xyzd[d[0]].append([float(d[1]), float(d[2]), float(d[3]), float(d[8])])
+        # print d[0], d[8]
+    return id2xyzd
+
+
+def read_luna_diagnosis(file_path):
+    id2xyzd = {}
+    train_csv = open(file_path)
+    lines = train_csv.readlines()
+    i = 0
+    for item in lines:
+        if i == 0:
+            i = 1
+            continue
+        d = item.replace('\n', '').split(',')
+        diagnose = int(d[1])
+        if diagnose == 1: #benign or non-mignant desease
+            id2xyzd[d[0]] = 0
+        elif diagnose == 2: # malignant, primary lung cancer
+            id2xyzd[d[0]] = 1
+        else: continue
     return id2xyzd
 
 

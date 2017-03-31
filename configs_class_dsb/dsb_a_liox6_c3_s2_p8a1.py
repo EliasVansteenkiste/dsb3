@@ -1,3 +1,5 @@
+# with luna malignancy
+
 import numpy as np
 import data_transforms
 import data_iterators
@@ -59,10 +61,12 @@ batch_size = 1
 
 train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
 train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
+train_pids.extend(utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH).keys())
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
 
-train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
+train_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(  data_path_dsb=pathfinder.DATA_PATH,
+                                                            data_path_luna=pathfinder.LUNA_DATA_PATH,
                                                               batch_size=batch_size,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -72,7 +76,8 @@ train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               patient_ids=train_pids,
                                                               random=True, infinite=True)
 
-valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
+valid_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(data_path_dsb=pathfinder.DATA_PATH,
+                                                            data_path_luna=pathfinder.LUNA_DATA_PATH,
                                                               batch_size=1,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -82,7 +87,9 @@ valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               patient_ids=valid_pids,
                                                               random=False, infinite=False)
 
-test_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
+
+test_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(data_path_dsb=pathfinder.DATA_PATH,
+                                                            data_path_luna=pathfinder.LUNA_DATA_PATH,
                                                               batch_size=1,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -106,6 +113,8 @@ learning_rate_schedule = {
     int(7 * nchunks_per_epoch): 5e-7,
     int(9 * nchunks_per_epoch): 2e-7
 }
+
+# for key in learning_rate_schedule: learning_rate_schedule[key] *= 3.
 
 # model
 

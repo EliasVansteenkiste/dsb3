@@ -31,9 +31,9 @@ p_transform_augment = {
     'translation_range_z': [-5, 5],
     'translation_range_y': [-5, 5],
     'translation_range_x': [-5, 5],
-    'rotation_range_z': [-10, 10],
-    'rotation_range_y': [-10, 10],
-    'rotation_range_x': [-10, 10]
+    'rotation_range_z': [-180, 180],
+    'rotation_range_y': [-180, 180],
+    'rotation_range_x': [-180, 180]
 }
 n_candidates_per_patient = 8
 
@@ -101,10 +101,9 @@ save_every = int(1 * nchunks_per_epoch)
 
 learning_rate_schedule = {
     0: 1e-5,
-    int(5 * nchunks_per_epoch): 2e-6,
-    int(6 * nchunks_per_epoch): 1e-6,
-    int(7 * nchunks_per_epoch): 5e-7,
-    int(9 * nchunks_per_epoch): 2e-7
+    int(7 * nchunks_per_epoch): 3e-6,
+    int(8 * nchunks_per_epoch): 1e-6,
+    int(9 * nchunks_per_epoch): 3e-7,
 }
 
 # model
@@ -213,11 +212,13 @@ def build_model():
     l_in_rshp = nn.layers.ReshapeLayer(l_in, (-1, 1,) + p_transform['patch_size'])
     l_target = nn.layers.InputLayer((None,))
 
-    penultimate_layer = load_pretrained_model(l_in_rshp)
+    l = load_pretrained_model(l_in_rshp)
 
-    l = drop(penultimate_layer, name='drop_final')
+    l = max_pool3d(l)
+    # l = nn.layers.NINLayer(l, 16)
 
-    l = dense(l, 128, name='dense_final')
+    l = drop(dense(l, 512))
+    l = drop(dense(l, 512))
 
     l = nn.layers.DenseLayer(l, num_units=1, W=nn.init.Orthogonal(),
                              nonlinearity=nn.nonlinearities.sigmoid, name='dense_p_benign')

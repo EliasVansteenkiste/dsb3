@@ -1,3 +1,5 @@
+# LR x3
+
 import numpy as np
 import data_transforms
 import data_iterators
@@ -106,6 +108,8 @@ learning_rate_schedule = {
     int(7 * nchunks_per_epoch): 5e-7,
     int(9 * nchunks_per_epoch): 2e-7
 }
+
+for key in learning_rate_schedule: learning_rate_schedule[key] *= 3.
 
 # model
 

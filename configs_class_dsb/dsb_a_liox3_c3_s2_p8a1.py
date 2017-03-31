@@ -82,6 +82,17 @@ valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               patient_ids=valid_pids,
                                                               random=False, infinite=False)
 
+
+# test_data_iterator = data_iterators.DSBPatientsDataGeneratorTest(data_path=pathfinder.DATA_PATH,
+#                                                               batch_size=1,
+#                                                               transform_params=p_transform,
+#                                                               n_candidates_per_patient=n_candidates_per_patient,
+#                                                               data_prep_fun=data_prep_function_valid,
+#                                                               id2candidates_path=id2candidates_path,
+#                                                               rng=rng,
+#                                                               patient_ids=test_pids,
+#                                                               random=False, infinite=False)
+
 test_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
                                                               batch_size=1,
                                                               transform_params=p_transform,
@@ -205,7 +216,7 @@ def load_pretrained_model(l_in):
     metadata = utils.load_pkl(os.path.join("/mnt/storage/metadata/dsb3/models/ikorshun/","luna_c3-20170226-174919.pkl"))
     nn.layers.set_all_param_values(l_out, metadata['param_values'])
 
-    return nn.layers.get_all_layers(l_out)[-3]
+    return nn.layers.get_all_layers(l_out)[-2]
 
 
 def build_model():
@@ -217,14 +228,18 @@ def build_model():
 
     l = drop(penultimate_layer, name='drop_final')
 
-    l = dense(l, 128, name='dense_final')
+    # l = dense(l, 128, name='dense_final')
 
-    l = nn.layers.DenseLayer(l, num_units=1, W=nn.init.Orthogonal(),
+    l = nn.layers.DenseLayer(l, num_units=1, W=nn.init.Constant(0.),
                              nonlinearity=nn.nonlinearities.sigmoid, name='dense_p_benign')
 
     l = nn.layers.ReshapeLayer(l, (-1, n_candidates_per_patient, 1), name='reshape2patients')
 
+    # l = nn.layers.FeaturePoolLayer(l, pool_size=n_candidates_per_patient, axis=1)
+    # l = nn_lung.ProbTheory(l, axis=(1,2))
     l_out = nn_lung.LogMeanExp(l, r=16, axis=(1, 2), name='LME')
+
+    # l_out = nn.layers.ReshapeLayer(l, (-1, 1))
 
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 

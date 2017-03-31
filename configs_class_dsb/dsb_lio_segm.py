@@ -19,7 +19,7 @@ rng = np.random.RandomState(42)
 # transformations
 p_transform = {'patch_size': (256, 256, 256)}
 
-trans = 5
+trans = 0
 rot = 0
 p_transform_augment = {
     'translation_range_z': [-trans, trans],
@@ -81,7 +81,7 @@ max_nchunks = nchunks_per_epoch * 30
 validate_every = int(2 * nchunks_per_epoch)
 save_every = int(1 * nchunks_per_epoch)
 
-lr = 1e-5
+lr = 3e-6
 learning_rate_schedule = {
     0: lr,
     int(5 * nchunks_per_epoch): lr/3.,
@@ -133,26 +133,26 @@ def build_model():
     l = conv3d(l, n)
     l = max_pool3d(l)
 
+    # n *= 2
+    l = conv3d(l, n)
+    l = conv3d(l, n)
+    l = max_pool3d(l)
+
+    # n *= 2
+    l = conv3d(l, n)
+    l = conv3d(l, n/8)
+    l = max_pool3d(l)
+
+    # l = nin(l, num_units=64)
+
     n *= 2
-    l = conv3d(l, n)
-    l = conv3d(l, n)
-    l = max_pool3d(l)
-
-    # n *= 2
-    l = conv3d(l, n)
-    l = conv3d(l, n)
-    l = max_pool3d(l)
-
-    l = nin(l, num_units=64)
-
-    # n *= 2
     l = dense(l, n)
     l = dense(l, n)
 
     l = nn.layers.DenseLayer(l,
                               num_units=1,
-                              W=nn.init.Orthogonal(),#nn.init.Constant(0.0),
-                              # b=nn.init.Constant(-np.log(1./0.25-1.)),
+                              W=nn.init.Orthogonal(0.01),#nn.init.Constant(0.0),
+                              b=nn.init.Constant(-np.log(1./0.25-1.)),
                               nonlinearity=nn.nonlinearities.sigmoid)
     l_out = nn.layers.ReshapeLayer(l, shape=(-1,))
 

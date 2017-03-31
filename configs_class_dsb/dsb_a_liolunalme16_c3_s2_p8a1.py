@@ -39,12 +39,25 @@ n_candidates_per_patient = 8
 
 
 def data_prep_function(data, patch_centers, pixel_spacing, p_transform,
-                       p_transform_augment, **kwargs):
-    x = data_transforms.transform_dsb_candidates(data=data,
-                                                 patch_centers=patch_centers,
-                                                 p_transform=p_transform,
-                                                 p_transform_augment=p_transform_augment,
-                                                 pixel_spacing=pixel_spacing)
+                       p_transform_augment, luna_origin=None, **kwargs):
+    if luna_origin is None:
+        x = data_transforms.transform_dsb_candidates(data=data,
+                                                     patch_centers=patch_centers,
+                                                     p_transform=p_transform,
+                                                     p_transform_augment=p_transform_augment,
+                                                     pixel_spacing=pixel_spacing)
+    else:
+        patches_out = []
+        for zyxd in patch_centers:
+            x_, _ = data_transforms.transform_patch3d(data=data,
+                                                     patch_center=zyxd,
+                                                     luna_origin=luna_origin,
+                                                     p_transform=p_transform,
+                                                     p_transform_augment=p_transform_augment,
+                                                     pixel_spacing=pixel_spacing)
+            patches_out.append(x_[None, :, :, :])
+        x = np.concatenate(patches_out, axis=0)
+
     x = data_transforms.pixelnormHU(x)
     return x
 
@@ -59,10 +72,12 @@ batch_size = 1
 
 train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
 train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
+train_pids.extend(utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH).keys())
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
 
-train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
+train_data_iterator = data_iterators.DSBLUNADataGenerator(  data_path_dsb=pathfinder.DATA_PATH,
+                                                            data_path_luna=pathfinder.LUNA_DATA_PATH,
                                                               batch_size=batch_size,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -72,7 +87,8 @@ train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               patient_ids=train_pids,
                                                               random=True, infinite=True)
 
-valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
+valid_data_iterator = data_iterators.DSBLUNADataGenerator(data_path_dsb=pathfinder.DATA_PATH,
+                                                            data_path_luna=pathfinder.LUNA_DATA_PATH,
                                                               batch_size=1,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -82,7 +98,9 @@ valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               patient_ids=valid_pids,
                                                               random=False, infinite=False)
 
-test_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
+
+test_data_iterator = data_iterators.DSBLUNADataGenerator(data_path_dsb=pathfinder.DATA_PATH,
+                                                            data_path_luna=pathfinder.LUNA_DATA_PATH,
                                                               batch_size=1,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -224,7 +242,11 @@ def build_model():
 
     l = nn.layers.ReshapeLayer(l, (-1, n_candidates_per_patient, 1), name='reshape2patients')
 
+    # l = nn.layers.FeaturePoolLayer(l, pool_size=n_candidates_per_patient, axis=1)
+    # l = nn_lung.ProbTheory(l, axis=(1,2))
     l_out = nn_lung.LogMeanExp(l, r=16, axis=(1, 2), name='LME')
+
+    # l_out = nn.layers.ReshapeLayer(l, (-1, 1))
 
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 
@@ -245,7 +267,6 @@ def build_updates(train_loss, model, learning_rate):
     # print 'trainable layer -4', final_layer.name
     # param_final.extend(final_layer.get_params(trainable=True))
     # updates = nn.updates.adam(train_loss, param_final, learning_rate)
-
     params = nn.layers.get_all_params(model.l_out, trainable=True)
     updates = nn.updates.adam(train_loss, params, learning_rate)
 
