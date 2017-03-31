@@ -1079,14 +1079,16 @@ class CandidatesLunaPropsDataGenerator(object):
                         for nchar in nodule_characteristics:
                             prop_values.append(float(nchar[prop]))
                             random_value = self.rng.choice(np.array(prop_values))
-                        if prop in self.property_bin_borders:
-                            properties[prop] = np.digitize(random_value, self.property_bin_borders[prop])
-                        else:
-                            if self.property_type:
-                                if self.property_type[prop] == 'bounded_continuous':
-                                    properties[prop] = random_value / 5.
+                            if prop in self.property_bin_borders:
+                                properties[prop] = np.digitize(random_value, self.property_bin_borders[prop])
+                            else:      
+                                if self.property_type:
+                                    if self.property_type[prop] == 'bounded_continuous':
+                                        properties[prop] = (random_value-1) / 4.
+                                    else:
+                                        properties[prop] = random_value-1
                                 else:
-                                    properties[prop] = random_value
+                                    raise
 
         for idx, prop in enumerate(self.order_objectives):
             if prop in properties:
@@ -1256,9 +1258,9 @@ class CandidatesLunaPropsValidDataGenerator(object):
                             mean_value = np.mean(np.array(prop_values))
                             if self.property_type:
                                 if self.property_type[prop] == 'bounded_continuous':
-                                    properties[prop] = mean_value / 5.
+                                    properties[prop] = (mean_value-1) / 4.
                                 else:
-                                    properties[prop] = mean_value
+                                    properties[prop] = mean_value-1
                             else:
                                 raise
 

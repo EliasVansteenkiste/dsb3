@@ -60,25 +60,26 @@ updates = config().build_updates(train_loss, model, learning_rate)
 
 x_shared = nn.utils.shared_empty(dim=len(model.l_in.shape))
 y_shared = nn.utils.shared_empty(dim=len(model.l_target.shape))
-z_shared = nn.utils.shared_empty(dim=len(model.l_enable_target.shape))
+#z_shared = nn.utils.shared_empty(dim=len(model.l_enable_target.shape))
 
 idx = T.lscalar('idx')
 givens_train = {}
 givens_train[model.l_in.input_var] = x_shared[idx * config().batch_size:(idx + 1) * config().batch_size]
 givens_train[model.l_target.input_var] = y_shared[idx * config().batch_size:(idx + 1) * config().batch_size]
-givens_train[model.l_enable_target.input_var] =  z_shared[idx * config().batch_size:(idx + 1) * config().batch_size]
+#givens_train[model.l_enable_target.input_var] =  z_shared[idx * config().batch_size:(idx + 1) * config().batch_size]
 
 givens_valid = {}
 givens_valid[model.l_in.input_var] = x_shared
 givens_valid[model.l_target.input_var] = y_shared
 # at this moment we do not use the enable target
-givens_valid[model.l_enable_target.input_var] = z_shared
+#givens_valid[model.l_enable_target.input_var] = z_shared
 
 
 #first make ordered list of objective functions
 train_objectives = [config().d_objectives[obj_name] for obj_name in config().order_objectives]
 test_objectives = [config().d_objectives_deterministic[obj_name] for obj_name in config().order_objectives]
 # theano functions
+print givens_train
 iter_train = theano.function([idx], train_objectives, givens=givens_train, updates=updates)
 
 print 'test_objectives'
@@ -135,7 +136,7 @@ for chunk_idx, (x_chunk_train, y_chunk_train, z_chunk_train, id_train) in izip(c
     # load chunk to GPU
     x_shared.set_value(x_chunk_train)
     y_shared.set_value(y_chunk_train)
-    z_shared.set_value(z_chunk_train)
+    # z_shared.set_value(z_chunk_train)
 
     # make nbatches_chunk iterations
     for b in xrange(config().nbatches_chunk):
@@ -175,7 +176,7 @@ for chunk_idx, (x_chunk_train, y_chunk_train, z_chunk_train, id_train) in izip(c
                                                 buffer_size=2)):
             x_shared.set_value(x_chunk_valid)
             y_shared.set_value(y_chunk_valid)
-            z_shared.set_value(z_chunk_valid)
+            # z_shared.set_value(z_chunk_valid)
             losses_valid = iter_validate()
             print i, losses_valid[0], np.sum(losses_valid)
             for obj_idx, obj_name in enumerate(config().order_objectives):
