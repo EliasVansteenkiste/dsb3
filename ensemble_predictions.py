@@ -31,6 +31,12 @@ FG_CONFIGS = ['fgodin/' + config for config in
 CONFIGS = ['dsb_a04_c3ns2_mse_s5_p8a1', 'dsb_a07_c3ns3_mse_s5_p8a1', 'dsb_a08_c3ns3_mse_s5_p8a1',
            'dsb_a11_m1zm_s5_p8a1', 'dsb_a_liox8_c3_s2_p8a1', 'dsb_a_liolme16_c3_s2_p8a1', 'dsb_a_liox6_c3_s2_p8a1',
            'dsb_a_liox7_c3_s2_p8a1']
+
+# FG_CONFIGS = ['fgodin/' + config for config in
+#               ['dsb_af19lme_mal2_s5_p8a1', 'dsb_af25lme_mal2_s5_p8a1', 'dsb_af5lme_mal2_s5_p8a1']]
+#
+# CONFIGS = ['dsb_a_liox8_c3_s2_p8a1', 'dsb_a_liolme16_c3_s2_p8a1', 'dsb_a_liox7_c3_s2_p8a1', ]
+
 CONFIGS += FG_CONFIGS
 
 expid = utils.generate_expid('ensemble')

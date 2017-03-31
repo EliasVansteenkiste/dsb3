@@ -10,26 +10,40 @@ VERBOSE = False
 
 
 def analyse_cv_result(cv_result, ensemble_method_name):
+    """
+
+    :param cv_result: list [ amount_folds x {weights, training_loss, validation_loss, ...} ]
+    :param ensemble_method_name: optimal linear or simple average
+    """
     utils.auto_make_dir(analysis_dir + '/' + ensemble_method_name)
-    colors = ['r', 'g', 'b', 'c', 'm', 'y', 'k']
 
-    # WEIGHT HISTOGRAM
-    weights = np.array([cv['weights'] for cv in cv_result])
-    average_importance = np.mean(weights)
-    configs = cv_result[0]['configs']
-    if VERBOSE: print 'weight per config across folds: ', weights
-    for w in range(weights.shape[1]):
-        weight_of_config_across_folds = np.array(weights[:, w])
-        if np.any(weight_of_config_across_folds > average_importance):
-            plt.hist(weight_of_config_across_folds, bins=np.linspace(0, 1, 10), facecolor=colors[w % len(colors)], alpha=0.5,
-                 label='config {}'.format(configs[w]))
+    histogram_of_good_weights(cv_result, ensemble_method_name)
 
-    plt.title('Weight histogram of configs during CV')
-    plt.legend(loc='upper right')
-    plt.savefig(analysis_dir + '/' + ensemble_method_name + '/' + 'ensemble_{}_weight_histograms.png'.format(
-        ensemble_method_name))
-    plt.clf()
-    plt.close('all')
+    # RANKING
+    amount_folds = len(cv_result)
+    amount_models = len(cv_result[0]['weights'])
+    weights = np.zeros((amount_folds, amount_models))
+    for n_fold, fold in enumerate(cv_result):
+        for n_weight, weight in enumerate(fold['weights']):
+            weights[n_fold, n_weight] = weight
+
+    from scipy.stats import rankdata
+    rankings = np.array([len(weight) - rankdata(weight).astype(int) for weight in weights])
+
+    model_names = cv_result[0]['configs']
+    msg = 'MODEL LEADERBOARD'
+    for model_nr in range(amount_models):
+        model_name = model_names[model_nr]
+        model_rankings = rankings[:, model_nr]
+        model_rankings_count = np.bincount(model_rankings)
+
+        msg += '\n\nModel {} ended up'.format(model_name)
+        for rank in range(len(model_rankings_count)):
+            msg += '\n\t\ton the {}nd place for {} times'.format(rank + 1, model_rankings_count[rank])
+
+    print msg
+    with open(analysis_dir + '/' + ensemble_method_name + '/ranking_models.txt', 'w') as f:
+        f.write(msg)
 
     # PERFORMANCE COMPARISON ACROSS FOLDS
     losses = np.array([cv['validation_loss'] for cv in cv_result])
@@ -45,6 +59,31 @@ def analyse_cv_result(cv_result, ensemble_method_name):
         f.write(str(scipy.stats.describe(losses)))
 
     # lets look at the relationship between the weight of the individual model and the validation loss
+    relationship_config_weights_validation_losses(cv_result, ensemble_method_name)
+
+
+def histogram_of_good_weights(cv_result, ensemble_method_name):
+    weights = np.array([cv['weights'] for cv in cv_result])
+    average_importance = np.mean(weights)
+    configs = cv_result[0]['configs']
+    if VERBOSE:
+        print 'weight per config across folds: ', weights
+    colors = ['r', 'g', 'b', 'c', 'm', 'y', 'k']
+    for w in range(weights.shape[1]):
+        weight_of_config_across_folds = np.array(weights[:, w])
+        if np.any(weight_of_config_across_folds > average_importance):
+            plt.hist(weight_of_config_across_folds, bins=np.linspace(0, 1, 10), facecolor=colors[w % len(colors)],
+                     alpha=0.5,
+                     label='config {}'.format(configs[w]))
+    plt.title('Weight histogram of configs during CV')
+    plt.legend(loc='upper right')
+    plt.savefig(analysis_dir + '/' + ensemble_method_name + '/' + 'ensemble_{}_weight_histograms.png'.format(
+        ensemble_method_name))
+    plt.clf()
+    plt.close('all')
+
+
+def relationship_config_weights_validation_losses(cv_result, ensemble_method_name):
     import ensemble_predictions as ens
     for model_name in ens.CONFIGS:
         weight_for_model = []
