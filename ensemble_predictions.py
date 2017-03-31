@@ -22,18 +22,23 @@ import utils
 import utils_lung
 import os.path as path
 import os
+import sandbox.ensemble_analysis as analyse
+
+FG_CONFIGS = ['fgodin/' + config for config in
+              ['dsb_af19lme_mal2_s5_p8a1', 'dsb_af25lme_mal2_s5_p8a1', 'dsb_af4_size6_s5_p8a1',
+               'dsb_af5lme_mal2_s5_p8a1', 'dsb_af5_size6_s5_p8a1', 'dsb_af24lme_mal3_s5_p8a1']]
 
 CONFIGS = ['dsb_a04_c3ns2_mse_s5_p8a1', 'dsb_a07_c3ns3_mse_s5_p8a1', 'dsb_a08_c3ns3_mse_s5_p8a1',
-           'dsb_a_liolme16_c3_s2_p8a1', 'dsb_a_liox6_c3_s2_p8a1', 'dsb_a_liox7_c3_s2_p8a1']
+           'dsb_a11_m1zm_s5_p8a1', 'dsb_a_liox8_c3_s2_p8a1', 'dsb_a_liolme16_c3_s2_p8a1', 'dsb_a_liox6_c3_s2_p8a1',
+           'dsb_a_liox7_c3_s2_p8a1']
+CONFIGS += FG_CONFIGS
 
 expid = utils.generate_expid('ensemble')
 
-img_dir = '/home/adverley/Code/Projects/Kaggle/dsb3/figures/'
 
-
-def ensemble():
+def linear_stacking():
     valid_set_predictions, valid_set_labels = load_validation_set()
-    analyse_predictions(valid_set_predictions, valid_set_labels)
+    analyse.analyse_predictions(valid_set_predictions, valid_set_labels)
 
     weights = optimize_weights(valid_set_predictions, valid_set_labels)  # (config_name -> (weight) )
 
@@ -45,52 +50,37 @@ def ensemble():
     compare_test_performance_ind_vs_ensemble(test_set_predictions)
 
 
+def tree_stacking():
+    valid_set_predictions, valid_set_labels = load_validation_set()
+    analyse.analyse_predictions(valid_set_predictions, valid_set_labels)
+
+    X = predictions_dict_to_3d_array(valid_set_predictions, valid_set_labels)
+    y = np.array(valid_set_labels.values())
+    config_names = valid_set_predictions.keys()
+
+    cv_results = {}
+
+    cv_results['tree_stacking'] = gradient_boosting(X, y)
+
+    model = cv_results['tree_stacking']['model']
+
+    test_set_predictions = {config: get_predictions_of_config(config, 'test') for config in CONFIGS}
+    X_test = predictions_dict_to_3d_array(test_set_predictions, None)
+
+    y_valid_pred = model.predict_proba(X[:, :, 1].T)[:, 1]
+    y_test_pred = {test_set_predictions.values()[0].keys()[i]: pred for i, pred in
+                   enumerate(model.predict_proba(X_test[:, :, 1].T)[:, 1])}
+    utils_ensemble.persist_predictions(y_test_pred, y_valid_pred, expid)
+    compare_test_performance_ind_vs_ensemble(test_set_predictions)
+
+
 def load_validation_set():
-    valid_set_predictions = {}  # (config_name -> (pid -> prediction) )
+    valid_set_predictions = collections.OrderedDict()  # (config_name -> (pid -> prediction) )
     for config in CONFIGS:
         valid_set_predictions[config] = get_predictions_of_config(config, 'valid')
     valid_set_labels = load_validation_labels()  # (pid -> prediction)
     sanity_check(valid_set_predictions, valid_set_labels)
     return valid_set_predictions, valid_set_labels
-
-
-def analyse_predictions(valid_set_predictions, labels):
-    from scipy.stats import pearsonr
-
-    print 'Correlation between predictions: '
-    X = predictions_dict_to_3d_array(valid_set_predictions, labels)
-    X = X[:, :, 0]
-
-    config_names = valid_set_predictions.keys()
-    amount_configs = X.shape[0]
-    for config_nr in range(amount_configs):
-        compare_with_nr = config_nr + 1
-        while compare_with_nr < amount_configs:
-            corr = pearsonr(X[config_nr, :], X[compare_with_nr, :])
-            print 'Correlation between config {} and {} is {:0.2f} with p-value ({:f})' \
-                .format(config_names[config_nr], config_names[compare_with_nr], corr[0], corr[1])
-            compare_with_nr += 1
-
-    corr = np.corrcoef(X)
-    correlation_matrix(corr, config_names)
-
-
-def correlation_matrix(corr_matrix, config_names):
-    from matplotlib import pyplot as plt
-    from matplotlib import cm as cm
-
-    fig = plt.figure()
-    ax1 = fig.add_subplot(111)
-    cmap = cm.get_cmap('jet', 30)
-    cax = ax1.imshow(corr_matrix, interpolation="nearest", cmap=cmap)
-    plt.title('Config prediction Correlation')
-    labels = config_names
-    ax1.set_xticklabels(labels, fontsize=6)
-    ax1.set_yticklabels(labels, fontsize=6)
-    fig.colorbar(cax)
-
-    plt.savefig(img_dir + 'correlation_between_configs.png')
-    plt.close('all')
 
 
 def get_predictions_of_config(config_name, which_set):
@@ -115,9 +105,6 @@ def load_validation_labels():
 
 def sanity_check(valid_set_predictions, valid_set_labels):
     for config in CONFIGS:
-        # Check whether all configs exist
-        # utils.find_model_metadata(pathfinder.METADATA_PATH, config)
-
         # Check whether all these configs contain all the predictions
         if valid_set_predictions[config].viewkeys() != valid_set_labels.viewkeys():
             raise ValueError(
@@ -145,16 +132,29 @@ def optimize_weights(predictions, labels):
     cv_results['optimal_linear_weights'] = do_cross_validation(X, y, config_names, optimal_linear_weights)
     cv_results['equal_weights'] = do_cross_validation(X, y, config_names, simple_average)
 
-    analyse_cv_result(cv_results['optimal_linear_weights'], 'optimal_linear_weights')
-    analyse_cv_result(cv_results['equal_weights'], 'equal_weights')
+    analyse.analyse_cv_result(cv_results['optimal_linear_weights'], 'optimal_linear_weights')
+    analyse.analyse_cv_result(cv_results['equal_weights'], 'equal_weights')
 
-    weights = optimal_linear_weights(X, np.array(utils_ensemble.one_hot(y)))
+    best_cv_method = None
+    lowest_loss = np.inf
+    for cv_result in cv_results.values():
+        losses = np.array([cv['validation_loss'] for cv in cv_result])
+        loss = np.mean(losses)
+        if loss <= lowest_loss:
+            lowest_loss = loss
+            best_cv_method = cv_result[0]['ensemble_method']
+
+    print 'Model with best CV result is ', best_cv_method.func_name
+    # weights = optimal_linear_weights(X, np.array(utils_ensemble.one_hot(y)))
+    # weights = simple_average(X, np.array(utils_ensemble.one_hot(y)))
+
+    weights = best_cv_method(X, np.array(utils_ensemble.one_hot(y)))
 
     print 'Optimal weights'
     config2weights = {}
     for model_nr in range(len(predictions.keys())):
         config = predictions.keys()[model_nr]
-        print 'Weight for config {} is {}'.format(config, weights[model_nr])
+        print 'Weight for config {} is {:0.2%}'.format(config, weights[model_nr])
         config2weights[config] = weights[model_nr]
 
     return config2weights
@@ -187,36 +187,11 @@ def do_cross_validation(X, y, config_names, ensemble_method):
             'validation_loss': valid_loss,
             'training_idx': train_index,
             'test_idx': test_index,
-            'configs': config_names
+            'configs': config_names,
+            'ensemble_method': ensemble_method
         })
 
     return cv_result
-
-
-def analyse_cv_result(cv_result, ensemble_method_name):
-    colors = ['r', 'g', 'b', 'c', 'm', 'y', 'k', 'w']
-
-    # WEIGHT HISTOGRAM
-    weights = np.array([cv['weights'] for cv in cv_result])
-    print 'weight per config across folds: ', weights
-    for w in range(weights.shape[1]):
-        weight = weights[:, w]
-        plt.hist(weight, bins=np.linspace(0, 1, 10), facecolor=colors[w % len(colors)], alpha=0.5,
-                 label='config {}'.format(cv_result[0]['configs'][w]))
-
-    plt.title('Weight histogram of configs during CV')
-    plt.legend(loc='upper right')
-    plt.savefig(img_dir + 'ensemble_{}_weight_histograms.png'.format(ensemble_method_name))
-    plt.clf()
-    plt.close('all')
-
-    # PERFORMANCE COMPARISON ACROSS FOLDS
-    losses = np.array([cv['validation_loss'] for cv in cv_result])
-    print 'Validation set losses across folds: ', losses
-    print 'stats of ', ensemble_method_name, scipy.stats.describe(losses)
-    with open(img_dir + 'ensemble_{}_cv_performance.txt'.format(ensemble_method_name), 'w') as f:
-        f.write('stats: ')
-        f.write(str(scipy.stats.describe(losses)))
 
 
 def optimal_linear_weights(predictions_stack, targets):
@@ -244,14 +219,17 @@ def optimal_linear_weights(predictions_stack, targets):
 
 def predictions_dict_to_3d_array(predictions, labels):
     """
+    :param predictions: (config_name -> (pid -> prediction) )
+    :param labels: ( (pid -> prediction) )
     :return: predictions as numpy array with shape [num_configs x num_patients x 2]
     """
     n_models = len(predictions.keys())
-    n_patients = len(labels)
+    pids = predictions.values()[0].keys()
+    n_patients = len(pids)
     predictions_stack = np.zeros((n_models, n_patients, 2))  # num_configs x num_patients x 2 categories
     for model_nr in range(n_models):
         config = predictions.keys()[model_nr]
-        for patient_nr, patient_id in enumerate(labels.keys()):
+        for patient_nr, patient_id in enumerate(pids):
             predictions_stack[model_nr, patient_nr, 0] = 1.0 - predictions[config][patient_id]
             predictions_stack[model_nr, patient_nr, 1] = predictions[config][patient_id]
     return predictions_stack
@@ -263,6 +241,40 @@ def simple_average(predictions_stack, targets):
 
     weights = [equal_weight for _ in range(amount_of_configs)]
     return weights
+
+
+def gradient_boosting(predictions_stack, targets):
+    from sklearn.model_selection import RandomizedSearchCV
+    from sklearn.ensemble import GradientBoostingClassifier
+    from scipy.stats import randint as sp_randint
+    from sklearn.metrics.scorer import neg_log_loss_scorer
+    X = predictions_stack[:, :, 1]
+    X = X.T
+    y = targets
+
+    param_dist = {"max_depth": sp_randint(1, 6),
+                  "n_estimators": sp_randint(1, 50),
+                  "max_features": sp_randint(1, 4),
+                  'min_samples_split': sp_randint(2, 3)}
+
+    clf = GradientBoostingClassifier()
+
+    n_folds = 10
+    skf = StratifiedKFold(n_splits=n_folds, random_state=0)
+    rscv = RandomizedSearchCV(clf, param_distributions=param_dist, cv=skf, n_jobs=4, n_iter=100,
+                              scoring=neg_log_loss_scorer, verbose=1)
+
+    rscv.fit(X, y)
+
+    cv_result = {
+        'model': rscv,
+        # 'weights': rscv.best_estimator_.feature_importances_,
+        'training_loss': np.mean(rscv.cv_results_['mean_train_score']),
+        'validation_loss': np.mean(rscv.cv_results_['mean_test_score']),
+        'configs': [CONFIGS]
+    }
+
+    return cv_result
 
 
 def weighted_average(predictions, weights):
@@ -297,6 +309,7 @@ def compare_test_performance_ind_vs_ensemble(test_set_predictions):
 
 
 def calc_test_performance(config_name, predictions):
+    config_name = config_name.replace('/', '')
     tmp_submission_file = '/tmp/submission_test_predictions_{}.csv'.format(config_name)
     utils_lung.write_submission(predictions, tmp_submission_file)
     loss = evaluate_submission.leaderboard_performance(tmp_submission_file)
@@ -306,5 +319,5 @@ def calc_test_performance(config_name, predictions):
 
 if __name__ == '__main__':
     print 'Starting ensembling with configs', CONFIGS
-    ensemble()
+    linear_stacking()
     print 'Job done'

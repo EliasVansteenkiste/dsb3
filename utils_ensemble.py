@@ -60,6 +60,11 @@ def get_destination_path(filename, expid):
 
 
 def find_model_preds_expid(preds_dir, config_name):
+    if config_name.find('/') != -1:
+        user_folder = config_name[0:config_name.index('/')]
+        config_name = config_name[config_name.index('/') + 1:]
+        preds_dir += '/' + user_folder
+
     paths = glob.glob(preds_dir + '/%s-*' % config_name)
     # black magic that simply extracts the timestamp
     exp_ids = list(set(
@@ -68,5 +73,7 @@ def find_model_preds_expid(preds_dir, config_name):
     if not paths:
         raise ValueError('No prediction files for config %s' % (config_name))
     elif len(exp_ids) > 1:
-        raise ValueError('Multiple prediction files for config %s' % config_name)
+        print '\nWARNING: Multiple prediction files for config %s' % config_name
+        print 'Taking the most recent predictions for this config...\n'
+        return exp_ids[len(exp_ids) - 1]
     return exp_ids[0]
