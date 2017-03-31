@@ -1536,8 +1536,9 @@ class DSBPatientsDataGenerator(object):
 class DSBLUNAMalignancyDataGenerator(object):
     def __init__(self, data_path_dsb, data_path_luna, batch_size, transform_params, id2candidates_path, data_prep_fun,
                  n_candidates_per_patient, rng, random, infinite, shuffle_top_n=False, patient_ids=None):
-
-        # DSB
+        ###################
+        # PREPARE DSB
+        ###################
 
         self.id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
         self.id2candidates_path = id2candidates_path
@@ -1558,7 +1559,9 @@ class DSBLUNAMalignancyDataGenerator(object):
         self.infinite = infinite
         self.shuffle_top_n = shuffle_top_n
 
-        # LUNA
+        ###################
+        # PREPARE LUNA
+        ###################
 
         id2positive_annotations = utils_lung.read_luna_annotations_malignacy(pathfinder.LUNA_EXTENDED_ANNOTATIONS)
         id2negative_annotations = utils_lung.read_luna_negative_candidates(pathfinder.LUNA_CANDIDATES_PATH)
@@ -1571,18 +1574,26 @@ class DSBLUNAMalignancyDataGenerator(object):
         luna_labels = {}
         for pid in patient_ids:
             if pid not in id2positive_annotations: continue
-            #sort by diameter
+            # sort by malignancy
             self.id2positive_annotations[pid] = sorted(id2positive_annotations[pid], key=lambda x: x[3], reverse=True)
+            # sort by diameter
             self.id2negative_annotations[pid] = sorted(id2negative_annotations[pid], key=lambda x: x[3], reverse=True)
             luna_patient_paths.append(data_path_luna + '/' + pid + self.file_extension)
+            # (malignancy-1)/4
             probs = np.asarray([(annot[3]-1.)/4. for annot in id2positive_annotations[pid]])
-            luna_labels[pid] = 1. - np.prod(1. - probs)  # nodules assumed i.i.d.
+            # nodules assumed i.i.d.
+            luna_labels[pid] = 1. - np.prod(1. - probs)
+            print luna_labels[pid], probs
 
+
+        # ADD patient_diagnosis.csv HARD LABELS -> OVERWRITES SOFTLABELS (bad idea?)
         if len(luna_labels) > 0:
             n_diagnose = 0
             for pid, diagn in id2diagnose.items():
                 luna_labels[pid] = float(diagn)
+                # sort by malignancy
                 self.id2positive_annotations[pid] = sorted(id2positive_annotations[pid], key=lambda x: x[3], reverse=True)
+                # sort by diameter
                 self.id2negative_annotations[pid] = sorted(id2negative_annotations[pid], key=lambda x: x[3], reverse=True)
                 n_diagnose += 1
             print "  luna hard diagnoses found:", n_diagnose
@@ -1590,7 +1601,7 @@ class DSBLUNAMalignancyDataGenerator(object):
         print 'n patients', len(self.patient_paths), "luna", len(luna_patient_paths)
         self.patient_paths.extend(luna_patient_paths)
 
-
+        # ADD NEGATIVE ANNOTATIONS: HEALTHY LUNA PATIENTS
         if len(luna_labels) > 0:
             avg_prob_luna = np.mean([p for p in luna_labels.values()])
             print "  avg_prob_luna", avg_prob_luna
@@ -1600,8 +1611,10 @@ class DSBLUNAMalignancyDataGenerator(object):
             self.id2label.update(luna_labels)
 
             for pid, neg in id2negative_annotations.items():
+                # only add healthy if not in positive, not in diagnose (we already have these) and we don't have it
                 if pid in id2positive_annotations or pid in id2diagnose or pid in self.id2label: continue
                 self.id2label[pid] = 0.
+                # sort by diameter
                 self.id2negative_annotations[pid] = sorted(neg, key=lambda x: x[3],reverse=True)
                 self.patient_paths.append(data_path_luna + '/' + pid + self.file_extension)
 
@@ -1634,6 +1647,7 @@ class DSBLUNAMalignancyDataGenerator(object):
                     patient_path = self.patient_paths[idx]
                     pid = utils_lung.extract_pid_dir(patient_path)
 
+                    # BALANCE TO TRAIN SET:
                     # if "." in pid:
                     #     if self.rng.rand() > self.luna_sample_prob:
                     #         # sample benign to balance out the training set
@@ -1655,11 +1669,11 @@ class DSBLUNAMalignancyDataGenerator(object):
                         n_missing = self.n_candidates_per_patient - len(top_candidates)
                         if n_missing > 0: top_candidates.extend(self.id2negative_annotations[pid][:n_missing])
 
-                        # TODO: this is bad! but never happens anyway so it doesn't matter                         random locations if no other candidates
+                        # This is bad code! but never happens anyway so it doesn't matter                         random locations if no other candidates
                         len_top = len(top_candidates)
-                        for _ in range(self.n_candidates_per_patient - len_top):
-                            r_loc = self.rng.rand(3)*(270-50)+50 #from 50 to 270
-                            print "random! bad!", r_loc
+                        for _ in range(self.n_candidates_per_patient - len_top): #never happens
+                            r_loc = self.rng.rand(3)*(270-50)+50 #from 50 to 270 (bad)
+                            print "random! bad!", r_loc #never happens
                             top_candidates.append(r_loc)
 
                         if self.shuffle_top_n: self.rng.shuffle(top_candidates)
