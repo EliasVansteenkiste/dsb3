@@ -987,7 +987,7 @@ class CandidatesLunaPropsDataGenerator(object):
                  full_batch, random, infinite, 
                  positive_proportion,
                  order_objectives,
-                 property_type = None,
+                 property_type,
                  property_bin_borders = None,
                  return_enable_target_vector = False, **kwargs):
 
@@ -1038,6 +1038,7 @@ class CandidatesLunaPropsDataGenerator(object):
 
         self.order_objectives = order_objectives
         self.property_bin_borders = property_bin_borders
+	self.property_type = property_type
         #self.return_enable_target_vector = return_enable_target_vector
 
     def L2(self, a,b):
@@ -1169,7 +1170,7 @@ class CandidatesLunaPropsDataGenerator(object):
 
 class CandidatesLunaPropsValidDataGenerator(object):
     def __init__(self, data_path, transform_params, patient_ids, data_prep_fun, 
-                    order_objectives, property_type = None, property_bin_borders=None, **kwargs):
+                    order_objectives, property_type, property_bin_borders=None, **kwargs):
         rng = np.random.RandomState(42)  # do not change this!!!
 
         id2positive_annotations = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
@@ -1207,6 +1208,7 @@ class CandidatesLunaPropsValidDataGenerator(object):
 
         self.order_objectives = order_objectives
         self.property_bin_borders = property_bin_borders
+        self.property_type = property_type
     
 
     def L2(self, a,b):
@@ -1252,7 +1254,13 @@ class CandidatesLunaPropsValidDataGenerator(object):
                             properties[prop] = np.digitize(median_value, self.property_bin_borders[prop])
                         else:
                             mean_value = np.mean(np.array(prop_values))
-                            properties[prop] = mean_value
+                            if self.property_type:
+                                if self.property_type[prop] == 'bounded_continuous':
+                                    properties[prop] = mean_value / 5.
+                                else:
+                                    properties[prop] = mean_value
+                            else:
+                                raise
 
         for idx, prop in enumerate(self.order_objectives):
             if prop in properties:
@@ -1712,8 +1720,10 @@ class DSBDataGenerator(object):
 
             img, pixel_spacing = utils_lung.read_dicom_scan(p)
 
-            if data_prep_fun:
+            if self.data_prep_fun:
                 x, tf_matrix = self.data_prep_fun(data=img, pixel_spacing=pixel_spacing)
+            else:
+                x = img
 
             x = np.float32(x)
             yield x,  pid

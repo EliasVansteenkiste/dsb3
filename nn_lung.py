@@ -377,12 +377,11 @@ class LogMeanExp(nn.layers.Layer):
         self.axis = axis
 
     def get_output_shape_for(self, input_shape):
-        # assert(len(input_shape)==3)
-        # assert(input_shape[2]==1)
         return (input_shape[0], 1)
 
     def get_output_for(self, input, **kwargs):
         return T.log(T.mean(T.exp(self.r * input), axis=self.axis) + 1e-7) / self.r
+
 
 class AggMILLoss(nn.layers.Layer):
     """
@@ -390,7 +389,7 @@ class AggMILLoss(nn.layers.Layer):
     """
 
     def __init__(self, incoming, r=1, **kwargs):
-        super(AggMIL, self).__init__(incoming, **kwargs)
+        super(AggMILLoss, self).__init__(incoming, **kwargs)
         self.r = np.float32(r)
 
     def get_output_shape_for(self, input_shape):
@@ -404,3 +403,24 @@ class AggMILLoss(nn.layers.Layer):
         sum_p_r_benign = T.sum(ps,axis=1)
         sum_log = T.sum(T.log(1-ps+1.e-12),axis=1)
         return T.concatenate([sum_log, sum_p_r_benign])
+
+
+class Real3DFFTLayer(nn.layers.Layer):
+    """
+    Real3DFFTLayer
+    """
+
+    def __init__(self, incoming, r=1, **kwargs):
+        super(Real3DFFTLayer, self).__init__(incoming, **kwargs)
+
+    def get_output_shape_for(self, input_shape):
+        assert(len(input_shape)==4)
+        output_shape = (input_shape[0],)
+        for i in range(1,len(input_shape)):
+            output_shape = output_shape + (input_shape[i]//2,)        
+        return output_shape
+
+    def get_output_for(self, input, **kwargs):
+        cfft = T.fft.rfft(input)
+        magnitude = (cfft[:,:,:,0]**2 + cfft[:,:,:,1]**2)**0.5
+        return magnitude
