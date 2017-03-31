@@ -18,32 +18,7 @@ def analyse_cv_result(cv_result, ensemble_method_name):
     utils.auto_make_dir(analysis_dir + '/' + ensemble_method_name)
 
     histogram_of_good_weights(cv_result, ensemble_method_name)
-
-    # RANKING
-    amount_folds = len(cv_result)
-    amount_models = len(cv_result[0]['weights'])
-    weights = np.zeros((amount_folds, amount_models))
-    for n_fold, fold in enumerate(cv_result):
-        for n_weight, weight in enumerate(fold['weights']):
-            weights[n_fold, n_weight] = weight
-
-    from scipy.stats import rankdata
-    rankings = np.array([len(weight) - rankdata(weight).astype(int) for weight in weights])
-
-    model_names = cv_result[0]['configs']
-    msg = 'MODEL LEADERBOARD'
-    for model_nr in range(amount_models):
-        model_name = model_names[model_nr]
-        model_rankings = rankings[:, model_nr]
-        model_rankings_count = np.bincount(model_rankings)
-
-        msg += '\n\nModel {} ended up'.format(model_name)
-        for rank in range(len(model_rankings_count)):
-            msg += '\n\t\ton the {}nd place for {} times'.format(rank + 1, model_rankings_count[rank])
-
-    print msg
-    with open(analysis_dir + '/' + ensemble_method_name + '/ranking_models.txt', 'w') as f:
-        f.write(msg)
+    ranking(cv_result, ensemble_method_name)
 
     # PERFORMANCE COMPARISON ACROSS FOLDS
     losses = np.array([cv['validation_loss'] for cv in cv_result])
@@ -60,6 +35,30 @@ def analyse_cv_result(cv_result, ensemble_method_name):
 
     # lets look at the relationship between the weight of the individual model and the validation loss
     relationship_config_weights_validation_losses(cv_result, ensemble_method_name)
+
+
+def ranking(cv_result, ensemble_method_name):
+    amount_folds = len(cv_result)
+    amount_models = len(cv_result[0]['weights'])
+    weights = np.zeros((amount_folds, amount_models))
+    for n_fold, fold in enumerate(cv_result):
+        for n_weight, weight in enumerate(fold['weights']):
+            weights[n_fold, n_weight] = weight
+    from scipy.stats import rankdata
+    rankings = np.array([len(weight) - rankdata(weight).astype(int) for weight in weights])
+    model_names = cv_result[0]['configs']
+    msg = 'MODEL LEADERBOARD'
+    for model_nr in range(amount_models):
+        model_name = model_names[model_nr]
+        model_rankings = rankings[:, model_nr]
+        model_rankings_count = np.bincount(model_rankings)
+
+        msg += '\n\nModel {} ended up'.format(model_name)
+        for rank in range(len(model_rankings_count)):
+            msg += '\n\t\ton the {}nd place for {} times'.format(rank + 1, model_rankings_count[rank])
+    print msg
+    with open(analysis_dir + '/' + ensemble_method_name + '/ranking_models.txt', 'w') as f:
+        f.write(msg)
 
 
 def histogram_of_good_weights(cv_result, ensemble_method_name):
