@@ -31,15 +31,15 @@ expid = metadata['experiment_id']
 
 # logs
 logs_dir = utils.get_dir_path('logs', pathfinder.METADATA_PATH)
-sys.stdout = logger.Logger(logs_dir + '/%s-test.log' % expid)
+sys.stdout = logger.Logger(logs_dir + '/%s-%s.log' % (expid, set))
 sys.stderr = sys.stdout
 
 # predictions path
-predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
-outputs_path = predictions_dir + '/' + expid
-utils.auto_make_dir(outputs_path)
-output_pkl_file = outputs_path + '/%s-%s.pkl' % (expid, set)
-output_csv_file = outputs_path + '/%s-%s.csv' % (expid, set)
+predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH, no_name=True)
+output_pkl_file = predictions_dir + '/%s-%s.pkl' % (expid, set)
+
+submissions_dir = utils.get_dir_path('submissions', pathfinder.METADATA_PATH, no_name=True)
+output_csv_file = submissions_dir + '/%s-%s.csv' % (expid, set)
 
 # if os.path.isfile(output_pkl_file):
 #     pid2prediction = utils.load_pkl(output_pkl_file)
@@ -67,10 +67,9 @@ nn.layers.set_all_param_values(model.l_out, metadata['param_values'])
 
 # theano functions
 iter_test = theano.function([model.l_in.input_var], nn.layers.get_output(model.l_out, deterministic=True))
-iter_valid = theano.function([model.l_in.input_var], nn.layers.get_output(model.l_out, deterministic=True))
 
-pid2label = utils_lung.read_test_labels(pathfinder.TEST_LABELS_PATH)
 if set == 'test':
+    pid2label = utils_lung.read_test_labels(pathfinder.TEST_LABELS_PATH)
     data_iterator = config().test_data_iterator
 
     print
@@ -82,19 +81,11 @@ if set == 'test':
             data_iterator.generate())):
         predictions = iter_test(x_test)
         pid = id_test[0]
-        pid2prediction[pid] = predictions[0]
+        pid2prediction[pid] = predictions[0, 1] if predictions.shape[-1] == 2 else predictions[0]
         print i, pid, predictions, pid2label[pid]
 
     utils.save_pkl(pid2prediction, output_pkl_file)
     print 'Saved validation predictions into pkl', os.path.basename(output_pkl_file)
-
-    ids_without_segments = [x for x in pid2label.keys() if x not in pid2prediction.keys()]
-
-    print("Ids without prediction")
-    print(ids_without_segments)
-
-    # for pid in ids_without_segments:
-    #     pid2prediction[pid]=0
 
     test_loss = utils_lung.evaluate_log_loss(pid2prediction, pid2label)
     print 'Test loss', test_loss
@@ -114,9 +105,9 @@ elif set == 'valid':
     pid2prediction, pid2label = {}, {}
     for i, (x_test, y_test, id_test) in enumerate(buffering.buffered_gen_threaded(
             data_iterator.generate())):
-        predictions = iter_valid(x_test)
+        predictions = iter_test(x_test)
         pid = id_test[0]
-        pid2prediction[pid] = predictions[0]
+        pid2prediction[pid] = predictions[0, 1] if predictions.shape[-1] == 2 else predictions[0]
         pid2label[pid] = y_test[0]
         print i, pid, predictions, pid2label[pid]
 

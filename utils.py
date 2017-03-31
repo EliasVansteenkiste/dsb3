@@ -39,8 +39,11 @@ def check_data_paths(data_path):
         raise ValueError('wrong path to DICOM data')
 
 
-def get_dir_path(dir_name, root_dir):
-    username = pwd.getpwuid(os.getuid())[0]
+def get_dir_path(dir_name, root_dir, no_name=False):
+    if no_name:
+        username = ''
+    else:
+        username = pwd.getpwuid(os.getuid())[0]
     dir_path = root_dir + '/' + dir_name + '/%s' % username
     if not os.path.isdir(dir_path):
         os.makedirs(dir_path)
