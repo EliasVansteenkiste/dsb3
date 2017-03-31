@@ -141,5 +141,5 @@ def correlation_matrix(corr_matrix, config_names):
     ax1.set_yticklabels(labels, fontsize=6)
     fig.colorbar(cax)
 
-    plt.savefig(analysis_dir + 'correlation_between_configs.png')
+    plt.savefig(analysis_dir + '/correlation_between_configs.png')
     plt.close('all')
