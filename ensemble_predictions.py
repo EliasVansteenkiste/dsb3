@@ -49,6 +49,9 @@ def linear_stacking():
     weights = optimize_weights(valid_set_predictions, valid_set_labels)  # (config_name -> (weight) )
 
     y_valid_pred = weighted_average(valid_set_predictions, weights)
+    for config, valid_preds in valid_set_predictions.iteritems():
+        print 'in-sample loss of config {} is {} '.format(config, utils_lung.evaluate_log_loss(valid_preds, valid_set_labels))
+    print 'in-sample lossof ensemble is: ', utils_lung.evaluate_log_loss(y_valid_pred, valid_set_labels)
 
     test_set_predictions = {config: get_predictions_of_config(config, 'test') for config in CONFIGS}
     y_test_pred = weighted_average(test_set_predictions, weights)
@@ -138,6 +141,8 @@ def optimize_weights(predictions, labels):
     cv_results['optimal_linear_weights'] = do_cross_validation(X, y, config_names, optimal_linear_weights)
     cv_results['equal_weights'] = do_cross_validation(X, y, config_names, simple_average)
 
+    N, configs_to_use = reoptimized_top_n_blending(X, y, cv_results['optimal_linear_weights'])
+
     analyse.analyse_cv_result(cv_results['optimal_linear_weights'], 'optimal_linear_weights')
     analyse.analyse_cv_result(cv_results['equal_weights'], 'equal_weights')
 
@@ -156,7 +161,7 @@ def optimize_weights(predictions, labels):
 
     weights = best_cv_method(X, np.array(utils_ensemble.one_hot(y)))
 
-    print 'Optimal weights'
+    print '\nOptimal weights'
     config2weights = {}
     for model_nr in range(len(predictions.keys())):
         config = predictions.keys()[model_nr]
@@ -164,6 +169,59 @@ def optimize_weights(predictions, labels):
         config2weights[config] = weights[model_nr]
 
     return config2weights
+
+
+def reoptimized_top_n_blending(X, y, cv_result):
+    for fold_nr, cv in enumerate(cv_result):
+        train_index = cv['training_idx']
+        test_index = cv['test_idx']
+        weights = cv['weights']
+        config_names = np.array(cv['configs'])
+
+        blending_cv_results = []
+        for n in range(1, len(CONFIGS)):  # lets use atleast 2 models
+            cut_off = np.sort(weights)[::-1][n]
+
+            indexes_of_weights_to_use = np.array(np.where(weights >= cut_off)).flatten()
+            configs_to_use = config_names[indexes_of_weights_to_use]
+
+            X_train, X_test = X[indexes_of_weights_to_use, :, :][:, train_index, :], X[indexes_of_weights_to_use, :, :][
+                                                                                     :, test_index, :]
+            y_train, y_test = y[train_index], y[test_index]
+
+            reoptimized_weights = optimal_linear_weights(X_train, np.array(utils_ensemble.one_hot(y_train)))
+
+            y_train_pred = np.zeros(len(train_index))
+            y_test_pred = np.zeros(len(test_index))
+            for i, weight in enumerate(reoptimized_weights):
+                y_train_pred += X_train[i, :, 1] * reoptimized_weights[
+                    i]  # this can probably be replaced with a tensor dot product
+                y_test_pred += X_test[i, :, 1] * reoptimized_weights[
+                    i]  # this can probably be replaced with a tensor dot product
+
+            training_loss = utils_lung.log_loss(y_train, y_train_pred)
+            valid_loss = utils_lung.log_loss(y_test, y_test_pred)
+
+            blending_cv_results.append({
+                'N': n + 1,
+                'weights': reoptimized_weights,
+                'training_loss': training_loss,
+                'validation_loss': valid_loss,
+                'configs': configs_to_use,
+            })
+
+        best_n = np.inf
+        best_configs = None
+        best_validation_loss = np.inf
+        for blending_cv_result in blending_cv_results:
+            if blending_cv_result['validation_loss'] < best_validation_loss:
+                best_n = blending_cv_result['N']
+                best_configs = blending_cv_result['configs']
+                best_validation_loss = blending_cv_result['validation_loss']
+
+        print '[this is not used] The optimal amount of models to include is {} with configs [{}] leading to avg CV logloss of {}'.format(
+            best_n, best_configs, np.mean([cv['validation_loss'] for cv in blending_cv_results]))
+        return best_n, best_configs
 
 
 def do_cross_validation(X, y, config_names, ensemble_method):
