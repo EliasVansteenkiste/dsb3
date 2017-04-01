@@ -9,6 +9,8 @@ MIN_HU = -1000.
 rng = np.random.RandomState(317070)
 
 
+
+
 def hu2normHU(x):
     """
     Modifies input data
@@ -24,6 +26,105 @@ def pixelnormHU(x):
     x = (x - MIN_HU) / (MAX_HU - MIN_HU)
     x = np.clip(x, 0., 1., out=x)
     return (x - 0.5) / 0.5
+
+
+def histogram_equalization(x, hist=None, bins=None):
+    # hist is a normalized histogram, which means that the sum of the counts has to be one
+    if hist is None and bins is None:
+        # For the case no target histogram is given
+        bins = np.arange(-950,500,100)
+        n_bins = bins.shape[0] -1
+        hist = 1. * np.ones(n_bins) / n_bins
+    elif hist is None or bins is None:
+        raise
+        
+    assert(len(bins) == (len(hist)+1))
+
+    # init our target array 
+    z = np.empty(x.shape)
+
+    # copy the values outside of the bins from the original
+    z[x<=bins[0]] = x[x<=bins[0]] 
+    z[x>=bins[-1]] = x[x>=bins[-1]] 
+
+    inside_bins = np.logical_and(x>bins[0], x<bins[-1])
+
+    n_bins = bins.shape[0] -1
+    prev_percentile = 0
+    for i in range(n_bins):
+        target_count = hist[i]
+        lower_bound = bins[i]
+        upper_bound = bins[i+1]
+        new_percentile = prev_percentile + target_count*100
+        low_orig = np.percentile(x[inside_bins], prev_percentile)
+        if i == n_bins-1:
+            high_orig = bins[-1]
+        else:
+            high_orig = np.percentile(x[inside_bins], new_percentile)
+
+        prev_percentile = new_percentile
+
+        elements_to_rescale = np.logical_and(x>=low_orig, x<high_orig)
+        y = x[elements_to_rescale]
+        y_r = (y - low_orig)/(high_orig-low_orig)*(upper_bound-lower_bound) + lower_bound
+        z[elements_to_rescale] = y_r
+
+    return z
+
+def get_rescale_params_hist_eq(x, hist=None, bins=None):
+    # hist is a normalized histogram, which means that the sum of the counts has to be one
+    if hist is None and bins is None:
+        # For the case no target histogram is given
+        bins = np.arange(-950,500,100)
+        n_bins = bins.shape[0] -1
+        hist = 1. * np.ones(n_bins) / n_bins
+    elif hist is None or bins is None:
+        raise
+        
+    assert(len(bins) == (len(hist)+1))
+
+    inside_bins = np.logical_and(x>bins[0], x<bins[-1])
+
+    n_bins = bins.shape[0] -1
+    prev_percentile = 0
+    original_borders = []
+    for i in range(n_bins):
+        target_count = hist[i]
+        lower_bound = bins[i]
+        upper_bound = bins[i+1]
+        new_percentile = prev_percentile + target_count*100
+        low_orig = np.percentile(x[inside_bins], prev_percentile)
+        original_borders.append(low_orig)
+        prev_percentile = new_percentile
+    original_borders.append(bins[-1])
+        
+
+    return bins, original_borders
+
+def apply_hist_eq_patch(x, bins, original_borders):
+
+    # init our target array 
+    z = np.empty(x.shape)
+
+    # copy the values outside of the bins from the original
+    z[x<=bins[0]] = x[x<=bins[0]] 
+    z[x>=bins[-1]] = x[x>=bins[-1]] 
+
+    inside_bins = np.logical_and(x>bins[0], x<bins[-1])
+
+    n_bins = bins.shape[0] -1
+    for i in range(n_bins):
+        lower_bound = bins[i]
+        upper_bound = bins[i+1]
+        low_orig = original_borders[i]
+        high_orig = original_borders[i+1]
+
+        elements_to_rescale = np.logical_and(x>=low_orig, x<high_orig)
+        y = x[elements_to_rescale]
+        y_r = (y - low_orig)/(high_orig-low_orig)*(upper_bound-lower_bound) + lower_bound
+        z[elements_to_rescale] = y_r
+        
+    return z
 
 
 def sample_augmentation_parameters(transformation):
@@ -239,10 +340,57 @@ def transform_dsb_candidates(data, patch_centers, pixel_spacing, p_transform,
         else:
             tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_shift_uncenter).dot(tf_output_scale)
 
-        patch_out = apply_affine_transform(data, tf_total, order=1, output_shape=output_shape)
+        patch_out = apply_affine_transform(data, tf_total, order=p_transform['order'], output_shape=output_shape)
         patches_out.append(patch_out[None, :, :, :])
 
     return np.concatenate(patches_out, axis=0)
+
+
+def build_dsb_can_heatmap(data, candidates, pixel_spacing, p_transform,
+                             p_transform_augment=None):
+
+    assert(candidates.shape[1]>3)
+
+    mm_patch_size = np.asarray(p_transform['mm_patch_size'], dtype='float32')
+    out_pixel_spacing = np.asarray(p_transform['pixel_spacing'])
+
+    input_shape = np.asarray(data.shape)
+    mm_shape = input_shape * pixel_spacing / out_pixel_spacing
+
+    output_shape = p_transform['heatmap_size']
+    max_shape = p_transform['max_shape']
+
+    # Constructing heatmap
+    heatmap = np.zeros(output_shape)
+    max_dims = np.zeros(3)
+    min_dims = 99999*np.ones(3)
+    for can in candidates:
+        value = can[-1]
+        zyx = np.array(can[:3])
+        zyx_mm = zyx * mm_shape / input_shape
+        #only for analyse purpose
+        for idx, d in enumerate(zyx_mm):
+            if d>max_dims[idx]:
+                max_dims[idx] = d
+            if d<min_dims[idx]:
+                min_dims[idx] = d
+        zyx_hm = zyx_mm / max_shape * output_shape
+        heatmap[zyx_hm.astype('int')] += value 
+
+    # print 'max_dims', max_dims
+    # print 'min_dims', min_dims
+    # print 'heatmap max', np.amax(heatmap)
+    # print 'heatmap min', np.amin(heatmap)
+
+    # augmentation
+    if p_transform_augment:
+        augment_params_sample = sample_augmentation_parameters(p_transform_augment)
+        tf_augment = affine_transform(translation=augment_params_sample.translation, rotation=augment_params_sample.rotation)
+        heatmap = apply_affine_transform(heatmap, tf_augment, order=p_transform['heatmap_order'], output_shape=output_shape)
+
+    heatmap = heatmap / p_transform['heatmap_norm']
+
+    return heatmap
 
 
 def make_3d_mask(img_shape, center, radius, shape='sphere'):
