@@ -1,12 +1,13 @@
 {
-  "DATA_PATH": "/mnt/sda3/data/kaggle-lung/sample_images",
-  "LABELS_PATH": "/mnt/sda3/data/kaggle-lung/stage1_labels.csv",
-  "TEST_LABELS_PATH": "/mnt/sda3/data/kaggle-lung/test_labels.csv",
-  "METADATA_PATH": "/mnt/sda3/data/kaggle-lung/metadata",
-  "SAMPLE_SUBMISSION_PATH": "/mnt/sda3/data/kaggle-lung/stage1_sample_submission.csv",
-  "VALIDATION_SPLIT_PATH": "/mnt/storage/data/dsb3/dsb_validation_split.pkl",
-  "LUNA_DATA_PATH": "/mnt/sda3/data/kaggle-lung/luna_test_patient/",
-  "LUNA_LABELS_PATH": "/mnt/sda3/data/kaggle-lung/annotations.csv",
-  "LUNA_CANDIDATES_PATH": "/mnt/sda3/data/kaggle-lung/candidates_V2.csv",
-  "LUNA_VALIDATION_SPLIT_PATH": "/mnt/sda3/data/kaggle-lung/luna_validation_split.pkl"
+
+  "DATA_PATH": "/home/frederic/kaggle-dsb3/data/stage1/",
+  "LABELS_PATH": "/home/frederic/kaggle-dsb3/data/stage1_labels.csv",
+  "METADATA_PATH": "/home/frederic/kaggle-dsb3/metadata",
+  "SAMPLE_SUBMISSION_PATH": "/home/frederic/kaggle-dsb3/data/stage1_sample_submission.csv",
+  "VALIDATION_SPLIT_PATH": "/home/frederic/kaggle-dsb3/data/dsb_validation_split.pkl",
+  "LUNA_DATA_PATH": "/home/frederic/kaggle-dsb3/data/luna/dataset/",
+  "LUNA_LABELS_PATH": "/home/frederic/kaggle-dsb3/data/luna/annotations.csv",
+  "LUNA_VALIDATION_SPLIT_PATH": "/home/frederic/kaggle-dsb3/data/luna/validation_split.pkl",
+  "LUNA_CANDIDATES_PATH": "/home/frederic/kaggle-dsb3/data/luna/candidates_V2.csv"
 }
+

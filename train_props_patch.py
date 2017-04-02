@@ -21,7 +21,11 @@ if len(sys.argv) < 2:
     sys.exit("Usage: train.py <configuration_name>")
 
 config_name = sys.argv[1]
-set_configuration('configs_props_patch', config_name)
+#<<<<<<< HEAD
+#set_configuration('configs_props_patch', config_name)
+#=======
+set_configuration('configs_luna_props_patch', config_name)
+#>>>>>>> dsb-ira-frederic2
 expid = utils.generate_expid(config_name)
 print
 print "Experiment ID: %s" % expid
@@ -51,8 +55,13 @@ for layer in all_layers:
     num_param = string.ljust(num_param.__str__(), 10)
     print '    %s %s %s' % (name, num_param, layer.output_shape)
 
+#<<<<<<< HEAD
 train_loss, ind_train_losses = config().build_objective(model, deterministic=False)
 valid_loss, ind_valid_losses = config().build_objective(model, deterministic=True)
+#=======
+#train_loss = config().build_objective(model, deterministic=False)
+#valid_loss = config().build_objective(model, deterministic=True)
+#>>>>>>> dsb-ira-frederic2
 
 learning_rate_schedule = config().learning_rate_schedule
 learning_rate = theano.shared(np.float32(learning_rate_schedule[0]))
@@ -71,8 +80,13 @@ givens_valid[model.l_in.input_var] = x_shared
 givens_valid[model.l_target.input_var] = y_shared
 
 # theano functions
-iter_train = theano.function([idx], [train_loss] + ind_train_losses, givens=givens_train, updates=updates)
-iter_validate = theano.function([], [valid_loss] + ind_valid_losses, givens=givens_valid)
+#<<<<<<< HEAD
+#iter_train = theano.function([idx], [train_loss] + ind_train_losses, givens=givens_train, updates=updates)
+#iter_validate = theano.function([], [valid_loss] + ind_valid_losses, givens=givens_valid)
+#=======
+iter_train = theano.function([idx], train_loss, givens=givens_train, updates=updates)
+iter_validate = theano.function([], valid_loss, givens=givens_valid)
+#>>>>>>> dsb-ira-frederic2
 
 if config().restart_from_save:
     print 'Load model parameters for resuming'
@@ -124,29 +138,46 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
 
     # make nbatches_chunk iterations
     for b in xrange(config().nbatches_chunk):
-        l_train = iter_train(b)
+# <<<<<<< HEAD
+#         l_train = iter_train(b)
+#         # print loss
+#         tmp_losses_train.append(l_train)
+#         losses_train_print.append(l_train)
+
+#     if (chunk_idx + 1) % 10 == 0:
+#         print '\n Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks)
+#         l = np.mean(np.array(losses_train_print), axis=0)
+#         for i, p in enumerate(config().properties):
+#             print p, ':', l[i + 1]
+#         print 'total', ':', l[0]
+# =======
+        loss = iter_train(b)
         # print loss
-        tmp_losses_train.append(l_train)
-        losses_train_print.append(l_train)
+        tmp_losses_train.append(loss)
+        losses_train_print.append(loss)
 
     if (chunk_idx + 1) % 10 == 0:
-        print '\n Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks)
-        l = np.mean(np.array(losses_train_print), axis=0)
-        for i, p in enumerate(config().properties):
-            print p, ':', l[i + 1]
-        print 'total', ':', l[0]
+        print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks), np.mean(losses_train_print)
+#>>>>>>> dsb-ira-frederic2
         losses_train_print = []
 
     if ((chunk_idx + 1) % config().validate_every) == 0:
         print
-        print '\n Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks)
-        # calculate mean train loss since the last validation phase
-        mean_train_loss = np.mean(np.array(tmp_losses_train), axis=0)
-        print 'Mean train loss:'
-        for i, p in enumerate(config().properties):
-            print p, mean_train_loss[i + 1]
-        print 'Total loss', mean_train_loss[0]
+# <<<<<<< HEAD
+#         print '\n Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks)
+#         # calculate mean train loss since the last validation phase
+#         mean_train_loss = np.mean(np.array(tmp_losses_train), axis=0)
+#         print 'Mean train loss:'
+#         for i, p in enumerate(config().properties):
+#             print p, mean_train_loss[i + 1]
+#         print 'Total loss', mean_train_loss[0]
 
+# =======
+        print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks)
+        # calculate mean train loss since the last validation phase
+        mean_train_loss = np.mean(tmp_losses_train)
+        print 'Mean train loss: %7f' % mean_train_loss
+#>>>>>>> dsb-ira-frederic2
         losses_eval_train.append(mean_train_loss)
         tmp_losses_train = []
 
@@ -158,15 +189,24 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
             x_shared.set_value(x_chunk_valid)
             y_shared.set_value(y_chunk_valid)
             l_valid = iter_validate()
-            # print i, l_valid
+# <<<<<<< HEAD
+#             # print i, l_valid
+#             tmp_losses_valid.append(l_valid)
+
+#         # calculate validation loss across validation set
+#         valid_loss = np.mean(np.array(tmp_losses_valid), axis=0)
+#         print '\n Validation loss: ', valid_loss[0]
+#         for i, p in enumerate(config().properties):
+#             print p, valid_loss[i + 1]
+
+# =======
+            print i, l_valid
             tmp_losses_valid.append(l_valid)
 
         # calculate validation loss across validation set
-        valid_loss = np.mean(np.array(tmp_losses_valid), axis=0)
-        print '\n Validation loss: ', valid_loss[0]
-        for i, p in enumerate(config().properties):
-            print p, valid_loss[i + 1]
-
+        valid_loss = np.mean(tmp_losses_valid)
+        print 'Validation loss: ', valid_loss
+#>>>>>>> dsb-ira-frederic2
         losses_eval_valid.append(valid_loss)
 
         now = time.time()
@@ -197,3 +237,4 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
             }, f, pickle.HIGHEST_PROTOCOL)
             print '  saved to %s' % metadata_path
             print
+

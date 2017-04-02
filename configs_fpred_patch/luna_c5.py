@@ -56,6 +56,7 @@ chunk_size = batch_size * nbatches_chunk
 train_valid_ids = utils.load_pkl(pathfinder.LUNA_VALIDATION_SPLIT_PATH)
 train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['valid']
 
+
 train_data_iterator = data_iterators.CandidatesLunaDataGeneratorBetter(data_path=pathfinder.LUNA_DATA_PATH,
                                                                        batch_size=chunk_size,
                                                                        transform_params=p_transform,
@@ -66,12 +67,14 @@ train_data_iterator = data_iterators.CandidatesLunaDataGeneratorBetter(data_path
                                                                        positive_proportion=0.5,
                                                                        random_negative_samples=True)
 
+
 valid_data_iterator = data_iterators.CandidatesLunaValidDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                       transform_params=p_transform,
                                                                       data_prep_fun=data_prep_function_valid,
                                                                       patient_ids=valid_pids)
 
 nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
+
 max_nchunks = nchunks_per_epoch * 40
 
 validate_every = int(5. * nchunks_per_epoch)
@@ -159,8 +162,10 @@ def feat_red(lin):
     return l
 
 
+
 def build_model(l_in=None):
     l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size']) if l_in is None else l_in
+
     l_target = nn.layers.InputLayer((None, 1))
 
     l = conv3d(l_in, 64)
@@ -170,11 +175,13 @@ def build_model(l_in=None):
     l = inrn_v2(l)
 
     l = inrn_v2_red(l)
+
     l = inrn_v2(l)
     l = feat_red(l)
     l = inrn_v2(l)
 
     l = feat_red(l)
+
 
     l = dense(drop(l), 128)
 

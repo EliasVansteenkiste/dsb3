@@ -291,6 +291,7 @@ class NormalCDFLayer(nn.layers.MergeLayer):
         return cdf
 
 
+
 def remove_trainable_parameters(layer):
     """
     Gathers all layers below a given one and removes their parameters from training
@@ -314,3 +315,125 @@ class ComplementProbAggregationLayer(nn.layers.Layer):
         log_p0 = T.sum(T.log(p_roi_0), axis=-1, keepdims=True)
         p1 = 1. - T.exp(log_p0)
         return p1
+
+class AggAllBenignExp(nn.layers.Layer):
+    """
+    takes elementwise product between 2 layers
+    """
+
+    def __init__(self, incoming, **kwargs):
+        super(AggAllBenignExp, self).__init__(incoming, **kwargs)
+
+    def get_output_shape_for(self, input_shape):
+        assert(len(input_shape)==3)
+        assert(input_shape[2]==1)
+        return (input_shape[0], 1)
+
+    def get_output_for(self, input, **kwargs):
+        rectified = nonlinearities.softplus(input)
+        sum_rect = T.sum(rectified, axis=(1,2))
+        output = 1 - T.exp(-sum_rect)
+        return output
+
+
+class AggAllBenignWeightedExp(nn.layers.Layer):
+    """
+    takes elementwise product between 2 layers
+    """
+
+    def __init__(self, incoming,n_candidates, **kwargs):
+        super(AggAllBenignWeightedExp, self).__init__(incoming, **kwargs)
+
+        self.n_candidates = n_candidates
+
+    def get_output_shape_for(self, input_shape):
+        assert(len(input_shape)==3)
+        assert(input_shape[2]==1)
+        return (input_shape[0], 1)
+
+    def get_output_for(self, input, **kwargs):
+        rectified = nonlinearities.softplus(input)
+        w_l = np.arange(1,0.24,0.75/self.n_candidates)
+        rectified *= np.asarray(self.n_candidates*w_l/np.sum(w_l),dtype=np.float32)[None,:]
+        sum_rect = T.sum(rectified, axis=(1,2))
+        output = 1 - T.exp(-sum_rect)
+        return output
+
+class AggAllBenignProd(nn.layers.Layer):
+    """
+    takes elementwise product between 2 layers
+    """
+
+    def __init__(self, incoming, **kwargs):
+        super(AggAllBenignProd, self).__init__(incoming, **kwargs)
+
+    def get_output_shape_for(self, input_shape):
+        assert(len(input_shape)==3)
+        assert(input_shape[2]==1)
+        return (input_shape[0], 1)
+
+    def get_output_for(self, input, **kwargs):
+        ps = nonlinearities.sigmoid(input)
+        prod = T.prod(ps, axis=(1,2))
+        output = 1 - prod
+        return output
+
+
+class AggAllBenignProdF(nn.layers.Layer):
+    """
+    takes elementwise product between 2 layers
+    """
+
+    def __init__(self, incoming, **kwargs):
+        super(AggAllBenignProdF, self).__init__(incoming, **kwargs)
+
+    def get_output_shape_for(self, input_shape):
+        assert(len(input_shape)==3)
+        assert(input_shape[2]==1)
+        return (input_shape[0], 1)
+
+    def get_output_for(self, input, **kwargs):
+        ps = 1.0-input
+        prod = T.prod(ps, axis=(1,2))
+        output = 1 - prod
+        return output
+
+
+
+class AggAllBenignProdHard(nn.layers.Layer):
+    """
+    takes elementwise product between 2 layers
+    """
+
+    def __init__(self, incoming, **kwargs):
+        super(AggAllBenignProdHard, self).__init__(incoming, **kwargs)
+
+    def get_output_shape_for(self, input_shape):
+        assert(len(input_shape)==3)
+        assert(input_shape[2]==1)
+        return (input_shape[0], 1)
+
+    def get_output_for(self, input, **kwargs):
+        ps = T.nnet.hard_sigmoid(input)
+        prod = T.prod(ps, axis=(1,2))
+        output = 1 - prod
+        return output
+
+class LogMeanExp(nn.layers.Layer):
+    """
+    ln(mean(exp( r * x ))) /  r
+    """
+
+    def __init__(self, incoming, r=1, axis=-1, **kwargs):
+        super(LogMeanExp, self).__init__(incoming, **kwargs)
+        self.r = np.float32(r)
+        self.axis = axis
+
+    def get_output_shape_for(self, input_shape):
+        assert(len(input_shape)==3)
+        assert(input_shape[2]==1)
+        return (input_shape[0], 1)
+
+    def get_output_for(self, input, **kwargs):
+        return T.log(T.mean(T.exp(self.r * input), axis=self.axis) + 1e-7) / self.r
+

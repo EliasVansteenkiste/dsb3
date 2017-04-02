@@ -14,6 +14,7 @@ restart_from_save = None
 rng = np.random.RandomState(42)
 
 # transformations
+
 p_transform1 = {'patch_size': (48, 48, 48),
                 'mm_patch_size': (48, 48, 48),
                 'pixel_spacing': (1., 1., 1.)
@@ -32,6 +33,7 @@ p_transform3 = {'patch_size': (48, 48, 48),
 
 p_transforms = [p_transform1, p_transform2, p_transform3]
 
+
 p_transform_augment = {
     'translation_range_z': [-3, 3],
     'translation_range_y': [-3, 3],
@@ -40,6 +42,7 @@ p_transform_augment = {
     'rotation_range_y': [-180, 180],
     'rotation_range_x': [-180, 180]
 }
+
 
 p_transforms_augment = [p_transform_augment, p_transform_augment, None]
 
@@ -71,11 +74,13 @@ data_prep_function_valid = partial(data_prep_function,
 
 # data iterators
 batch_size = 8
+
 nbatches_chunk = 1
 chunk_size = batch_size * nbatches_chunk
 
 train_valid_ids = utils.load_pkl(pathfinder.LUNA_VALIDATION_SPLIT_PATH)
 train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['valid']
+
 
 train_data_iterator = data_iterators.CandidatesMTLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                    batch_size=chunk_size,
@@ -99,9 +104,11 @@ validate_every = int(5. * nchunks_per_epoch)
 save_every = int(1. * nchunks_per_epoch)
 
 learning_rate_schedule = {
+
     0: 3e-4,
     int(max_nchunks * 0.3): 2e-4,
     int(max_nchunks * 0.6): 1e-4,
+
     int(max_nchunks * 0.9): 1e-5
 }
 
@@ -114,6 +121,8 @@ conv3d = partial(dnn.Conv3DDNNLayer,
 
 max_pool3d = partial(dnn.MaxPool3DDNNLayer,
                      pool_size=2)
+
+
 
 dense = partial(lasagne.layers.DenseLayer,
                 W=lasagne.init.Orthogonal(),
@@ -176,7 +185,9 @@ def feat_red(lin):
     return l
 
 
+
 def build_branch(l_in):
+
     l = conv3d(l_in, 64)
     l = inrn_v2_red(l)
     l = inrn_v2(l)
@@ -184,6 +195,7 @@ def build_branch(l_in):
     l = inrn_v2(l)
 
     l = inrn_v2_red(l)
+
     l = inrn_v2(l)
     l = feat_red(l)
     l = inrn_v2(l)
@@ -213,6 +225,7 @@ def build_model(l_ins=None):
     l_ins = [l_in1, l_in2, l_in3]
 
     return namedtuple('Model', ['l_ins', 'l_out', 'l_target'])(l_ins, l_out, l_target)
+
 
 
 def build_objective(model, deterministic=False, epsilon=1e-12):

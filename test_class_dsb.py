@@ -81,7 +81,11 @@ if set == 'test':
             data_iterator.generate())):
         predictions = iter_test(x_test)
         pid = id_test[0]
+
         pid2prediction[pid] = predictions[0, 1] if predictions.shape[-1] == 2 else predictions[0, 0]
+        #frederics line
+        #pid2prediction[pid] = predictions[0, 1] if predictions.shape[-1] == 2 else predictions[0]
+
         print i, pid, predictions, pid2label[pid]
 
     utils.save_pkl(pid2prediction, output_pkl_file)
@@ -107,7 +111,11 @@ elif set == 'valid':
             data_iterator.generate())):
         predictions = iter_test(x_test)
         pid = id_test[0]
+<<<<<<< HEAD
         pid2prediction[pid] = predictions[0, 1] if predictions.shape[-1] == 2 else predictions[0, 0]
+=======
+        pid2prediction[pid] = predictions[0, 1] if predictions.shape[-1] == 2 else predictions[0]
+>>>>>>> dsb-ira-frederic2
         pid2label[pid] = y_test[0]
         print i, pid, predictions, pid2label[pid]
 
@@ -116,4 +124,8 @@ elif set == 'valid':
     valid_loss = utils_lung.evaluate_log_loss(pid2prediction, pid2label)
     print 'Validation loss', valid_loss
 else:
+<<<<<<< HEAD
     raise ValueError('wrong set argument')
+=======
+    raise ValueError('wrong set argument')
+>>>>>>> dsb-ira-frederic2

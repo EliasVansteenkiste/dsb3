@@ -61,7 +61,9 @@ train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               id2candidates_path=id2candidates_path,
                                                               rng=rng,
                                                               patient_ids=train_pids,
+
                                                               random=True, 
+
                                                               infinite=True)
 
 valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
@@ -127,6 +129,7 @@ def build_model():
     l = conv3(l, num_filters=256)
     l = conv3(l, num_filters=256)
 
+
     prior_benign=(1397. - 362) / 1398
     prior_benign_single=np.power(prior_benign,1./n_candidates_per_patient)
     num_units_dense = 512
@@ -140,16 +143,19 @@ def build_model():
                                  nonlinearity=nn.nonlinearities.sigmoid)
     l_out = nn.layers.ReshapeLayer(l_out, (-1, n_candidates_per_patient))                             
                                  
+
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 
 
 def build_objective(model, deterministic=False, epsilon=1e-12):
+
     
     probs = nn.layers.get_output(model.l_out, deterministic=deterministic)
     
     probs_benign=T.prod(probs,axis=1,keepdims=True)
     probs_malignant=1 - probs_benign
     predictions=T.concatenate([probs_benign,probs_malignant],axis=1)
+
     targets = T.cast(T.flatten(nn.layers.get_output(model.l_target)), 'int32')
     p = predictions[T.arange(predictions.shape[0]), targets]
     p = T.clip(p, epsilon, 1.)
@@ -159,4 +165,5 @@ def build_objective(model, deterministic=False, epsilon=1e-12):
 
 def build_updates(train_loss, model, learning_rate):
     updates = nn.updates.adam(train_loss, nn.layers.get_all_params(model.l_out, trainable=True), learning_rate)
+
     return updates

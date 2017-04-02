@@ -7,8 +7,10 @@ if utils.hostname() == 'user':
     with open('SETTINGS_user.json') as data_file:
         paths = json.load(data_file)
 else:
-    with open('SETTINGS.json') as data_file:
+    with open('/home/frederic/kaggle-dsb3/dsb3-ira2/SETTINGS.json') as data_file:
         paths = json.load(data_file)
+
+
 
 METADATA_PATH = paths["METADATA_PATH"]
 
@@ -48,13 +50,10 @@ LUNA_VALIDATION_SPLIT_PATH = paths["LUNA_VALIDATION_SPLIT_PATH"]
 if not os.path.isfile(LUNA_VALIDATION_SPLIT_PATH):
     raise ValueError('no LUNA validation split file')
 
+
 LUNA_LUNG_SEG_PATH = paths["LUNA_LUNG_SEG_PATH"]
 
-
 AAPM_DATA_PATH = paths["AAPM_DATA_PATH"]
-# print "lung seg path: {}".format(LUNA_LUNG_SEG_PATH)
-# if not os.path.isfile(LUNA_LUNG_SEG_PATH):
-#     raise ValueError('no LUNA lung segmnetations masks')
 
 AAPM_LABELS_PATH = paths["AAPM_LABELS_PATH"]
 print "lung seg path: {}".format(LUNA_LUNG_SEG_PATH)
@@ -70,3 +69,6 @@ LUNA_PROPERTIES_PATH = paths['LUNA_PROPERTIES_PATH']
 if not os.path.isfile(LUNA_PROPERTIES_PATH):
     raise ValueError('no LUNA properties file')
 
+VALIDATION_LB_MIXED_SPLIT_PATH = paths['VALIDATION_LB_MIXED_SPLIT_PATH']
+if not os.path.isfile(VALIDATION_LB_MIXED_SPLIT_PATH):
+    raise ValueError('no mixed validation and LB file')

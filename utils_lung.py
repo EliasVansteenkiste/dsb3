@@ -361,6 +361,20 @@ def read_test_labels(file_path):
     return id2labels
 
 
+def read_test_labels(file_path):
+    id2labels = {}
+    train_csv = open(file_path)
+    lines = train_csv.readlines()
+    i = 0
+    for item in lines:
+        if i == 0:
+            i = 1
+            continue
+        id, label = item.replace('\n', '').split(';')
+        id2labels[id] = int(label)
+    return id2labels
+
+
 def read_luna_annotations(file_path):
     id2xyzd = defaultdict(list)
     train_csv = open(file_path)
@@ -373,7 +387,6 @@ def read_luna_annotations(file_path):
         id, x, y, z, d = item.replace('\n', '').split(',')
         id2xyzd[id].append([float(z), float(y), float(x), float(d)])
     return id2xyzd
-
 
 
 def get_aapm_ids(file_path):
@@ -443,6 +456,7 @@ def read_luna_properties(file_path):
 
         id2xyzp[id].append([z, y, x, d, properties_dict])
     return id2xyzp
+
 
 def read_luna_negative_candidates(file_path):
     id2xyzd = defaultdict(list)

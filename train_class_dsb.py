@@ -15,6 +15,8 @@ from configuration import config, set_configuration
 import pathfinder
 
 nn.random.set_rng(np.random.RandomState(317070))
+
+
 theano.config.warn_float64 = 'raise'
 
 if len(sys.argv) < 2:
@@ -133,6 +135,7 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
         losses_train_print = []
 
     if ((chunk_idx + 1) % config().validate_every) == 0:
+
         print
         print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks)
         # calculate mean train loss since the last validation phase
