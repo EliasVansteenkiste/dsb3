@@ -8,13 +8,11 @@ import utils
 restart_from_save = None
 rng = np.random.RandomState(42)
 
-restart_from_save = None
-rng = np.random.RandomState(42)
-
 # transformations
-p_transform = {'patch_size': (64, 64, 64),
-               'mm_patch_size': (64, 64, 64),
-               'pixel_spacing': (1., 1., 1.)
+p_transform = {'patch_size': (48, 48, 48),
+               'mm_patch_size': (48, 48, 48),
+               'pixel_spacing': (0.5, 0.5, 0.5),
+               # 'interpolation_order': 0
                }
 p_transform_augment = {
     'translation_range_z': [-16, 16],
@@ -35,8 +33,10 @@ def data_prep_function(data, patch_center, luna_annotations, pixel_spacing, luna
                                                                                p_transform=p_transform,
                                                                                p_transform_augment=p_transform_augment,
                                                                                pixel_spacing=pixel_spacing,
-                                                                               luna_origin=luna_origin)
-    x = data_transforms.pixelnormHU(x)
+                                                                               luna_origin=luna_origin,
+                                                                               world_coord_system=True)
+    # x = data_transforms.pixelnormHU(x)
+    print patch_annotation_tf
     y = data_transforms.make_3d_mask_from_annotations(img_shape=x.shape, annotations=annotations_tf, shape='sphere')
     return x, y
 

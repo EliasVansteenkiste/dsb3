@@ -36,64 +36,42 @@ def segment_HU_scan_frederic(x, threshold=-350):
     return mask
 
 
-# def segment_HU_scan_ira(x, threshold=-350):
-#     mask = np.asarray(x < threshold, dtype='int8')
-#
-#     for zi in xrange(mask.shape[0]):
-#         skimage.segmentation.clear_border(mask[zi, :, :], in_place=True)
-#
-#     label_image = skimage.measure.label(mask)
-#     region_props = skimage.measure.regionprops(label_image)
-#     sorted_regions = sorted(region_props, key=lambda x: x.area, reverse=True)
-#     lung_label = sorted_regions[0].label
-#     lung_mask = np.asarray((label_image == lung_label), dtype='int8')
-#
-#     # convex hull mask
-#     lung_mask_convex = np.zeros_like(lung_mask)
-#     for i in range(lung_mask.shape[2]):
-#         if np.any(lung_mask[:, :, i]):
-#             lung_mask_convex[:, :, i] = skimage.morphology.convex_hull_image(lung_mask[:, :, i])
-#
-#     # old mask inside the convex hull
-#     mask *= lung_mask_convex
-#     label_image = skimage.measure.label(mask)
-#     region_props = skimage.measure.regionprops(label_image)
-#     sorted_regions = sorted(region_props, key=lambda x: x.area, reverse=True)
-#
-#     for r in sorted_regions[1:]:
-#         print r.centroid, r.area, r.label
-#         if r.area > 300:
-#             # make an image only containing that region
-#             label_image_r = label_image == r.label
-#             # grow the mask
-#             label_image_r = scipy.ndimage.binary_dilation(label_image_r,
-#                                                           structure=scipy.ndimage.generate_binary_structure(3, 2))
-#             # compute the overlap with true lungs
-#             overlap = label_image_r * lung_mask
-#             if not np.any(overlap):
-#                 for i in range(label_image_r.shape[0]):
-#                     if np.any(label_image_r[i]):
-#                         label_image_r[i] = skimage.morphology.convex_hull_image(label_image_r[i])
-#                 lung_mask_convex *= 1 - label_image_r
-#
-#     return lung_mask_convex
-
-
-def segment_HU_scan_ira(x, threshold=-350, min_area=300):
+def segment_HU_scan_ira(x, threshold=-350, min_area=1000000):
     mask = np.asarray(x < threshold, dtype='int8')
+
+    mask = skimage.morphology.binary_opening(mask, skimage.morphology.cube(4))
+    mask = np.asarray(mask, dtype='int8')
 
     for zi in xrange(mask.shape[0]):
         skimage.segmentation.clear_border(mask[zi, :, :], in_place=True)
 
-    # noise reduction
-    mask = skimage.morphology.binary_opening(mask, skimage.morphology.cube(2))
-    mask = np.asarray(mask, dtype='int8')
-
-    # label regions
     label_image = skimage.measure.label(mask)
     region_props = skimage.measure.regionprops(label_image)
     sorted_regions = sorted(region_props, key=lambda x: x.area, reverse=True)
-    lung_label = sorted_regions[0].label
+    lung_region = sorted_regions[0]
+    n_lung_regions = 1
+    candidate_lung_regions = []
+    for r in sorted_regions:
+        if r.area > min_area:
+            candidate_lung_regions.append(r)
+    if len(candidate_lung_regions) > 1:
+        print 'NUMBER OF CANDIDATE REGIONS', len(candidate_lung_regions)
+        middle_patch = label_image[mask.shape[0] / 2]
+        region2distance, region2centroid = {}, {}
+        for r in candidate_lung_regions:
+            middle_patch_r = middle_patch == r.label
+            centroid = np.average(np.where(middle_patch_r), axis=1)
+            region2centroid[r] = centroid
+            distance = np.sum((centroid - np.asarray(middle_patch.shape) / 2) ** 2)
+            region2distance[r] = distance
+        lung_region = min(region2distance, key=region2distance.get)
+        for r in candidate_lung_regions:
+            print region2centroid[r]
+            if abs(region2centroid[r][0] - region2centroid[lung_region][0]) < 100:
+                label_image[label_image == r.label] = lung_region.label
+                n_lung_regions += 1
+
+    lung_label = lung_region.label
     lung_mask = np.asarray((label_image == lung_label), dtype='int8')
 
     # convex hull mask
@@ -108,72 +86,68 @@ def segment_HU_scan_ira(x, threshold=-350, min_area=300):
     region_props = skimage.measure.regionprops(label_image)
     sorted_regions = sorted(region_props, key=lambda x: x.area, reverse=True)
 
-    for r in sorted_regions[1:]:
-        if r.area > min_area:
-            # make an image only containing that region
+    for r in sorted_regions[n_lung_regions:]:
+        if r.area > 125:
             label_image_r = label_image == r.label
-            # grow the mask
-            label_image_r = scipy.ndimage.binary_dilation(label_image_r,
-                                                          structure=scipy.ndimage.generate_binary_structure(3, 2))
-            # compute the overlap with true lungs
-            overlap = label_image_r * lung_mask
-            if not np.any(overlap):
-                for i in range(label_image_r.shape[0]):
-                    if np.any(label_image_r[i]):
-                        label_image_r[i] = skimage.morphology.convex_hull_image(label_image_r[i])
-                lung_mask_convex *= 1 - label_image_r
+            for i in range(label_image_r.shape[0]):
+                if np.any(label_image_r[i]):
+                    label_image_r[i] = skimage.morphology.convex_hull_image(label_image_r[i])
+            lung_mask_convex *= 1 - label_image_r
 
     return lung_mask_convex
 
 
-def segment_HU_scan_ira_v2(x, threshold=-350, min_area=10):
-    mask = np.asarray(x < threshold, dtype='int8')
+def segment_HU_scan_elias(x, threshold=-350):
+    mask = np.copy(x)
+    binary_part = mask > threshold
+    selem1 = skimage.morphology.disk(8)
+    selem2 = skimage.morphology.disk(2)
+    selem3 = skimage.morphology.disk(13)
 
-    # noise reduction
-    mask = skimage.morphology.binary_opening(mask, skimage.morphology.cube(3))
-    mask = np.asarray(mask, dtype='int8')
+    for iz in xrange(mask.shape[0]):
+        # fill the body part
+        filled = scipy.ndimage.binary_fill_holes(binary_part[iz])  # fill body
+        filled_borders_mask = skimage.morphology.binary_erosion(filled, selem1)
+        mask[iz] *= filled_borders_mask
 
-    # label regions
-    label_image = skimage.measure.label(mask)
-    region_props = skimage.measure.regionprops(label_image)
-    sorted_regions = sorted(region_props, key=lambda x: x.area, reverse=True)
+        mask[iz] = skimage.morphology.closing(mask[iz], selem2)
+        mask[iz] = mask[iz] < threshold
 
-    # select left lung patch from medium slice
-    medium_slice_patch = label_image[label_image.shape[0] / 2,
-                         label_image.shape[1] / 2 - 50:label_image.shape[1] / 2 + 50,
-                         label_image.shape[2] / 4 - 50:label_image.shape[2] / 4 + 50]
-    for region in sorted_regions:
-        if np.any(medium_slice_patch == region.label):
-            lung_label = region.label
-            break
-    lung_mask = np.asarray((label_image == lung_label), dtype='int8')
+    # params
+    overlap_treshold = 7
+    ratio_overlap_treshold = 0.015
 
-    # convex hull mask
-    lung_mask_convex = np.zeros_like(lung_mask)
-    for i in range(lung_mask.shape[2]):
-        if np.any(lung_mask[:, :, i]):
-            lung_mask_convex[:, :, i] = skimage.morphology.convex_hull_image(lung_mask[:, :, i])
+    # discard disconnected regions, start at the middle slice and go to the head
+    for iz in range(mask.shape[0] / 2, mask.shape[0] - 1):
+        overlap = mask[iz] * mask[iz + 1]
+        label_image = skimage.measure.label(mask[iz + 1])
 
-    # old mask inside the convex hull
-    mask *= lung_mask_convex
-    label_image = skimage.measure.label(mask)
-    region_props = skimage.measure.regionprops(label_image)
-    sorted_regions = sorted(region_props, key=lambda x: x.area, reverse=True)
-    print len(sorted_regions)
-    for r in sorted_regions[1:]:
-        print r.area, r.label
-        if r.area > min_area:
-            # make an image only containing that region
-            label_image_r = label_image == r.label
-            # grow the mask
-            label_image_r = scipy.ndimage.binary_dilation(label_image_r,
-                                                          structure=scipy.ndimage.generate_binary_structure(3, 2))
-            # compute the overlap with true lungs
-            overlap = label_image_r * lung_mask
-            if not np.any(overlap):
-                print 'REMOVE'
-                for i in range(label_image_r.shape[0]):
-                    if np.any(label_image_r[i]):
-                        label_image_r[i] = skimage.morphology.convex_hull_image(label_image_r[i])
-                lung_mask_convex *= 1 - label_image_r
-    return lung_mask_convex
+        for idx, region in enumerate(skimage.measure.regionprops(label_image)):
+            total_overlap = 0
+            for coordinates in region.coords:
+                total_overlap += overlap[coordinates[0], coordinates[1]]
+            ratio_overlap = 1. * total_overlap / region.area
+
+            if total_overlap < overlap_treshold or ratio_overlap < ratio_overlap_treshold:
+
+                for coordinates in region.coords:
+                    mask[iz + 1, coordinates[0], coordinates[1]] = 0
+
+    # discard disconnected regions, start at the middle slice and go to the head
+    for iz in range(mask.shape[0] / 2, 0, -1):
+        overlap = mask[iz] * mask[iz - 1]
+        label_image = skimage.measure.label(mask[iz - 1])
+        for idx, region in enumerate(skimage.measure.regionprops(label_image)):
+            total_overlap = 0
+            for coordinates in region.coords:
+                total_overlap += overlap[coordinates[0], coordinates[1]]
+            ratio_overlap = 1. * total_overlap / region.area
+            if total_overlap < overlap_treshold or ratio_overlap < ratio_overlap_treshold:
+                for coordinates in region.coords:
+                    mask[iz - 1, coordinates[0], coordinates[1]] = 0
+
+    # erode out the blood vessels and the borders of the lung for a cleaner mask
+    for iz in xrange(mask.shape[0]):
+        mask[iz] = skimage.morphology.binary_dilation(mask[iz], selem3)
+
+    return mask

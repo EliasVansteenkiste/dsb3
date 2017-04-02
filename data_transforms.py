@@ -215,7 +215,8 @@ def transform_patch3d(data, pixel_spacing, p_transform,
     else:
         tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_shift_uncenter).dot(tf_output_scale)
 
-    data_out = apply_affine_transform(data, tf_total, order=1, output_shape=output_shape)
+    data_out = apply_affine_transform(data, tf_total, order=p_transform.get('interpolation_order', 1),
+                                      output_shape=output_shape)
 
     # transform patch annotations
     diameter_mm = patch_center[-1]

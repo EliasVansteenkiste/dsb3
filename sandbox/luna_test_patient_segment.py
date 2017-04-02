@@ -26,8 +26,6 @@ def test_luna3d():
 
     luna_data_paths = [
         '/mnt/sda3/data/kaggle-lung/luna_test_patient/1.3.6.1.4.1.14519.5.2.1.6279.6001.877026508860018521147620598474.mhd']
-    luna_data_paths = [
-        '/mnt/sda3/data/kaggle-lung/seg-lungs-LUNA16/1.3.6.1.4.1.14519.5.2.1.6279.6001.100225287222365663678666836860.mhd']
     candidates = utils.load_pkl(
         '/mnt/sda3/data/kaggle-lung/luna_test_patient/1.3.6.1.4.1.14519.5.2.1.6279.6001.877026508860018521147620598474.pkl')
 
@@ -40,8 +38,7 @@ def test_luna3d():
         id = os.path.basename(p).replace('.mhd', '')
         print id
         img, origin, pixel_spacing = utils_lung.read_mhd(p)
-        lung_mask = img  # lung_segmentation.segment_HU_scan_ira_v2(img)
-        print np.min(lung_mask), np.max(lung_mask)
+        lung_mask = lung_segmentation.segment_HU_scan_ira(img)
         x, annotations_tf, tf_matrix, lung_mask_out = data_transforms.transform_scan3d(data=img,
                                                                                        pixel_spacing=pixel_spacing,
                                                                                        p_transform=p_transform,
@@ -50,8 +47,6 @@ def test_luna3d():
                                                                                        luna_origin=origin,
                                                                                        lung_mask=lung_mask,
                                                                                        world_coord_system=False)
-
-        print np.min(lung_mask_out), np.max(lung_mask_out)
 
         plot_slice_3d_2(x, lung_mask_out, 0, id)
         plot_slice_3d_2(x, lung_mask_out, 1, id)
@@ -78,13 +73,17 @@ def test_luna3d_2():
     id2zyxd = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
 
     luna_data_paths = [
-        '/mnt/sda3/data/kaggle-lung/luna_test_patient/1.3.6.1.4.1.14519.5.2.1.6279.6001.943403138251347598519939390311.mhd']
+        # '/mnt/sda3/data/kaggle-lung/luna_test_patient/1.3.6.1.4.1.14519.5.2.1.6279.6001.943403138251347598519939390311.mhd'],
+        # '/mnt/sda3/data/kaggle-lung/luna_test_patient/1.3.6.1.4.1.14519.5.2.1.6279.6001.225515255547637437801620523312.mhd',
+        '/mnt/sda3/data/kaggle-lung/luna_test_patient/1.3.6.1.4.1.14519.5.2.1.6279.6001.771831598853841017505646275338.mhd',
+        # '/mnt/sda3/data/kaggle-lung/luna_test_patient/1.3.6.1.4.1.14519.5.2.1.6279.6001.228511122591230092662900221600.mhd'
+    ]
 
     for k, p in enumerate(luna_data_paths):
         id = os.path.basename(p).replace('.mhd', '')
         print id
         img, origin, pixel_spacing = utils_lung.read_mhd(p)
-        lung_mask = lung_segmentation.segment_HU_scan_ira_v2(img)
+        lung_mask = lung_segmentation.segment_HU_scan_ira(img)
         annotations = id2zyxd[id]
         x, annotations_tf, tf_matrix, lung_mask_out = data_transforms.transform_scan3d(data=img,
                                                                                        pixel_spacing=pixel_spacing,
@@ -111,4 +110,4 @@ def test_luna3d_2():
 
 
 if __name__ == '__main__':
-    test_luna3d()
+    test_luna3d_2()

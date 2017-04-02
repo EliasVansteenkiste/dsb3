@@ -14,6 +14,7 @@ import buffering
 from configuration import config, set_configuration
 import pathfinder
 
+nn.random.set_rng(np.random.RandomState(317070))
 theano.config.warn_float64 = 'raise'
 
 if len(sys.argv) < 2:
@@ -70,7 +71,8 @@ givens_valid[model.l_target.input_var] = y_shared
 
 # theano functions
 iter_train = theano.function([], train_loss, givens=givens_train, updates=updates)
-iter_validate = theano.function([], valid_loss, givens=givens_valid)
+iter_validate = theano.function([], [valid_loss, nn.layers.get_output(model.l_out, deterministic=True)],
+                                givens=givens_valid)
 
 if config().restart_from_save:
     print 'Load model parameters for resuming'
@@ -146,8 +148,8 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
                                                 buffer_size=2)):
             x_shared.set_value(x_chunk_valid)
             y_shared.set_value(y_chunk_valid)
-            l_valid = iter_validate()
-            print i, l_valid, y_chunk_valid, ids_batch
+            l_valid, p_valid = iter_validate()
+            print i, l_valid, p_valid, y_chunk_valid, ids_batch
             tmp_losses_valid.append(l_valid)
 
         # calculate validation loss across validation set

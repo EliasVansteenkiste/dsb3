@@ -109,7 +109,6 @@ for n, (x, lung_mask, tf_matrix, pid) in enumerate(
     if lung_mask is not None:
         predictions_scan *= lung_mask
 
-    print 'saved plot'
     print 'time since start:', (time.time() - start_time) / 60.
 
     jobs = [job for job in jobs if job.is_alive]

@@ -65,3 +65,8 @@ AAPM_CANDIDATES_PATH = paths["AAPM_CANDIDATES_PATH"]
 print "lung seg path: {}".format(AAPM_CANDIDATES_PATH)
 if not os.path.isfile(AAPM_CANDIDATES_PATH):
     raise ValueError('no AAPM candidates csv found!')
+
+LUNA_PROPERTIES_PATH = paths['LUNA_PROPERTIES_PATH']
+if not os.path.isfile(LUNA_PROPERTIES_PATH):
+    raise ValueError('no LUNA properties file')
+

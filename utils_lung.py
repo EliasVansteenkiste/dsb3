@@ -411,6 +411,39 @@ def read_aapm_annotations(file_path):
     return id2xyzd
 
 
+def read_luna_properties(file_path):
+    id2xyzp = defaultdict(list)
+    train_csv = open(file_path)
+    lines = train_csv.readlines()
+    i = 0
+
+    for item in lines:
+        if i == 0:
+            i = 1
+            continue
+
+        annotation = item.replace('\n', '').split(',')
+        id = annotation[0]
+        x = float(annotation[1])
+        y = float(annotation[2])
+        z = float(annotation[3])
+        d = float(annotation[4])
+        properties_dict = {
+            'diameter': d,
+            'calcification': float(annotation[5]),
+            'internalStructure': float(annotation[6]),
+            'lobulation': float(annotation[7]),
+            'malignancy': float(annotation[8]),
+            'margin': float(annotation[9]),
+            'sphericity': float(annotation[10]),
+            'spiculation': float(annotation[11]),
+            'subtlety': float(annotation[12]),
+            'texture': float(annotation[13]),
+        }
+
+        id2xyzp[id].append([z, y, x, d, properties_dict])
+    return id2xyzp
+
 def read_luna_negative_candidates(file_path):
     id2xyzd = defaultdict(list)
     train_csv = open(file_path)

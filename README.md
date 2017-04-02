@@ -1,10 +1,6 @@
 ## TODO
 
-- filter blobs that are too close to each other (Elias done?)
-- remove strange regions from ROI (Frederic, Elias)
-- implement test_dsb script (Andreas)
-- todo solve the DSB patient with 2 series of slices: b8bb02d229361a623a4dc57aa0e5c485 
-- implement fast dsb segmentation
+- add augmentation noise to luna
 
 ## LUNA
 * generate blobs: test_seg_scan.py  
@@ -29,6 +25,7 @@ b8bb02d229361a623a4dc57aa0e5c485 (has 2 series of data)
 08528b8817429d12b7ce2bf444d264f9 (half of the lung)
 6a145c28d3b722643f547dfcbdf379ae (half of the lung)
 5fe048f36bd2da6bdb63d8ff3c4022cd (half of the lung)
+51fbac477a3639f983904fc4d42b8c15 (the highest candidate is probably not a nodule)
 
 ## Random
 ssh -X -p 10001 ikorshun@localhost

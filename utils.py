@@ -39,11 +39,16 @@ def check_data_paths(data_path):
         raise ValueError('wrong path to DICOM data')
 
 
-def get_dir_path(dir_name, root_dir):
-    import socket
-    machine_name = socket.gethostname()
-    username = pwd.getpwuid(os.getuid())[0]
-    dir_path = root_dir + '/' + dir_name + '/%s-%s' % (username , machine_name)
+def get_dir_path(dir_name, root_dir, no_name=False):
+
+    if no_name:
+        dir_path = root_dir + '/' + dir_name + '/'
+    else:
+        import socket
+        machine_name = socket.gethostname()
+        username = pwd.getpwuid(os.getuid())[0]
+        dir_path = root_dir + '/' + dir_name + '/%s-%s' % (username , machine_name)
+
     if not os.path.isdir(dir_path):
         os.makedirs(dir_path)
     return dir_path

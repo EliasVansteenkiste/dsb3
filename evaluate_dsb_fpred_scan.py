@@ -5,7 +5,7 @@ import theano
 import pathfinder
 import utils
 from configuration import config, set_configuration
-from utils_plots import plot_slice_3d_3
+from utils_plots import plot_slice_3d_3axis
 import theano.tensor as T
 import utils_lung
 import blobs_detection
@@ -24,11 +24,12 @@ set_configuration('configs_fpred_scan', config_name)
 
 # predictions path
 predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
-outputs_path = predictions_dir + '/%s' % config_name
-outputs_img_path = predictions_dir + '/%s_img' % config_name
+predictions_path = predictions_dir + '/%s' % config_name
+
+outputs_img_path = utils.get_dir_path('analysis', pathfinder.METADATA_PATH) + '/%s_img' % config_name
 utils.auto_make_dir(outputs_img_path)
 
-blob_files = sorted(glob.glob(outputs_path + '/*.pkl'))
+blob_files = sorted(glob.glob(predictions_path + '/fbae4d04285789dfa32124c86586dd09.pkl'))
 
 p_transform = {'patch_size': (64, 64, 64),
                'mm_patch_size': (64, 64, 64),
@@ -42,7 +43,7 @@ for p in blob_files:
 
     img, pixel_spacing = utils_lung.read_dicom_scan(pathfinder.DATA_PATH + '/' + pid)
     print pid
-    for blob in blobs[:10]:
+    for blob in blobs[:8]:
         patch_center = blob[:3]
         p1 = blob[-1]
         print p1
@@ -54,7 +55,7 @@ for p in blob_files:
                                                  luna_origin=None,
                                                  world_coord_system=False)
 
-        plot_slice_3d_3(input=x, mask=x, prediction=x,
-                        axis=0, pid='-'.join([str(pid), str(p1)]),
-                        img_dir=outputs_img_path, idx=np.array(x[0, 0].shape) / 2)
+        plot_slice_3d_3axis(input=x,
+                            pid='-'.join([str(pid), str(p1)]),
+                            img_dir=outputs_img_path, idx=np.array(x.shape) / 2)
         # print 'saved'

@@ -27,7 +27,7 @@ def data_prep_function(data, luna_annotations, pixel_spacing, luna_origin,
                        p_transform=p_transform,
                        p_transform_augment=None):
     # make sure the data is processed the same way
-    lung_mask = lung_segmentation.segment_HU_scan_ira(data)
+    lung_mask = lung_segmentation.segment_HU_scan_elias(data)
     x, annotations_tf, tf_matrix, lung_mask_out = data_transforms.transform_scan3d(data=data,
                                                                                    pixel_spacing=pixel_spacing,
                                                                                    p_transform=p_transform,
@@ -51,6 +51,10 @@ valid_data_iterator = data_iterators.LunaScanPositiveLungMaskDataGenerator(data_
 
 
 def build_model():
+    metadata_dir = utils.get_dir_path('models', pathfinder.METADATA_PATH)
+    metadata_path = utils.find_model_metadata(metadata_dir, patch_config.__name__.split('.')[-1])
+    metadata = utils.load_pkl(metadata_path)
+
     print 'Build model'
     model = patch_config.build_model(patch_size=(window_size, window_size, window_size))
     all_layers = nn.layers.get_all_layers(model.l_out)
@@ -65,4 +69,5 @@ def build_model():
         num_param = string.ljust(num_param.__str__(), 10)
         print '    %s %s %s' % (name, num_param, layer.output_shape)
 
+    nn.layers.set_all_param_values(model.l_out, metadata['param_values'])
     return model

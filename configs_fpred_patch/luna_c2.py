@@ -103,8 +103,8 @@ dense = partial(lasagne.layers.DenseLayer,
                 nonlinearity=lasagne.nonlinearities.very_leaky_rectify)
 
 
-def build_model():
-    l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size'])
+def build_model(l_in=None):
+    l_in = nn.layers.InputLayer((None, 1,) + p_transform['patch_size']) if l_in is None else l_in
     l_target = nn.layers.InputLayer((None, 1))
 
     l = conv3(l_in, num_filters=128)

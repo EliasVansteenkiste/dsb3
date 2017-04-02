@@ -27,17 +27,17 @@ def plot_slice_3d_2(image3d, mask, axis, pid, img_dir=None, idx=None):
     else:
         idx = idx.astype(int)
     if axis == 0:  # sax
-        ax[0, 0].imshow(image3d[idx[0], :, :], cmap=plt.cm.gray)
-        ax[0, 1].imshow(mask[idx[0], :, :], cmap=plt.cm.gray)
-        ax[1, 0].imshow(masked_image[idx[0], :, :], cmap=plt.cm.gray)
+        ax[0, 0].imshow(image3d[idx[0], :, :], cmap=plt.cm.gray, interpolation='none')
+        ax[0, 1].imshow(mask[idx[0], :, :], cmap=plt.cm.gray, interpolation='none')
+        ax[1, 0].imshow(masked_image[idx[0], :, :], cmap=plt.cm.gray, interpolation='none')
     if axis == 1:  # 2 lungs
-        ax[0, 0].imshow(image3d[:, idx[1], :], cmap=plt.cm.gray)
-        ax[0, 1].imshow(mask[:, idx[1], :], cmap=plt.cm.gray)
-        ax[1, 0].imshow(masked_image[:, idx[1], :], cmap=plt.cm.gray)
+        ax[0, 0].imshow(image3d[:, idx[1], :], cmap=plt.cm.gray, interpolation='none')
+        ax[0, 1].imshow(mask[:, idx[1], :], cmap=plt.cm.gray, interpolation='none')
+        ax[1, 0].imshow(masked_image[:, idx[1], :], cmap=plt.cm.gray, interpolation='none')
     if axis == 2:  # side view
-        ax[0, 0].imshow(image3d[:, :, idx[2]], cmap=plt.cm.gray)
-        ax[0, 1].imshow(mask[:, :, idx[2]], cmap=plt.cm.gray)
-        ax[1, 0].imshow(masked_image[:, :, idx[2]], cmap=plt.cm.gray)
+        ax[0, 0].imshow(image3d[:, :, idx[2]], cmap=plt.cm.gray, interpolation='none')
+        ax[0, 1].imshow(mask[:, :, idx[2]], cmap=plt.cm.gray, interpolation='none')
+        ax[1, 0].imshow(masked_image[:, :, idx[2]], cmap=plt.cm.gray, interpolation='none')
 
     if img_dir is not None:
         fig.savefig(img_dir + '/%s%s.png' % (pid, axis), bbox_inches='tight')
