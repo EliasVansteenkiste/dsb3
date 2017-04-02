@@ -3,12 +3,10 @@ import utils
 import os
 import utils_lung
 
-if utils.hostname() == 'user':
-    with open('SETTINGS_user.json') as data_file:
-        paths = json.load(data_file)
-else:
-    with open('/home/frederic/kaggle-dsb3/dsb3-ira2/SETTINGS.json') as data_file:
-        paths = json.load(data_file)
+
+with open('SETTINGS.json') as data_file:
+    paths = json.load(data_file)
+
 
 
 
@@ -69,6 +67,6 @@ LUNA_PROPERTIES_PATH = paths['LUNA_PROPERTIES_PATH']
 if not os.path.isfile(LUNA_PROPERTIES_PATH):
     raise ValueError('no LUNA properties file')
 
-VALIDATION_LB_MIXED_SPLIT_PATH = paths['VALIDATION_LB_MIXED_SPLIT_PATH']
-if not os.path.isfile(VALIDATION_LB_MIXED_SPLIT_PATH):
-    raise ValueError('no mixed validation and LB file')
+# VALIDATION_LB_MIXED_SPLIT_PATH = paths['VALIDATION_LB_MIXED_SPLIT_PATH']
+# if not os.path.isfile(VALIDATION_LB_MIXED_SPLIT_PATH):
+#     raise ValueError('no mixed validation and LB file')
