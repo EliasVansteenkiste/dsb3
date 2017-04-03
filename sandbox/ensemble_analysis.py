@@ -6,7 +6,7 @@ import utils
 
 analysis_dir = '/home/adverley/Code/Projects/Kaggle/dsb3/analysis'
 utils.auto_make_dir(analysis_dir)
-VERBOSE = False
+VERBOSE = True
 
 
 def analyse_cv_result(cv_result, ensemble_method_name):
@@ -124,22 +124,26 @@ def analyse_predictions(valid_set_predictions, labels):
             compare_with_nr += 1
 
     corr = np.corrcoef(X)
-    correlation_matrix(corr, config_names)
+    correlation_matrix_plot(corr, config_names)
 
 
-def correlation_matrix(corr_matrix, config_names):
+def correlation_matrix_plot(corr_matrix, config_names):
     from matplotlib import pyplot as plt
     from matplotlib import cm as cm
 
-    fig = plt.figure()
+    fig = plt.figure(figsize=(8.0, 6.0))
+
     ax1 = fig.add_subplot(111)
-    cmap = cm.get_cmap('jet', 30)
+    cmap = cm.get_cmap('OrRd')
     cax = ax1.imshow(corr_matrix, interpolation="nearest", cmap=cmap)
     plt.title('Config prediction Correlation')
     labels = config_names
-    ax1.set_xticklabels(labels, fontsize=6)
-    ax1.set_yticklabels(labels, fontsize=6)
+    plt.xticks(np.arange(len(labels)), labels, fontsize=5, rotation='vertical')
+    plt.margins(1.0) # extend margins so ticks don't get clipped
+    plt.subplots_adjust(bottom=0.2)
+
+    plt.yticks(np.arange(len(labels)), labels, fontsize=5)
     fig.colorbar(cax)
 
-    plt.savefig(analysis_dir + '/correlation_between_configs.png')
+    plt.savefig(analysis_dir + '/correlation_between_configs.png', dpi=300)
     plt.close('all')
