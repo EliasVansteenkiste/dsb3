@@ -271,7 +271,7 @@ def transform_dsb_candidates(data, patch_centers, pixel_spacing, p_transform,
         else:
             tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_shift_uncenter).dot(tf_output_scale)
 
-        patch_out = apply_affine_transform(data, tf_total, order=1, output_shape=output_shape)
+        patch_out = apply_affine_transform(data, tf_total, order=0, output_shape=output_shape)
         patches_out.append(patch_out[None, :, :, :])
 
     return np.concatenate(patches_out, axis=0)
@@ -384,4 +384,4 @@ def apply_affine_transform(_input, matrix, order=0, output_shape=None):
     s = matrix[:3, 3]
     # FIXXXME: override interpolation since it seems to obfuscate important features 
     return scipy.ndimage.interpolation.affine_transform(
-        _input, matrix=T, offset=s, order=0, output_shape=output_shape)
+        _input, matrix=T, offset=s, order=order, output_shape=output_shape)

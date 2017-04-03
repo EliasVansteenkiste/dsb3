@@ -53,10 +53,21 @@ LUNA_LUNG_SEG_PATH = paths["LUNA_LUNG_SEG_PATH"]
 
 AAPM_DATA_PATH = paths["AAPM_DATA_PATH"]
 
+
+AAPM_EXTENDED_DATA_PATH = paths["AAPM_EXTENDED_DATA_PATH"]
+
+
 AAPM_LABELS_PATH = paths["AAPM_LABELS_PATH"]
 print "lung seg path: {}".format(LUNA_LUNG_SEG_PATH)
 if not os.path.isfile(AAPM_LABELS_PATH):
     raise ValueError('no AAPM labels csv found!')
+
+AAPM_EXTENDED_LABELS_PATH = paths["AAPM_EXTENDED_LABELS_PATH"]
+print "lung seg path: {}".format(LUNA_LUNG_SEG_PATH)
+if not os.path.isfile(AAPM_EXTENDED_LABELS_PATH):
+    raise ValueError('no extended AAPM labels csv found!')
+
+
 
 AAPM_CANDIDATES_PATH = paths["AAPM_CANDIDATES_PATH"]
 print "lung seg path: {}".format(AAPM_CANDIDATES_PATH)
