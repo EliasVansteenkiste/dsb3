@@ -29,9 +29,12 @@ FG_CONFIGS = ['fgodin/' + config for config in
                'dsb_af5lme_mal2_s5_p8a1', 'dsb_af5_size6_s5_p8a1', 'dsb_af24lme_mal3_s5_p8a1']]
 
 CONFIGS = ['dsb_a04_c3ns2_mse_s5_p8a1', 'dsb_a07_c3ns3_mse_s5_p8a1', 'dsb_a08_c3ns3_mse_s5_p8a1',
-           'dsb_a11_m1zm_s5_p8a1', 'dsb_a_liox8_c3_s2_p8a1', 'dsb_a_liolme16_c3_s2_p8a1', 'dsb_a_liox6_c3_s2_p8a1',
-           'dsb_a_liox7_c3_s2_p8a1']
-
+           'dsb_a11_m1zm_s5_p8a1', 'dsb_af25lmeaapm_mal2_s5_p8a1',
+           'dsb_a_liolme16_c3_s2_p8a1', 'dsb_a_liolme32_c3_s5_p8a1', 'dsb_a_liox10_c3_s2_p8a1',
+           'dsb_a_liox11_c3_s5_p8a1', 'dsb_a_liox12_c3_s2_p8a1',
+           'dsb_a_liox13_c3_s2_p8a1', 'dsb_a_liox14_c3_s2_p8a1', 'dsb_a_liox15_c3_s2_p8a1', 'dsb_a_liox6_c3_s2_p8a1',
+           'dsb_a_liox7_c3_s2_p8a1', 'dsb_a_liox8_c3_s2_p8a1', 'dsb_a_liolunalme16_c3_s2_p8a1']
+#
 # FG_CONFIGS = ['fgodin/' + config for config in
 #               ['dsb_af19lme_mal2_s5_p8a1', 'dsb_af25lme_mal2_s5_p8a1', 'dsb_af5lme_mal2_s5_p8a1']]
 #
@@ -50,7 +53,8 @@ def linear_stacking():
 
     y_valid_pred = weighted_average(valid_set_predictions, weights)
     for config, valid_preds in valid_set_predictions.iteritems():
-        print 'in-sample loss of config {} is {} '.format(config, utils_lung.evaluate_log_loss(valid_preds, valid_set_labels))
+        print 'in-sample loss of config {} is {} '.format(config,
+                                                          utils_lung.evaluate_log_loss(valid_preds, valid_set_labels))
     print 'in-sample lossof ensemble is: ', utils_lung.evaluate_log_loss(y_valid_pred, valid_set_labels)
 
     test_set_predictions = {config: get_predictions_of_config(config, 'test') for config in CONFIGS}
@@ -159,7 +163,7 @@ def optimize_weights(predictions, labels):
     # weights = optimal_linear_weights(X, np.array(utils_ensemble.one_hot(y)))
     # weights = simple_average(X, np.array(utils_ensemble.one_hot(y)))
 
-    weights = best_cv_method(X, np.array(utils_ensemble.one_hot(y)))
+    weights = optimal_linear_weights(X, np.array(utils_ensemble.one_hot(y)))
 
     print '\nOptimal weights'
     config2weights = {}
@@ -185,8 +189,8 @@ def reoptimized_top_n_blending(X, y, cv_result):
             indexes_of_weights_to_use = np.array(np.where(weights >= cut_off)).flatten()
             configs_to_use = config_names[indexes_of_weights_to_use]
 
-            X_train, X_test = X[indexes_of_weights_to_use, :, :][:, train_index, :], X[indexes_of_weights_to_use, :, :][
-                                                                                     :, test_index, :]
+            X_train = X[indexes_of_weights_to_use, :, :][:, train_index, :]
+            X_test = X[indexes_of_weights_to_use, :, :][:, test_index, :]
             y_train, y_test = y[train_index], y[test_index]
 
             reoptimized_weights = optimal_linear_weights(X_train, np.array(utils_ensemble.one_hot(y_train)))
@@ -194,10 +198,8 @@ def reoptimized_top_n_blending(X, y, cv_result):
             y_train_pred = np.zeros(len(train_index))
             y_test_pred = np.zeros(len(test_index))
             for i, weight in enumerate(reoptimized_weights):
-                y_train_pred += X_train[i, :, 1] * reoptimized_weights[
-                    i]  # this can probably be replaced with a tensor dot product
-                y_test_pred += X_test[i, :, 1] * reoptimized_weights[
-                    i]  # this can probably be replaced with a tensor dot product
+                y_train_pred += X_train[i, :, 1] * reoptimized_weights[i]
+                y_test_pred += X_test[i, :, 1] * reoptimized_weights[i]
 
             training_loss = utils_lung.log_loss(y_train, y_train_pred)
             valid_loss = utils_lung.log_loss(y_test, y_test_pred)
