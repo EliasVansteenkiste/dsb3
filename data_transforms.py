@@ -378,9 +378,10 @@ def affine_transform(scale=None, rotation=None, translation=None,reflection=None
     return matrix
 
 
-def apply_affine_transform(_input, matrix, order=1, output_shape=None):
+def apply_affine_transform(_input, matrix, order=0, output_shape=None):
     # output.dot(T) + s = input
     T = matrix[:3, :3]
     s = matrix[:3, 3]
+    # FIXXXME: override interpolation since it seems to obfuscate important features 
     return scipy.ndimage.interpolation.affine_transform(
-        _input, matrix=T, offset=s, order=order, output_shape=output_shape)
+        _input, matrix=T, offset=s, order=0, output_shape=output_shape)
