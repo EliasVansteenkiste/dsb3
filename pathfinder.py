@@ -10,7 +10,7 @@ elif utils.hostname() == 'kat':
     with open('SETTINGS_kat.json') as data_file:
         paths = json.load(data_file)
 else:
-    with open('/home/frederic/kaggle-dsb3/dsb3-ira2/SETTINGS.json') as data_file:
+    with open('SETTINGS.json') as data_file:
         paths = json.load(data_file)
 
 
