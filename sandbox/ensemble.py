@@ -7,6 +7,10 @@ test_data_1 = cPickle.load(open("/home/frederic/kaggle-dsb3/metadata/model-predi
 test_data_1 = cPickle.load(open("/home/frederic/kaggle-dsb3/metadata/model-predictions/frederic/dsb_af5lme_mal2_s5_p8a1-20170329-110351/dsb_af5lme_mal2_s5_p8a1-20170329-110351-test.pkl","rb"))
 test_data_2 = cPickle.load(open("/home/frederic/kaggle-dsb3/metadata/model-predictions/frederic/dsb_a_liolme32_c3_s5_p8a1-20170323-110139/dsb_a_liolme32_c3_s5_p8a1-20170323-110139-public_LB.pkl","rb"))
 
+
+test_data_1 = cPickle.load(open("/home/frederic/kaggle-dsb3/metadata/model-predictions/dsb_af24lme_mal3_s5_p8a1-20170330-234136-test.pkl","rb"))
+test_data_2 = cPickle.load(open("/home/frederic/kaggle-dsb3/metadata/model-predictions/dsb_af25lme_mal2_s5_p8a1-20170330-234414-test.pkl","rb"))
+
 #test_data_2 = cPickle.load(open("/home/frederic/kaggle-dsb3/metadata/model-predictions/frederic/dsb_af4_c3_s5_p8a1-20170323-101206/dsb_af4_c3_s5_p8a1-20170323-101206-test.pkl","rb"))
 #test_data_2 = cPickle.load(open("/home/frederic/kaggle-dsb3/metadata/model-predictions/frederic/dsb_af4_c3_s2_p8a1-20170319-123808/dsb_af4_c3_s2_p8a1-20170319-123808-test.pkl","rb"))
 #test_data_2 = cPickle.load(open("/home/frederic/kaggle-dsb3/metadata/model-predictions/frederic/dsb_af4_size6_s5_p8a1-20170324-231152/dsb_af4_size6_s5_p8a1-20170324-231152-test.pkl","rb"))
@@ -17,7 +21,7 @@ print("")
 zero_list_t = []
 one_list_t = []
 
-func = numpy.max
+func = numpy.mean
 
 first = True
 for line in open("/home/frederic/kaggle-dsb3/data/test_labels.csv","r"):
