@@ -45,9 +45,12 @@ CONFIGS += FG_CONFIGS
 expid = utils.generate_expid('ensemble')
 
 
-def linear_stacking():
+def linear_stacking(training_data_reduce=0.0):
     valid_set_predictions, valid_set_labels = load_validation_set()
     analyse.analyse_predictions(valid_set_predictions, valid_set_labels)
+
+    if training_data_reduce > 0.00001:
+        valid_set_predictions, valid_set_labels = reduce_data(valid_set_predictions, valid_set_labels, training_data_reduce)
 
     weights = optimize_weights(valid_set_predictions, valid_set_labels)  # (config_name -> (weight) )
 
@@ -63,9 +66,25 @@ def linear_stacking():
     ensemble_loss = compare_test_performance_ind_vs_ensemble(test_set_predictions)
     return ensemble_loss
 
-
     test_set_labels = utils_lung.read_test_labels(pathfinder.TEST_LABELS_PATH)
     # analyse.performance_across_slices(CONFIGS, valid_set_predictions, valid_set_labels, test_set_predictions, test_set_labels)
+
+
+def reduce_data(valid_set_predictions, valid_set_labels, training_data_reduce):
+    total_obs = len(valid_set_labels.keys())
+    total_obs_to_remove = int(training_data_reduce * total_obs)
+    total_obs_to_keep = total_obs - total_obs_to_remove
+
+    all_pids = (np.array(valid_set_labels.keys()))
+    np.random.shuffle(all_pids)
+    pids_to_keep = all_pids[0:total_obs_to_keep]
+
+    valid_set_labels_reduced = {pid: valid_set_labels[pid] for pid in pids_to_keep}
+    valid_set_predictions_reduced = {}
+    for config, config_predictions in valid_set_predictions.iteritems():
+        valid_set_predictions_reduced[config] = {pid: config_predictions[pid] for pid in pids_to_keep}
+
+    return valid_set_predictions_reduced, valid_set_labels_reduced
 
 
 def tree_stacking():
@@ -145,26 +164,29 @@ def optimize_weights(predictions, labels):
     y = np.array(labels.values())
     config_names = predictions.keys()
 
-    cv_results = {}
+    do_cv = False
+    if do_cv:
+        cv_results = {}
 
-    cv_results['optimal_linear_weights'] = do_cross_validation(X, y, config_names, optimal_linear_weights)
-    cv_results['equal_weights'] = do_cross_validation(X, y, config_names, simple_average)
+        cv_results['optimal_linear_weights'] = do_cross_validation(X, y, config_names, optimal_linear_weights)
+        cv_results['equal_weights'] = do_cross_validation(X, y, config_names, simple_average)
 
-    N, configs_to_use = reoptimized_top_n_blending(X, y, cv_results['optimal_linear_weights'])
+        N, configs_to_use = reoptimized_top_n_blending(X, y, cv_results['optimal_linear_weights'])
 
-    analyse.analyse_cv_result(cv_results['optimal_linear_weights'], 'optimal_linear_weights')
-    analyse.analyse_cv_result(cv_results['equal_weights'], 'equal_weights')
+        analyse.analyse_cv_result(cv_results['optimal_linear_weights'], 'optimal_linear_weights')
+        analyse.analyse_cv_result(cv_results['equal_weights'], 'equal_weights')
 
-    best_cv_method = None
-    lowest_loss = np.inf
-    for cv_result in cv_results.values():
-        losses = np.array([cv['validation_loss'] for cv in cv_result])
-        loss = np.mean(losses)
-        if loss <= lowest_loss:
-            lowest_loss = loss
-            best_cv_method = cv_result[0]['ensemble_method']
+        best_cv_method = None
+        lowest_loss = np.inf
+        for cv_result in cv_results.values():
+            losses = np.array([cv['validation_loss'] for cv in cv_result])
+            loss = np.mean(losses)
+            if loss <= lowest_loss:
+                lowest_loss = loss
+                best_cv_method = cv_result[0]['ensemble_method']
 
-    print 'Model with best CV result is ', best_cv_method.func_name
+        print 'Model with best CV result is ', best_cv_method.func_name
+
     # weights = optimal_linear_weights(X, np.array(utils_ensemble.one_hot(y)))
     # weights = simple_average(X, np.array(utils_ensemble.one_hot(y)))
 
@@ -369,10 +391,10 @@ def weighted_average(predictions, weights):
 
 
 def compare_test_performance_ind_vs_ensemble(test_set_predictions):
-    individual_performance = {config: calc_test_performance(config, pred_test) for config, pred_test in
-                              test_set_predictions.iteritems()}
-    for config, performance in individual_performance.iteritems():
-        print 'Logloss of config {} is {} on test set'.format(config, performance)
+    # individual_performance = {config: calc_test_performance(config, pred_test) for config, pred_test in
+    #                           test_set_predictions.iteritems()}
+    # for config, performance in individual_performance.iteritems():
+    #     print 'Logloss of config {} is {} on test set'.format(config, performance)
     loss = evaluate_submission.leaderboard_performance(
         utils_ensemble.get_destination_path('test_set_predictions.csv', expid))
     print('Ensemble test set performance as it would be on the leaderboard: ')
@@ -391,14 +413,29 @@ def calc_test_performance(config_name, predictions):
 
 
 if __name__ == '__main__':
+    import utils
     print 'Starting ensembling with configs', CONFIGS
+    print 'Start time ', utils.timestamp()
 
+    max_percent_reduce = 0.1
+    amount_steps_percent_reduce = 5
+    amount_exp_to_run = 100
+    losses = np.zeros((amount_exp_to_run, amount_steps_percent_reduce ))
+    for p, percent_reduce in enumerate(np.linspace(0.0, max_percent_reduce, num=amount_steps_percent_reduce)):
+        for n_exp in range(amount_exp_to_run):
+            ensemble_loss = linear_stacking(training_data_reduce=percent_reduce)
+            losses[n_exp, p] = ensemble_loss
 
-    n_exp = 0
-    amount_exp_to_run = 1
-    losses = np.array(amount_exp_to_run)
-    for n_exp in range(amount_exp_to_run):
-        ensemble_loss = linear_stacking()
-        losses[n_exp] = ensemble_loss
+    print 'stop time: ',  utils.timestamp()
+    print 'data reduce steps were: ', np.linspace(0.0, max_percent_reduce, num=amount_steps_percent_reduce)
+    print losses
 
+    import csv
+    f = open(analyse.analysis_dir + '/ensemble_sensitivity_to_training_data.csv', 'wb')
+    writer = csv.writer(f)
+    writer.writerow(np.linspace(0.0, max_percent_reduce, num=amount_steps_percent_reduce) * 100.0)
+    for row in losses:
+        writer.writerow(row)
+
+    f.close()
     print 'Job done'
