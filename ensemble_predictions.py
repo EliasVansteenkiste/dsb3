@@ -83,7 +83,10 @@ def reduce_data(valid_set_predictions, valid_set_labels, training_data_reduce):
     valid_set_predictions_reduced = {}
     for config, config_predictions in valid_set_predictions.iteritems():
         valid_set_predictions_reduced[config] = {pid: config_predictions[pid] for pid in pids_to_keep}
+        valid_set_predictions_reduced[config] = collections.OrderedDict(sorted(valid_set_predictions_reduced[config].items()))
 
+    valid_set_labels_reduced = collections.OrderedDict(sorted(valid_set_labels_reduced.iteritems()))
+    valid_set_predictions_reduced = collections.OrderedDict(sorted(valid_set_predictions_reduced.iteritems()))
     return valid_set_predictions_reduced, valid_set_labels_reduced
 
 
