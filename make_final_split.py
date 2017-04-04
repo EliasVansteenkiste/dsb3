@@ -22,10 +22,12 @@ pos_ids = []
 neg_ids = []
 
 for pid, label in id2label.iteritems():
-	if label:
+	if label ==1 :
 		pos_ids.append(pid)
-	else:
+	elif label == 0 :
 		neg_ids.append(pid)
+	else:
+		raise ValueError("weird shit is going down")
 
 pos_ratio = 1. * len(pos_ids) / n_patients 
 print 'pos id ratio', pos_ratio
@@ -49,10 +51,13 @@ final_neg_train = []
 for pid in all_pids:
 	if pid not in final_test:
 		final_train.append(pid)
-		if id2label[pid]:
+		if id2label[pid] == 1:
 			final_pos_train.append(pid)
-		else:
+		elif id2label[pid] == 0:
 			final_neg_train.append(pid)
+		else:
+			raise ValueError("weird shit is going down")
+
 
 
 print 'pos id ratio final train set', 1.*len(final_pos_train) / (len(final_train))	
