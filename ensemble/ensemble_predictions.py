@@ -3,26 +3,22 @@ This script ensembles predictions of all the models. No bagging atm. just plain 
 Final predictions are weighted average of all predictions. The weights are optimized on validation data.
 Mind that the terms 'models' and 'configs' are used interchangeably
 """
+import collections
+import os
+
 import numpy as np
 import scipy
+import scipy.stats
 import theano
 import theano.tensor as T
-import collections
 from sklearn.model_selection import StratifiedKFold
-from sklearn.linear_model import LogisticRegression
 
-import utils_ensemble
-import utils_plots
-import matplotlib.pyplot as plt
-import scipy.stats
-
+import ensemble.ensemble_analysis as analyse
 import evaluate_submission
 import pathfinder
 import utils
+import utils_ensemble
 import utils_lung
-import os.path as path
-import os
-import sandbox.ensemble_analysis as analyse
 
 FG_CONFIGS = ['fgodin/' + config for config in
               ['dsb_af19lme_mal2_s5_p8a1', 'dsb_af25lme_mal2_s5_p8a1', 'dsb_af4_size6_s5_p8a1',
