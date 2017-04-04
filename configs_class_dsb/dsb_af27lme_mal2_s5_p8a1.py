@@ -95,7 +95,7 @@ test_data_iterator = data_iterators.DSBPatientsDataGeneratorTest(data_path=pathf
                                                               random=False, infinite=False)
 
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size
-max_nchunks = nchunks_per_epoch * 20
+max_nchunks = nchunks_per_epoch * 12
 
 validate_every = int(1 * nchunks_per_epoch)
 save_every = int(0.25 * nchunks_per_epoch)
@@ -103,11 +103,9 @@ save_every = int(0.25 * nchunks_per_epoch)
 learning_rate_schedule = {
     0: 1e-5,
     int(4 * nchunks_per_epoch): 3e-6,
-    int(8 * nchunks_per_epoch): 1e-6,
-    int(12 * nchunks_per_epoch): 3e-7,
-    int(14 * nchunks_per_epoch): 1e-7,
-    int(16 * nchunks_per_epoch): 3e-8,
-    int(18 * nchunks_per_epoch): 1e-8,
+    int(6 * nchunks_per_epoch): 1e-6,
+    int(9 * nchunks_per_epoch): 3e-7,
+    int(11 * nchunks_per_epoch): 1e-7
 }
 
 # model
