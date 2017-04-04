@@ -52,15 +52,20 @@ def linear_stacking():
     weights = optimize_weights(valid_set_predictions, valid_set_labels)  # (config_name -> (weight) )
 
     y_valid_pred = weighted_average(valid_set_predictions, weights)
-    for config, valid_preds in valid_set_predictions.iteritems():
-        print 'in-sample loss of config {} is {} '.format(config,
-                                                          utils_lung.evaluate_log_loss(valid_preds, valid_set_labels))
-    print 'in-sample lossof ensemble is: ', utils_lung.evaluate_log_loss(y_valid_pred, valid_set_labels)
+    # for config, valid_preds in valid_set_predictions.iteritems():
+    #     print 'in-sample loss of config {} is {} '.format(config, utils_lung.evaluate_log_loss(valid_preds, valid_set_labels))
+    # print 'in-sample lossof ensemble is: ', utils_lung.evaluate_log_loss(y_valid_pred, valid_set_labels)
 
     test_set_predictions = {config: get_predictions_of_config(config, 'test') for config in CONFIGS}
     y_test_pred = weighted_average(test_set_predictions, weights)
     utils_ensemble.persist_predictions(y_test_pred, y_valid_pred, expid)
-    compare_test_performance_ind_vs_ensemble(test_set_predictions)
+
+    ensemble_loss = compare_test_performance_ind_vs_ensemble(test_set_predictions)
+    return ensemble_loss
+
+
+    test_set_labels = utils_lung.read_test_labels(pathfinder.TEST_LABELS_PATH)
+    # analyse.performance_across_slices(CONFIGS, valid_set_predictions, valid_set_labels, test_set_predictions, test_set_labels)
 
 
 def tree_stacking():
@@ -373,6 +378,8 @@ def compare_test_performance_ind_vs_ensemble(test_set_predictions):
     print('Ensemble test set performance as it would be on the leaderboard: ')
     print(loss)
 
+    return loss
+
 
 def calc_test_performance(config_name, predictions):
     config_name = config_name.replace('/', '')
@@ -385,5 +392,13 @@ def calc_test_performance(config_name, predictions):
 
 if __name__ == '__main__':
     print 'Starting ensembling with configs', CONFIGS
-    linear_stacking()
+
+
+    n_exp = 0
+    amount_exp_to_run = 1
+    losses = np.array(amount_exp_to_run)
+    for n_exp in range(amount_exp_to_run):
+        ensemble_loss = linear_stacking()
+        losses[n_exp] = ensemble_loss
+
     print 'Job done'

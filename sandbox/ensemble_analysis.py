@@ -3,10 +3,11 @@ import scipy
 import matplotlib.pyplot as plt
 import scipy.stats
 import utils
+import utils_lung
 
 analysis_dir = '/home/adverley/Code/Projects/Kaggle/dsb3/analysis'
 utils.auto_make_dir(analysis_dir)
-VERBOSE = True
+VERBOSE = False
 
 
 def analyse_cv_result(cv_result, ensemble_method_name):
@@ -147,3 +148,113 @@ def correlation_matrix_plot(corr_matrix, config_names):
 
     plt.savefig(analysis_dir + '/correlation_between_configs.png', dpi=300)
     plt.close('all')
+
+def performance_across_slices(configs, valid_set_predictions, valid_set_labels, test_set_predictions, test_set_labels):
+    import slice_thickness_analysis as s
+    import csv
+
+    f = open(analysis_dir + '/performance_data.csv', 'wb')
+    writer = csv.writer(f)
+    writer.writerow(('pid', 'config', 'y', 'y_hat', 'logloss', 'dataset', 'slice_thickness', 'slice_thickness_bin'))
+
+    pids = []
+    preds = []
+    reals = []
+    log_losses = []
+    memberships = []
+    slice_thicknesses = []
+
+    for pid in valid_set_labels.keys():
+        slice_info = s.get_slice_info_of_patient(pid)
+
+        y = valid_set_labels[pid]
+        log_loss = np.mean(
+            [utils_lung.log_loss(y, y_hat) for y_hat in [valid_set_predictions[config][pid] for config in CONFIGS]])
+
+        dataset_membership = 'validation set'
+        slice_thickness = slice_info['slice_thickness']
+        slice_thickness_bin = -1
+        if slice_thickness < 1.25:
+            slice_thickness_bin = 1
+        elif slice_thickness < 1.5:
+            slice_thickness_bin = 2
+        elif slice_thickness < 2:
+            slice_thickness_bin = 3
+        elif slice_thickness == 2:
+            slice_thickness_bin = 4
+        else:
+            slice_thickness_bin = 5
+
+        amount_slices = slice_info['amount_slices']
+        x_scale = slice_info['x_scale']
+        z_scale = slice_info['z_scale']
+        label = slice_info['label']
+
+        pids.append(pid)
+        # preds.append(y_hat)
+        # reals.append(y)
+        log_losses.append(log_loss)
+        memberships.append(dataset_membership)
+        slice_thicknesses.append(slice_thickness)
+
+        for config in configs:
+            writer.writerow((pid, config, y, valid_set_predictions[config][pid],
+                             utils_lung.log_loss(y, valid_set_predictions[config][pid]), dataset_membership,
+                             slice_thickness, slice_thickness_bin))
+
+    for pid in test_set_labels.keys():
+        slice_info = s.get_slice_info_of_patient(pid)
+
+        y = test_set_labels[pid]
+        log_loss = np.mean(
+            [utils_lung.log_loss(y, y_hat) for y_hat in [test_set_predictions[config][pid] for config in CONFIGS]])
+
+        dataset_membership = 'test set'
+        slice_thickness = slice_info['slice_thickness']
+        slice_thickness_bin = -1
+        if slice_thickness < 1.25:
+            slice_thickness_bin = 1
+        elif slice_thickness < 1.5:
+            slice_thickness_bin = 2
+        elif slice_thickness < 2:
+            slice_thickness_bin = 3
+        elif slice_thickness == 2:
+            slice_thickness_bin = 4
+        else:
+            slice_thickness_bin = 5
+        amount_slices = slice_info['amount_slices']
+        x_scale = slice_info['x_scale']
+        z_scale = slice_info['z_scale']
+        label = slice_info['label']
+
+        pids.append(pid)
+        # preds.append(y_hat)
+        # reals.append(y)
+        log_losses.append(log_loss)
+        memberships.append(dataset_membership)
+        slice_thicknesses.append(slice_thickness)
+
+        for config in configs:
+            writer.writerow((pid, config, y, test_set_predictions[config][pid],
+                             utils_lung.log_loss(y, test_set_predictions[config][pid]), dataset_membership,
+                             slice_thickness, slice_thickness_bin))
+
+    import matplotlib.pyplot as plt
+
+    # convert
+    log_losses = np.array(log_losses)
+    slice_thicknesses = np.array(slice_thicknesses)
+    X = set(slice_thicknesses)
+    thickness2performance = {}
+    for slice_thickness in X:
+        idx = np.array(np.where(slice_thicknesses == slice_thickness)).flatten()
+        avg_ce = np.mean(log_losses[idx])
+        std_ce = np.std(log_losses[idx])
+        thickness2performance[slice_thickness] = avg_ce
+
+    thickness2performance = np.collections.OrderedDict(sorted(thickness2performance.items()))
+
+    plt.plot(thickness2performance.keys(), thickness2performance.values())
+    plt.savefig(analysis_dir + '/performance_per_thickness.png')
+    plt.close('all')
+    f.close()
