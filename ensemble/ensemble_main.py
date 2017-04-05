@@ -6,6 +6,7 @@ import ensemble_models as em
 import utils_lung
 import collections
 import profile
+from sklearn.model_selection import StratifiedKFold
 
 FG_CONFIGS = ['fgodin/' + config for config in
               ['dsb_af19lme_mal2_s5_p8a1', 'dsb_af25lme_mal2_s5_p8a1', 'dsb_af4_size6_s5_p8a1',
@@ -21,12 +22,18 @@ CONFIGS = ['dsb_a04_c3ns2_mse_s5_p8a1', 'dsb_a07_c3ns3_mse_s5_p8a1', 'dsb_a08_c3
 CONFIGS += FG_CONFIGS
 OUTLIER_THRESHOLD = 0.20  # Disagreement threshold (%)
 DO_MAJORITY_VOTE = False
+DO_CV = True
 VERBOSE = True
 
 
 def ensemble(configs):
     X_valid, y_valid = load_data(configs, 'validation')
     anal.analyse_predictions(X_valid, y_valid)
+
+    if DO_CV:
+        cv_result = do_cross_validation(X_valid, y_valid, configs)
+        anal.analyse_cv_result(cv_result, 'linear optimal weight')
+
     ensemble_model = em.linear_optimal_ensemble(X_valid, y_valid)
 
     X_test, y_test = load_data(configs, 'test')
@@ -43,6 +50,43 @@ def ensemble(configs):
     test_logloss = utils_lung.evaluate_log_loss(y_test_pred, y_test)
 
     print 'Ensemble test logloss: ', test_logloss
+
+
+def do_cross_validation(X, y, config_names, ensemble_method=em.optimal_linear_weights):
+    X = utils_ensemble.predictions_dict_to_3d_array(X)
+    y = np.array(y.values())
+
+    n_folds = 10
+    skf = StratifiedKFold(n_splits=n_folds, random_state=0)
+    cv_result = []
+    for train_index, test_index in skf.split(np.zeros(y.shape[0]), y):
+        if np.any([test_sample in train_index for test_sample in test_index]):
+            raise ValueError('\n---------------\nData leak!\n---------------\n')
+
+        X_train, X_test = X[:, train_index, :], X[:, test_index, :]
+        y_train, y_test = y[train_index], y[test_index]
+
+        weights = ensemble_method(X_train, np.array(utils_ensemble.one_hot(y_train)))
+
+        y_train_pred = np.zeros(len(train_index))
+        y_test_pred = np.zeros(len(test_index))
+        for i, weight in enumerate(weights):
+            y_train_pred += X_train[i, :, 1] * weights[i]  # this can probably be replaced with a tensor dot product
+            y_test_pred += X_test[i, :, 1] * weights[i]  # this can probably be replaced with a tensor dot product
+
+        training_loss = utils_lung.log_loss(y_train, y_train_pred)
+        valid_loss = utils_lung.log_loss(y_test, y_test_pred)
+        cv_result.append({
+            'weights': weights,
+            'training_loss': training_loss,
+            'validation_loss': valid_loss,
+            'training_idx': train_index,
+            'test_idx': test_index,
+            'configs': config_names,
+            'ensemble_method': ensemble_method
+        })
+
+    return cv_result
 
 
 def majority_vote_rensemble_prediction(X_test, ensemble_pred, pid):

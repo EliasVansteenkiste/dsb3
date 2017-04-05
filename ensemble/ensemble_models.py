@@ -54,7 +54,6 @@ def linear_optimal_ensemble(predictions, labels):
     :param predictions: (config_name -> (pid -> prediction) )
     :param labels: ( (pid -> prediction) )
     """
-
     X = utils_ensemble.predictions_dict_to_3d_array(predictions)
     y = np.array(labels.values())
     weights = optimal_linear_weights(X, np.array(utils_ensemble.one_hot(y)))
@@ -91,3 +90,4 @@ def optimal_linear_weights(predictions_stack, targets):
     weights = np.exp(out)
     weights /= weights.sum()
     return weights
+
