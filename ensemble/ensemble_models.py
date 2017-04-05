@@ -1,6 +1,7 @@
 import theano
 import theano.tensor as T
 
+import utils_lung
 from ensemble import utils_ensemble
 import numpy as np
 import scipy.optimize
@@ -14,6 +15,7 @@ class WeightedEnsemble(object):
         self.models = models
         self.weights = {}
         self.optimization_method = optimization_method
+        self.training_error = None
 
     def train(self, predictions, labels):
         X = utils_ensemble.predictions_dict_to_3d_array(predictions)
@@ -23,6 +25,9 @@ class WeightedEnsemble(object):
         for model_nr in range(len(self.models)):
             config = self.models[model_nr]
             self.weights[config] = weights[model_nr]
+
+        y_pred = self._weighted_average(predictions, self.weights)
+        self.training_error = utils_lung.evaluate_log_loss(y_pred, labels)
 
     def predict(self, X):
         return self._weighted_average(X, self.weights)
