@@ -56,6 +56,11 @@ class WeightedEnsemble(object):
         return self.weights is not None and len(self.weights) != 0
 
 
+class WeightedMajorityVoteEnsemble(WeightedEnsemble):
+    def __init__(self, models, optimization_method):
+        super(WeightedMajorityVoteEnsemble, self).__init__(models, optimization_method)
+
+
 def linear_optimal_ensemble(predictions, labels):
     """
 
