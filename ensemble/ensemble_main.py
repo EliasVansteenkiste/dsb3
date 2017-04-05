@@ -23,10 +23,10 @@ CONFIGS = ['dsb_a04_c3ns2_mse_s5_p8a1', 'dsb_a07_c3ns3_mse_s5_p8a1', 'dsb_a08_c3
            'dsb_a_liox7_c3_s2_p8a1', 'dsb_a_liox8_c3_s2_p8a1', 'dsb_a_liolunalme16_c3_s2_p8a1']
 
 FG_CONFIGS = ['fgodin/' + config for config in ['dsb_af25lme_mal2_s5_p8a1']]
-GOOD_CONFIGS = ['dsb_af25lmeaapm_mal2_s5_p8a1', 'dsb_a_liolme32_c3_s5_p8a1', 'dsb_af25lmelr10-1_mal2_s5_p8a1',
-                'dsb_a_liox10_c3_s2_p8a1']
+# GOOD_CONFIGS = ['dsb_af25lmeaapm_mal2_s5_p8a1', 'dsb_a_liolme32_c3_s5_p8a1', 'dsb_af25lmelr10-1_mal2_s5_p8a1',
+#                 'dsb_a_liox10_c3_s2_p8a1']
 
-CONFIGS = FG_CONFIGS + GOOD_CONFIGS
+CONFIGS = FG_CONFIGS + CONFIGS
 OUTLIER_THRESHOLD = 0.20  # Disagreement threshold (%)
 DO_MAJORITY_VOTE = False
 DO_CV = False
@@ -42,10 +42,13 @@ def ensemble(configs):
                                'linear optimal weight')
         anal.analyse_cv_result(do_cross_validation(X_valid, y_valid, configs, em.equal_weights), 'equal weight')
 
-    
+    # use_x_best_models = 5
+    # ranking = rank_models(configs, X_valid, y_valid)
+    # configs = ranking[0:use_x_best_models]
 
     ensemble_model = em.WeightedEnsemble(configs, optimization_method=em.optimal_linear_weights)
     ensemble_model.train(X_valid, y_valid)
+    print 'Ensemble training error: ', ensemble_model.training_error
 
     X_test, y_test = load_data(configs, 'test')
     test_pids = y_test.keys()
