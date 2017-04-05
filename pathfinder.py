@@ -60,3 +60,11 @@ if not os.path.isfile(LUNA_PROPERTIES_PATH):
 VALIDATION_LB_MIXED_SPLIT_PATH = paths['VALIDATION_LB_MIXED_SPLIT_PATH']
 if not os.path.isfile(VALIDATION_LB_MIXED_SPLIT_PATH):
     raise ValueError('no mixed validation and LB file')
+
+CENTROID_LUNA_PATH = paths['CENTROID_LUNA_PATH']
+if not os.path.isfile(CENTROID_LUNA_PATH):
+    raise ValueError('no LUNA centroid file')
+
+PIXEL_SPACING_LUNA_PATH = paths['PIXEL_SPACING_LUNA_PATH']
+if not os.path.isfile(PIXEL_SPACING_LUNA_PATH):
+    raise ValueError('no pixel spacing pickle')

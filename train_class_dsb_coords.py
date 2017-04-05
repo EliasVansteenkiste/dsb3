@@ -60,14 +60,17 @@ learning_rate = theano.shared(np.float32(learning_rate_schedule[0]))
 updates = config().build_updates(train_loss, model, learning_rate)
 
 x_shared = nn.utils.shared_empty(dim=len(model.l_in.shape))
+x_coords_shared = nn.utils.shared_empty(dim=len(model.l_in_coords.shape))
 y_shared = nn.utils.shared_empty(dim=len(model.l_target.shape))
 
 givens_train = {}
 givens_train[model.l_in.input_var] = x_shared
+givens_train[model.l_in_coords.input_var] = x_coords_shared
 givens_train[model.l_target.input_var] = y_shared
 
 givens_valid = {}
 givens_valid[model.l_in.input_var] = x_shared
+givens_valid[model.l_in_coords.input_var] = x_coords_shared
 givens_valid[model.l_target.input_var] = y_shared
 
 # theano functions
@@ -109,7 +112,7 @@ prev_time = start_time
 tmp_losses_train = []
 losses_train_print = []
 
-for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buffering.buffered_gen_threaded(
+for chunk_idx, (x_chunk_train,x_coords_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buffering.buffered_gen_threaded(
         train_data_iterator.generate())):
     if chunk_idx in learning_rate_schedule:
         lr = np.float32(learning_rate_schedule[chunk_idx])
@@ -119,6 +122,7 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
 
     # load chunk to GPU
     x_shared.set_value(x_chunk_train)
+    x_coords_shared.set_value(x_coords_chunk_train)
     y_shared.set_value(y_chunk_train)
 
     # make nbatches_chunk iterations
@@ -144,10 +148,11 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
 
         # load validation data to GPU
         tmp_losses_valid = []
-        for i, (x_chunk_valid, y_chunk_valid, ids_batch) in enumerate(
+        for i, (x_chunk_valid, x_coords_chunk_valid, y_chunk_valid, ids_batch) in enumerate(
                 buffering.buffered_gen_threaded(valid_data_iterator.generate(),
                                                 buffer_size=2)):
             x_shared.set_value(x_chunk_valid)
+            x_coords_shared.set_value(x_coords_chunk_valid)
             y_shared.set_value(y_chunk_valid)
             l_valid = iter_validate()
             print i, l_valid, y_chunk_valid, ids_batch

@@ -58,18 +58,19 @@ def label_prep_function(annotation,properties_included):
 
 # data preparation function
 def data_prep_function(data, patch_center, pixel_spacing, luna_origin, p_transform,
-                       p_transform_augment, world_coord_system, **kwargs):
-    x, patch_annotation_tf = data_transforms.transform_patch3d(data=data,
+                       p_transform_augment, world_coord_system, centroid,**kwargs):
+    x, patch_annotation_tf,patch_centroid_diff = data_transforms.transform_patch3d(data=data,
                                                                luna_annotations=None,
                                                                patch_center=patch_center,
                                                                p_transform=p_transform,
                                                                p_transform_augment=p_transform_augment,
                                                                pixel_spacing=pixel_spacing,
                                                                luna_origin=luna_origin,
-                                                               world_coord_system=world_coord_system)
+                                                               world_coord_system=world_coord_system,
+                                                               centroid=centroid)
     x = data_transforms.hu2normHU(x)
 
-    return x
+    return x,patch_centroid_diff
 
 
 data_prep_function_train = partial(data_prep_function, p_transform_augment=p_transform_augment,
@@ -86,7 +87,7 @@ train_valid_ids = utils.load_pkl(pathfinder.LUNA_VALIDATION_SPLIT_PATH)
 train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['valid']
 
 
-train_data_iterator = data_iterators.CandidatesPropertiesLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
+train_data_iterator = data_iterators.CandidatesPropertiesLunaXYZDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                            batch_size=chunk_size,
                                                                            transform_params=p_transform,
                                                                            label_prep_fun=label_prep_function,
@@ -99,7 +100,7 @@ train_data_iterator = data_iterators.CandidatesPropertiesLunaDataGenerator(data_
                                                                            random_negative_samples=True,
                                                                            properties_included=["malignancy"])
 
-valid_data_iterator = data_iterators.CandidatesLunaValidDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
+valid_data_iterator = data_iterators.CandidatesLunaValidXYZDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
                                                                       transform_params=p_transform,
                                                                       data_prep_fun=data_prep_function_valid,
                                                                       patient_ids=valid_pids,
@@ -113,22 +114,27 @@ validate_every = int(5 * nchunks_per_epoch)
 save_every = int(1. * nchunks_per_epoch)
 
 learning_rate_schedule = {
-    0: 1e-4,
-    int(max_nchunks * 0.4): 6e-5,
-    int(max_nchunks * 0.6): 3e-5,
-    int(max_nchunks * 0.8): 1e-5,
-    int(max_nchunks * 0.9): 0.5e-5
+    0: 1e-3,
+    int(max_nchunks * 0.5): 1e-4,
+    int(max_nchunks * 0.75): 1e-5
+
 }
 
 
 
 
 def build_model():
-    l_in = nn.layers.InputLayer((None,1) + p_transform['patch_size'])
+    l_in = nn.layers.InputLayer((None,3))
     l_target = nn.layers.InputLayer((None, 1))
 
+    l = nn.layers.DenseLayer(l_in,50,W=nn.init.Orthogonal("relu"),nonlinearity=nn.nonlinearities.rectify)
+    #l = nn.layers.DropoutLayer(l)
+    l = nn.layers.DenseLayer(l, 50, W=nn.init.Orthogonal("relu"), nonlinearity=nn.nonlinearities.rectify)
 
-    return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_in, l_target)
+    l_out = nn.layers.DenseLayer(l,1,nonlinearity=nn.nonlinearities.sigmoid)
+
+
+    return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 
 
 

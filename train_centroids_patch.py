@@ -15,14 +15,13 @@ from configuration import config, set_configuration
 import pathfinder
 
 nn.random.set_rng(np.random.RandomState(317070))
-
 theano.config.warn_float64 = 'raise'
 
 if len(sys.argv) < 2:
     sys.exit("Usage: train.py <configuration_name>")
 
 config_name = sys.argv[1]
-set_configuration('configs_class_dsb', config_name)
+set_configuration('configs_luna_props_patch', config_name)
 expid = utils.generate_expid(config_name)
 print
 print "Experiment ID: %s" % expid
@@ -62,16 +61,17 @@ updates = config().build_updates(train_loss, model, learning_rate)
 x_shared = nn.utils.shared_empty(dim=len(model.l_in.shape))
 y_shared = nn.utils.shared_empty(dim=len(model.l_target.shape))
 
+idx = T.lscalar('idx')
 givens_train = {}
-givens_train[model.l_in.input_var] = x_shared
-givens_train[model.l_target.input_var] = y_shared
+givens_train[model.l_in.input_var] = x_shared[idx * config().batch_size:(idx + 1) * config().batch_size]
+givens_train[model.l_target.input_var] = y_shared[idx * config().batch_size:(idx + 1) * config().batch_size]
 
 givens_valid = {}
 givens_valid[model.l_in.input_var] = x_shared
 givens_valid[model.l_target.input_var] = y_shared
 
 # theano functions
-iter_train = theano.function([], train_loss, givens=givens_train, updates=updates)
+iter_train = theano.function([idx], train_loss, givens=givens_train, updates=updates)
 iter_validate = theano.function([], valid_loss, givens=givens_valid)
 
 if config().restart_from_save:
@@ -109,6 +109,7 @@ prev_time = start_time
 tmp_losses_train = []
 losses_train_print = []
 
+# use buffering.buffered_gen_threaded()
 for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buffering.buffered_gen_threaded(
         train_data_iterator.generate())):
     if chunk_idx in learning_rate_schedule:
@@ -122,18 +123,17 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
     y_shared.set_value(y_chunk_train)
 
     # make nbatches_chunk iterations
-
-    loss = iter_train()
-    # print loss, y_chunk_train, id_train
-    tmp_losses_train.append(loss)
-    losses_train_print.append(loss)
+    for b in xrange(config().nbatches_chunk):
+        loss = iter_train(b)
+        # print loss
+        tmp_losses_train.append(loss)
+        losses_train_print.append(loss)
 
     if (chunk_idx + 1) % 10 == 0:
         print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks), np.mean(losses_train_print)
         losses_train_print = []
 
     if ((chunk_idx + 1) % config().validate_every) == 0:
-
         print
         print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks)
         # calculate mean train loss since the last validation phase
@@ -150,7 +150,7 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
             x_shared.set_value(x_chunk_valid)
             y_shared.set_value(y_chunk_valid)
             l_valid = iter_validate()
-            print i, l_valid, y_chunk_valid, ids_batch
+            print i, l_valid
             tmp_losses_valid.append(l_valid)
 
         # calculate validation loss across validation set

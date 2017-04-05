@@ -11,7 +11,9 @@
   "LUNA_PROPERTIES_PATH": "/home/frederic/kaggle-dsb3/data/luna/annotations_extended_mixed.csv",
   "LUNA_VALIDATION_SPLIT_PATH": "/home/frederic/kaggle-dsb3/data/luna/validation_split.pkl",
   "LUNA_CANDIDATES_PATH": "/home/frederic/kaggle-dsb3/data/luna/candidates_V2.csv",
-  "TEST_LABELS_PATH": "/home/frederic/kaggle-dsb3/data/test_labels.csv"
+  "TEST_LABELS_PATH": "/home/frederic/kaggle-dsb3/data/test_labels.csv",
+  "CENTROID_LUNA_PATH":"/home/frederic/kaggle-dsb3/data/luna/luna_lung_mask_centroids.pkl",
+  "PIXEL_SPACING_LUNA_PATH":"/home/frederic/kaggle-dsb3/data/luna/pixel_spacing.pkl"
 }
 
 
