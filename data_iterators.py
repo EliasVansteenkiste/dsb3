@@ -1679,6 +1679,35 @@ class DSBPatientsDataGeneratorTTA(object):
             yield x_batch, y_batch, pid
 
 
+
+
+class DSBPixelSpacingsGenerator(object):
+    def __init__(self, data_path, id2candidates_path, patient_ids):
+
+        self.id2candidates_path = id2candidates_path
+        self.patient_paths = []
+        if patient_ids is not None:
+            for pid in patient_ids:
+                if pid in self.id2candidates_path:  # TODO: this should be redundant if fpr and segemntation are correctly generated
+                    self.patient_paths.append(data_path + '/' + pid)
+        else:
+            raise ValueError('provide patient ids')
+
+        self.nsamples = len(self.patient_paths)
+        self.data_path = data_path
+
+    def generate(self):
+
+        for idx in xrange(self.nsamples):
+
+            patient_path = self.patient_paths[idx]
+            pid = utils_lung.extract_pid_dir(patient_path)
+
+            img, pixel_spacing = utils_lung.read_dicom_scan(patient_path)
+
+            yield  pid, pixel_spacing
+
+
 class DSBPatientsDataGenerator_only_heatmap(object):
     def __init__(self, data_path, batch_size, transform_params, id2candidates_path, data_prep_fun, 
                  n_candidates_per_patient, rng, random, infinite, candidates_prep_fun, return_patch_locs=False, shuffle_top_n=False, patient_ids=None):
