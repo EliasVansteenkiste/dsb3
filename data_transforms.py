@@ -67,6 +67,7 @@ def histogram_equalization(x, hist=None, bins=None):
         elements_to_rescale = np.logical_and(x>=low_orig, x<high_orig)
         y = x[elements_to_rescale]
         y_r = (y - low_orig)/(high_orig-low_orig)*(upper_bound-lower_bound) + lower_bound
+        print 'y_r', np.isnan(y_r).any()
         z[elements_to_rescale] = y_r
 
     return z
@@ -106,12 +107,23 @@ def apply_hist_eq_patch(x, bins, original_borders):
     # init our target array 
     z = np.empty(x.shape)
 
+    # if np.isnan(z).any():
+    #     print '1 np.isnan(z).any()', np.isnan(z).any()
+
     # copy the values outside of the bins from the original
     z[x<=bins[0]] = x[x<=bins[0]] 
     z[x>=bins[-1]] = x[x>=bins[-1]] 
+    # print 'x.shape', x.shape, x.shape[0] * x.shape[1] * x.shape[2] * x.shape[3]
+    # print 'np.sum(x<=bins[0])', np.sum(x<=bins[0])
+    # print 'np.sum(x>=bins[-1])', np.sum(x>=bins[-1])
+
+    # if np.isnan(z).any():
+    #     print '2 np.isnan(z).any()', np.isnan(z).any()
 
     inside_bins = np.logical_and(x>bins[0], x<bins[-1])
+    # print 'np.sum(inside_bins)', np.sum(inside_bins)
 
+    n_total_elements_replaced = 0
     n_bins = bins.shape[0] -1
     for i in range(n_bins):
         lower_bound = bins[i]
@@ -120,9 +132,17 @@ def apply_hist_eq_patch(x, bins, original_borders):
         high_orig = original_borders[i+1]
 
         elements_to_rescale = np.logical_and(x>=low_orig, x<high_orig)
+        n_total_elements_replaced += np.sum(elements_to_rescale)    
+        # print 'np.sum(elements_to_rescale)', np.sum(elements_to_rescale)  
         y = x[elements_to_rescale]
         y_r = (y - low_orig)/(high_orig-low_orig)*(upper_bound-lower_bound) + lower_bound
+
         z[elements_to_rescale] = y_r
+
+    #     if np.isnan(z).any():
+    #         print 'np.isnan(z).any()', np.isnan(z).any()
+
+    # print 'n_total_elements_replaced', n_total_elements_replaced
         
     return z
 
@@ -324,24 +344,28 @@ def transform_dsb_candidates(data, patch_centers, pixel_spacing, p_transform,
 
     patches_out = []
     for zyxd in patch_centers:
-        zyx = np.array(zyxd[:3])
-        zyx_mm = zyx * mm_shape / input_shape
-
-        tf_mm_scale = affine_transform(scale=mm_shape / input_shape)
-        tf_shift_center = affine_transform(translation=-zyx_mm)
-        tf_shift_uncenter = affine_transform(translation=mm_patch_size / 2.)
-        tf_output_scale = affine_transform(scale=output_shape / mm_patch_size)
-
-        if p_transform_augment:
-            augment_params_sample = sample_augmentation_parameters(p_transform_augment)
-            tf_augment = affine_transform(translation=augment_params_sample.translation,
-                                          rotation=augment_params_sample.rotation)
-            tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_augment).dot(tf_shift_uncenter).dot(tf_output_scale)
+        if -1 in zyxd:
+            patch_out = np.zeros(output_shape)
+            patches_out.append(patch_out[None, :, :, :])
         else:
-            tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_shift_uncenter).dot(tf_output_scale)
+            zyx = np.array(zyxd[:3])
+            zyx_mm = zyx * mm_shape / input_shape
 
-        patch_out = apply_affine_transform(data, tf_total, order=p_transform['order'], output_shape=output_shape)
-        patches_out.append(patch_out[None, :, :, :])
+            tf_mm_scale = affine_transform(scale=mm_shape / input_shape)
+            tf_shift_center = affine_transform(translation=-zyx_mm)
+            tf_shift_uncenter = affine_transform(translation=mm_patch_size / 2.)
+            tf_output_scale = affine_transform(scale=output_shape / mm_patch_size)
+
+            if p_transform_augment:
+                augment_params_sample = sample_augmentation_parameters(p_transform_augment)
+                tf_augment = affine_transform(translation=augment_params_sample.translation,
+                                              rotation=augment_params_sample.rotation)
+                tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_augment).dot(tf_shift_uncenter).dot(tf_output_scale)
+            else:
+                tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_shift_uncenter).dot(tf_output_scale)
+
+            patch_out = apply_affine_transform(data, tf_total, order=p_transform['order'], output_shape=output_shape)
+            patches_out.append(patch_out[None, :, :, :])
 
     return np.concatenate(patches_out, axis=0)
 

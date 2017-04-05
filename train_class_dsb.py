@@ -26,6 +26,8 @@ print
 print "Experiment ID: %s" % expid
 print
 
+nn.random.set_rng(np.random.RandomState(317070))
+
 # metadata
 metadata_dir = utils.get_dir_path('models', pathfinder.METADATA_PATH)
 metadata_path = metadata_dir + '/%s.pkl' % expid

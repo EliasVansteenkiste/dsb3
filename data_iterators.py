@@ -87,6 +87,39 @@ class LunaDataGenerator(object):
                 break
 
 
+
+class LunaSimpleDataGenerator(object):
+    def __init__(self, data_path, patient_ids=None, **kwargs):
+
+        self.patient_ids = patient_ids
+
+        self.data_path = data_path
+        self.file_extension = '.pkl' if 'pkl' in data_path else '.mhd'
+
+        if patient_ids:
+            self.patient_paths = [data_path + '/' + p + self.file_extension for p in patient_ids]
+        else:
+            patient_paths = utils_lung.get_patient_data_paths(data_path)
+            self.patient_paths = [p for p in patient_paths if self.file_extension in p]
+        
+        self.nsamples = len(self.patient_paths)
+
+        print self.data_path
+
+    def generate(self):
+        for patient_path in self.patient_paths:
+            pid = utils_lung.extract_pid_filename(patient_path)
+
+            img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
+                if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
+
+            x = np.float32(img)
+
+            yield x, pid
+
+
+
+
 class LunaScanPositiveDataGenerator(LunaDataGenerator):
     def __init__(self, data_path, transform_params, data_prep_fun, rng,
                  random, infinite, patient_ids=None, **kwargs):
@@ -1409,6 +1442,49 @@ class CandidatesDSBDataGenerator(object):
                 yield x_batch, y_batch, [pid]
 
 
+
+
+class CandidatesDSBDataGeneratorTTA(object):
+    def __init__(self, data_path, transform_params, id2candidates_path, data_prep_fun, exclude_pids=None, tta=64):
+        if exclude_pids is not None:
+            for p in exclude_pids:
+                id2candidates_path.pop(p, None)
+
+        self.id2candidates_path = id2candidates_path
+        self.id2patient_path = {}
+        for pid in id2candidates_path.keys():
+            self.id2patient_path[pid] = data_path + '/' + pid
+
+        self.nsamples = len(self.id2patient_path)
+        self.data_path = data_path
+        self.data_prep_fun = data_prep_fun
+        self.transform_params = transform_params
+        self.tta = tta
+
+    def generate(self):
+
+        for pid in self.id2candidates_path.iterkeys():
+            patient_path = self.id2patient_path[pid]
+            print pid, patient_path
+            img, pixel_spacing = utils_lung.read_dicom_scan(patient_path)
+
+            print self.id2candidates_path[pid]
+            candidates = utils.load_pkl(self.id2candidates_path[pid])
+            print candidates.shape
+            for candidate in candidates:
+                y_batch = np.array(candidate, dtype='float32')
+                patch_center = candidate[:3]
+                batch = []
+                for i in range(self.tta):
+                    batch.append(np.float32(self.data_prep_fun(data=img,
+                                                        patch_center=patch_center,
+                                                        pixel_spacing=pixel_spacing)))
+                x_batch = np.stack(batch)
+                print x_batch.shape
+
+                yield x_batch, y_batch, [pid]
+
+
 class DSBFeatureDataGenerator(object):
     def __init__(self, data_path, batch_size, p_features,
                  rng, random, infinite, patient_ids=None):
@@ -1534,7 +1610,7 @@ class DSBPatientsDataGenerator(object):
                         #TODO move the normalization to the config file
                         x_loc_batch[i] = np.float32(top_candidates[:,:3])/512. 
 
-                    x_batch[i] = np.float32(self.data_prep_fun(data=img,
+                    x_batch[i] = np.float32(self.data_prep_fun(data=img, pid=pid,
                                                                patch_centers=top_candidates,
                                                                pixel_spacing=pixel_spacing))[:, :, :, :]
                     y_batch[i] = self.id2label.get(pid)
@@ -1551,6 +1627,56 @@ class DSBPatientsDataGenerator(object):
 
 
 
+class DSBPatientsDataGeneratorTTA(object):
+    def __init__(self, data_path, transform_params, id2candidates_path, data_prep_fun, candidates_prep_fun,
+                 n_candidates_per_patient, patient_ids, tta=1):
+
+        self.id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
+        self.id2candidates_path = id2candidates_path
+        self.patient_paths = []
+        if patient_ids is not None:
+            for pid in patient_ids:
+                if pid in self.id2candidates_path:  # TODO: this should be redundant if fpr and segemntation are correctly generated
+                    self.patient_paths.append(data_path + '/' + pid)
+        else:
+            raise ValueError('provide patient ids')
+
+        self.nsamples = len(self.patient_paths)
+        self.data_path = data_path
+        self.data_prep_fun = data_prep_fun
+        self.transform_params = transform_params
+        self.n_candidates_per_patient = n_candidates_per_patient
+        self.tta = tta
+        self.candidates_prep_fun = candidates_prep_fun
+
+    def generate(self):
+
+        for idx in xrange(self.nsamples):
+
+            x_batch = np.zeros((self.tta, self.n_candidates_per_patient,)
+                               + self.transform_params['patch_size'], dtype='float32')
+
+            y_batch = np.zeros((self.tta,), dtype='float32')
+
+            patient_path = self.patient_paths[idx]
+            pid = utils_lung.extract_pid_dir(patient_path)
+
+            img, pixel_spacing = utils_lung.read_dicom_scan(patient_path)
+
+            all_candidates = utils.load_pkl(self.id2candidates_path[pid])
+            if self.candidates_prep_fun:
+                top_candidates = self.candidates_prep_fun(all_candidates, self.n_candidates_per_patient)
+            else:
+                top_candidates = all_candidates[:self.n_candidates_per_patient]
+
+            for i in range(self.tta):
+                x_batch[i] = np.float32(self.data_prep_fun(data=img,
+                                                           patch_centers=top_candidates,
+                                                           pixel_spacing=pixel_spacing))[:, :, :, :]
+
+                y_batch[i] = self.id2label.get(pid)
+
+            yield x_batch, y_batch, pid
 
 
 class DSBPatientsDataGenerator_only_heatmap(object):
