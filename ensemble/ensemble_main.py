@@ -31,8 +31,8 @@ def ensemble(configs):
     anal.analyse_predictions(X_valid, y_valid)
 
     if DO_CV:
-        cv_result = do_cross_validation(X_valid, y_valid, configs)
-        anal.analyse_cv_result(cv_result, 'linear optimal weight')
+        anal.analyse_cv_result(do_cross_validation(X_valid, y_valid, configs, em.optimal_linear_weights), 'linear optimal weight')
+        anal.analyse_cv_result(do_cross_validation(X_valid, y_valid, configs, em.equal_weights), 'equal weight')
 
     ensemble_model = em.linear_optimal_ensemble(X_valid, y_valid)
 

@@ -91,3 +91,10 @@ def optimal_linear_weights(predictions_stack, targets):
     weights /= weights.sum()
     return weights
 
+
+def equal_weights(predictions_stack, targets):
+    amount_of_configs = predictions_stack.shape[0]
+    equal_weight = 1.0 / amount_of_configs
+
+    weights = [equal_weight for _ in range(amount_of_configs)]
+    return weights
