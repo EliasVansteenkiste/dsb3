@@ -9,10 +9,20 @@ import collections
 VERBOSE = False
 
 
-class Ensemble(object):
-    def __init__(self, models):
+class WeightedEnsemble(object):
+    def __init__(self, models, optimization_method):
         self.models = models
-        self.weights = None
+        self.weights = {}
+        self.optimization_method = optimization_method
+
+    def train(self, predictions, labels):
+        X = utils_ensemble.predictions_dict_to_3d_array(predictions)
+        y = np.array(labels.values())
+
+        weights = self.optimization_method(X, np.array(utils_ensemble.one_hot(y)))
+        for model_nr in range(len(self.models)):
+            config = self.models[model_nr]
+            self.weights[config] = weights[model_nr]
 
     def predict(self, X):
         return self._weighted_average(X, self.weights)
@@ -43,7 +53,7 @@ class Ensemble(object):
         return collections.OrderedDict(sorted(weighted_predictions.items()))
 
     def __is_optimized(self):
-        return self.weights is not None
+        return self.weights is not None and len(self.weights) != 0
 
 
 def linear_optimal_ensemble(predictions, labels):
@@ -64,7 +74,7 @@ def linear_optimal_ensemble(predictions, labels):
         if VERBOSE: print 'Weight for config {} is {:0.2%}'.format(config, weights[model_nr])
         config2weights[config] = weights[model_nr]
 
-    ensemble_model = Ensemble(predictions.keys())
+    ensemble_model = WeightedEnsemble(predictions.keys())
     ensemble_model.weights = config2weights
     return ensemble_model
 

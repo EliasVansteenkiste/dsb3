@@ -30,11 +30,13 @@ def ensemble(configs):
     X_valid, y_valid = load_data(configs, 'validation')
     anal.analyse_predictions(X_valid, y_valid)
 
-    if DO_CV:
-        anal.analyse_cv_result(do_cross_validation(X_valid, y_valid, configs, em.optimal_linear_weights), 'linear optimal weight')
-        anal.analyse_cv_result(do_cross_validation(X_valid, y_valid, configs, em.equal_weights), 'equal weight')
+    # if DO_CV:
+    #     anal.analyse_cv_result(do_cross_validation(X_valid, y_valid, configs, em.optimal_linear_weights), 'linear optimal weight')
+    #     anal.analyse_cv_result(do_cross_validation(X_valid, y_valid, configs, em.equal_weights), 'equal weight')
 
-    ensemble_model = em.linear_optimal_ensemble(X_valid, y_valid)
+    ensemble_model = em.WeightedEnsemble(configs, optimization_method=em.optimal_linear_weights)
+    ensemble_model.train(X_valid, y_valid)
+    # ensemble_model = em.linear_optimal_ensemble(X_valid, y_valid)
 
     X_test, y_test = load_data(configs, 'test')
     test_pids = y_test.keys()
