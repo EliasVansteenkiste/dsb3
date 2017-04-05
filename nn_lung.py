@@ -374,8 +374,6 @@ class AggAllBenignProdF(nn.layers.Layer):
         output = 1 - prod
         return output
 
-
-
 class AggAllBenignProdHard(nn.layers.Layer):
     """
     takes elementwise product between 2 layers

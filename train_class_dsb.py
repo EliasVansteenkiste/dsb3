@@ -117,20 +117,20 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
         print
         learning_rate.set_value(lr)
 
-    # load chunk to GPU
-    x_shared.set_value(x_chunk_train)
-    y_shared.set_value(y_chunk_train)
-
-    # make nbatches_chunk iterations
-
-    loss = iter_train()
-    # print loss, y_chunk_train, id_train
-    tmp_losses_train.append(loss)
-    losses_train_print.append(loss)
-
-    if (chunk_idx + 1) % 10 == 0:
-        print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks), np.mean(losses_train_print)
-        losses_train_print = []
+    # # load chunk to GPU
+    # x_shared.set_value(x_chunk_train)
+    # y_shared.set_value(y_chunk_train)
+    #
+    # # make nbatches_chunk iterations
+    #
+    # loss = iter_train()
+    # # print loss, y_chunk_train, id_train
+    # tmp_losses_train.append(loss)
+    # losses_train_print.append(loss)
+    #
+    # if (chunk_idx + 1) % 10 == 0:
+    #     print 'Chunk %d/%d' % (chunk_idx + 1, config().max_nchunks), np.mean(losses_train_print)
+    #     losses_train_print = []
 
     if ((chunk_idx + 1) % config().validate_every) == 0:
 
