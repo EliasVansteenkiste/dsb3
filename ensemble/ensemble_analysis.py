@@ -89,8 +89,7 @@ def histogram_of_good_weights(cv_result, ensemble_method_name):
 
 
 def relationship_config_weights_validation_losses(cv_result, ensemble_method_name):
-    from ensemble import ensemble_predictions as ens
-    for model_name in ens.CONFIGS:
+    for model_name in cv_result[0]['configs']:
         weight_for_model = []
         losses = []
         for cv in cv_result:
