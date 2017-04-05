@@ -335,19 +335,58 @@ def transform_patch3d_ls(data, pixel_spacing, p_transform,
 
 def transform_dsb_candidates(data, patch_centers, pixel_spacing, p_transform,
                              p_transform_augment=None):
-    mm_patch_size = np.asarray(p_transform['mm_patch_size'], dtype='float32')
-    out_pixel_spacing = np.asarray(p_transform['pixel_spacing'])
-
     input_shape = np.asarray(data.shape)
-    mm_shape = input_shape * pixel_spacing / out_pixel_spacing
-    output_shape = p_transform['patch_size']
+    output_shape = np.asarray(p_transform['patch_size'])
 
     patches_out = []
     for zyxd in patch_centers:
         if -1 in zyxd:
             patch_out = np.zeros(output_shape)
-            patches_out.append(patch_out[None, :, :, :])
+        elif 'affine_tf' in p_transform and not p_transform['affine_tf']:
+            assert(output_shape[0] == output_shape[1])
+            assert(output_shape[0] == output_shape[2])
+
+            zyx = np.round(np.array(zyxd[:3])).astype('int32')
+
+            z_in = zyx[0] > output_shape[0]/2 and zyx[0] < input_shape[0]-output_shape[0]/2
+            y_in = zyx[1] > output_shape[1]/2 and zyx[1] < input_shape[1]-output_shape[1]/2
+            x_in = zyx[2] > output_shape[2]/2 and zyx[2] < input_shape[2]-output_shape[2]/2
+
+            patch_inside_tensor = z_in and y_in and x_in
+
+            if patch_inside_tensor:
+                patch_out = data[zyx[0]-output_shape[0]/2:zyx[0]+output_shape[0]/2,
+                                 zyx[1]-output_shape[1]/2:zyx[1]+output_shape[1]/2,
+                                 zyx[2]-output_shape[2]/2:zyx[2]+output_shape[2]/2] 
+            else:
+                data_pad = np.empty((input_shape[0]+output_shape[0], 
+                                     input_shape[1]+output_shape[1], 
+                                     input_shape[2]+output_shape[2]))
+
+                data_pad[0:output_shape[0]/2,:,:] = 0
+                data_pad[output_shape[0]/2+input_shape[0]:,:,:] = 0
+
+                data_pad[:,0:output_shape[1]/2,:] = 0
+                data_pad[:,output_shape[1]/2+input_shape[1]:,:] = 0
+
+                data_pad[:,:,0:output_shape[2]/2] = 0
+                data_pad[:,:,output_shape[2]/2+input_shape[2]:] = 0
+
+                data_pad[output_shape[0]/2:output_shape[0]/2+input_shape[0],
+                         output_shape[1]/2:output_shape[1]/2+input_shape[1],
+                         output_shape[2]/2:output_shape[2]/2+input_shape[2],] = data
+
+                #too slow data_pad = np.lib.pad(data, output_shape[0], mode='constant', constant_values = MIN_HU)
+
+                zyx_pad = zyx + output_shape/2
+                patch_out = data_pad[zyx_pad[0]-output_shape[0]/2:zyx_pad[0]+output_shape[0]/2,
+                                     zyx_pad[1]-output_shape[1]/2:zyx_pad[1]+output_shape[1]/2,
+                                     zyx_pad[2]-output_shape[2]/2:zyx_pad[2]+output_shape[2]/2] 
         else:
+            mm_patch_size = np.asarray(p_transform['mm_patch_size'], dtype='float32')
+            out_pixel_spacing = np.asarray(p_transform['pixel_spacing'])
+            mm_shape = input_shape * pixel_spacing / out_pixel_spacing
+
             zyx = np.array(zyxd[:3])
             zyx_mm = zyx * mm_shape / input_shape
 
@@ -365,8 +404,8 @@ def transform_dsb_candidates(data, patch_centers, pixel_spacing, p_transform,
                 tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_shift_uncenter).dot(tf_output_scale)
 
             patch_out = apply_affine_transform(data, tf_total, order=p_transform['order'], output_shape=output_shape)
-            patches_out.append(patch_out[None, :, :, :])
-
+        
+        patches_out.append(patch_out[None, :, :, :])
     return np.concatenate(patches_out, axis=0)
 
 
