@@ -130,6 +130,4 @@ def load_data(configs, dataset_membership):
         raise ValueError('Dude you drunk? No data set membership with name {} exists'.format(dataset_membership))
 
 
-# profile.run('ensemble(CONFIGS)')
-
 ensemble(CONFIGS)
