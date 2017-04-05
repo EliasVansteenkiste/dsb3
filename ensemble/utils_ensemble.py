@@ -77,3 +77,20 @@ def find_model_preds_expid(preds_dir, config_name):
         print 'Taking the most recent predictions for this config...\n'
         return exp_ids[len(exp_ids) - 1]
     return exp_ids[0]
+
+
+def predictions_dict_to_3d_array(predictions):
+    """
+    :param predictions: (config_name -> (pid -> prediction) )
+    :return: predictions as numpy array with shape [num_configs x num_patients x 2]
+    """
+    n_models = len(predictions.keys())
+    pids = predictions.values()[0].keys()
+    n_patients = len(pids)
+    predictions_stack = np.zeros((n_models, n_patients, 2))  # num_configs x num_patients x 2 categories
+    for model_nr in range(n_models):
+        config = predictions.keys()[model_nr]
+        for patient_nr, patient_id in enumerate(pids):
+            predictions_stack[model_nr, patient_nr, 0] = 1.0 - predictions[config][patient_id]
+            predictions_stack[model_nr, patient_nr, 1] = predictions[config][patient_id]
+    return predictions_stack
