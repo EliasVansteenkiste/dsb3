@@ -333,3 +333,18 @@ def get_generated_pids(predictions_dir):
         pids = os.listdir(predictions_dir)
         pids = [extract_pid_filename(p) for p in pids]
     return pids
+
+def evaluate_log_loss(pid2prediction, pid2label):
+    predictions, labels = [], []
+    assert set(pid2prediction.keys()) == set(pid2label.keys())
+    for k, v in pid2prediction.iteritems():
+        predictions.append(v)
+        labels.append(pid2label[k])
+    return log_loss(labels, predictions)
+
+
+def log_loss(y_real, y_pred, eps=1e-15):
+    y_pred = np.clip(y_pred, eps, 1 - eps)
+    y_real = np.array(y_real)
+    losses = y_real * np.log(y_pred) + (1 - y_real) * np.log(1 - y_pred)
+    return - np.average(losses)
