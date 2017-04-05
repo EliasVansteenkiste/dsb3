@@ -61,18 +61,6 @@ class Ensemble(object):
         return self.weights is not None
 
 
-class EnsembleModel(object):
-    def __init__(self, config_name, validation_preds, test_preds):
-        self.config_name = config_name
-        self.validation_preds = validation_preds
-        self.test_preds = test_preds
-        self.all_preds = validation_preds.copy()
-        self.all_preds.update(test_preds)
-
-    def predict(self, pid):
-        return self.all_preds[pid]
-
-
 def ensemble(configs):
     X_valid, y_valid = load_data(configs, 'validation')
     ensemble_model = linear_optimal_ensemble(X_valid, y_valid)
