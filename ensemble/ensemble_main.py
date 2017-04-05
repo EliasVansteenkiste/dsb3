@@ -1,5 +1,7 @@
 import data_loading
 import numpy as np
+import os
+import evaluate_submission
 import utils_ensemble
 import ensemble_analysis as anal
 import ensemble_models as em
@@ -19,10 +21,15 @@ CONFIGS = ['dsb_a04_c3ns2_mse_s5_p8a1', 'dsb_a07_c3ns3_mse_s5_p8a1', 'dsb_a08_c3
            'dsb_af25lmelr10-1_mal2_s5_p8a1', 'dsb_a_eliasz1_c3_s5_p8a1',
            'dsb_a_liox13_c3_s2_p8a1', 'dsb_a_liox14_c3_s2_p8a1', 'dsb_a_liox15_c3_s2_p8a1', 'dsb_a_liox6_c3_s2_p8a1',
            'dsb_a_liox7_c3_s2_p8a1', 'dsb_a_liox8_c3_s2_p8a1', 'dsb_a_liolunalme16_c3_s2_p8a1']
-CONFIGS += FG_CONFIGS
+
+FG_CONFIGS = ['fgodin/' + config for config in ['dsb_af25lme_mal2_s5_p8a1']]
+GOOD_CONFIGS = ['dsb_af25lmeaapm_mal2_s5_p8a1', 'dsb_a_liolme32_c3_s5_p8a1', 'dsb_af25lmelr10-1_mal2_s5_p8a1',
+                'dsb_a_liox10_c3_s2_p8a1']
+
+CONFIGS = FG_CONFIGS + GOOD_CONFIGS
 OUTLIER_THRESHOLD = 0.20  # Disagreement threshold (%)
 DO_MAJORITY_VOTE = False
-DO_CV = True
+DO_CV = False
 VERBOSE = True
 
 
@@ -30,13 +37,15 @@ def ensemble(configs):
     X_valid, y_valid = load_data(configs, 'validation')
     anal.analyse_predictions(X_valid, y_valid)
 
-    # if DO_CV:
-    #     anal.analyse_cv_result(do_cross_validation(X_valid, y_valid, configs, em.optimal_linear_weights), 'linear optimal weight')
-    #     anal.analyse_cv_result(do_cross_validation(X_valid, y_valid, configs, em.equal_weights), 'equal weight')
+    if DO_CV:
+        anal.analyse_cv_result(do_cross_validation(X_valid, y_valid, configs, em.optimal_linear_weights),
+                               'linear optimal weight')
+        anal.analyse_cv_result(do_cross_validation(X_valid, y_valid, configs, em.equal_weights), 'equal weight')
+
+    
 
     ensemble_model = em.WeightedEnsemble(configs, optimization_method=em.optimal_linear_weights)
     ensemble_model.train(X_valid, y_valid)
-    # ensemble_model = em.linear_optimal_ensemble(X_valid, y_valid)
 
     X_test, y_test = load_data(configs, 'test')
     test_pids = y_test.keys()
@@ -49,8 +58,17 @@ def ensemble(configs):
         y_test_pred[pid] = majority_vote_rensemble_prediction(X_test, ensemble_pred,
                                                               pid) if DO_MAJORITY_VOTE else ensemble_pred
 
-    test_logloss = utils_lung.evaluate_log_loss(y_test_pred, y_test)
 
+    evaluate_test_set_performance(y_test, y_test_pred)
+
+
+def evaluate_test_set_performance(y_test, y_test_pred):
+    test_set_predictions = {config: data_loading.get_predictions_of_config(config, 'test') for config in CONFIGS}
+    individual_performance = {config: calc_test_performance(config, pred_test) for config, pred_test in
+                              test_set_predictions.iteritems()}
+    for config, performance in individual_performance.iteritems():
+        print 'Logloss of config {} is {} on test set'.format(config, performance)
+    test_logloss = utils_lung.evaluate_log_loss(y_test_pred, y_test)
     print 'Ensemble test logloss: ', test_logloss
 
 
@@ -94,7 +112,9 @@ def do_cross_validation(X, y, config_names, ensemble_method=em.optimal_linear_we
 def majority_vote_rensemble_prediction(X_test, ensemble_pred, pid):
     configs_to_reuse = remove_outlier_configs(X_test, ensemble_pred, pid)
     X, y = load_data(configs_to_reuse, 'validation')
-    rensemble_model = em.linear_optimal_ensemble(X, y)
+    # rensemble_model = em.linear_optimal_ensemble(X, y)
+    rensemble_model = em.WeightedEnsemble(configs_to_reuse, em.equal_weights)
+    rensemble_model.train(X, y)
     test_sample = filter_set(X_test, pid, configs_to_reuse)
     final_pred = rensemble_model.predict_one_sample(test_sample)
     return final_pred
@@ -130,6 +150,15 @@ def load_data(configs, dataset_membership):
         return data_loading.load_test_set(configs)
     else:
         raise ValueError('Dude you drunk? No data set membership with name {} exists'.format(dataset_membership))
+
+
+def calc_test_performance(config_name, predictions):
+    config_name = config_name.replace('/', '')
+    tmp_submission_file = '/tmp/submission_test_predictions_{}.csv'.format(config_name)
+    utils_lung.write_submission(predictions, tmp_submission_file)
+    loss = evaluate_submission.leaderboard_performance(tmp_submission_file)
+    os.remove(tmp_submission_file)
+    return loss
 
 
 ensemble(CONFIGS)

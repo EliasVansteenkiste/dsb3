@@ -61,6 +61,11 @@ class WeightedMajorityVoteEnsemble(WeightedEnsemble):
         super(WeightedMajorityVoteEnsemble, self).__init__(models, optimization_method)
 
 
+class EqualWeightsOfTopRankingModelsEnsemble(WeightedEnsemble):
+    def __init__(self, models, optimization_method):
+        super(EqualWeightsOfTopRankingModelsEnsemble, self).__init__(models, optimization_method)
+
+
 def linear_optimal_ensemble(predictions, labels):
     """
 
