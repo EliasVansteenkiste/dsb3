@@ -60,12 +60,10 @@ batch_size = 1
 
 train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
 train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
-train_pids.extend(valid_pids)
-train_pids.extend(test_pids)
 print 'n train', len(train_pids)
-print 'n valid', len(test_pids)
+print 'n valid', len(valid_pids)
 
-train_data_iterator = data_iterators.DSBPatientsDataGeneratorTrainPlusTest(data_path=pathfinder.DATA_PATH,
+train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
                                                               batch_size=batch_size,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -75,19 +73,18 @@ train_data_iterator = data_iterators.DSBPatientsDataGeneratorTrainPlusTest(data_
                                                               patient_ids=train_pids,
                                                               random=True, infinite=True)
 
-valid_data_iterator =data_iterators.DSBPatientsDataGeneratorTestWithLabels(data_path=pathfinder.DATA_PATH,
+valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
                                                               batch_size=1,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
                                                               data_prep_fun=data_prep_function_valid,
                                                               id2candidates_path=id2candidates_path,
                                                               rng=rng,
-                                                              patient_ids=test_pids,
+                                                              patient_ids=valid_pids,
                                                               random=False, infinite=False)
 
 
-
-test_data_iterator = data_iterators.DSBPatientsDataGeneratorTestWithLabels(data_path=pathfinder.DATA_PATH,
+test_data_iterator = data_iterators.DSBPatientsDataGeneratorTest(data_path=pathfinder.DATA_PATH,
                                                               batch_size=1,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,

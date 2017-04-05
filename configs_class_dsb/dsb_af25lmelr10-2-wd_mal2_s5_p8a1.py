@@ -22,6 +22,9 @@ predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PA
 candidates_path = predictions_dir + '/%s' % candidates_config
 id2candidates_path = utils_lung.get_candidates_paths(candidates_path)
 
+# used regularization norm 
+reg_norm=lambda x : T.sum(x**2,keepdims=False)
+
 # transformations
 p_transform = {'patch_size': (48, 48, 48),
                'mm_patch_size': (48, 48, 48),
@@ -60,12 +63,10 @@ batch_size = 1
 
 train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
 train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
-train_pids.extend(valid_pids)
-train_pids.extend(test_pids)
 print 'n train', len(train_pids)
-print 'n valid', len(test_pids)
+print 'n valid', len(valid_pids)
 
-train_data_iterator = data_iterators.DSBPatientsDataGeneratorTrainPlusTest(data_path=pathfinder.DATA_PATH,
+train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
                                                               batch_size=batch_size,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -75,19 +76,18 @@ train_data_iterator = data_iterators.DSBPatientsDataGeneratorTrainPlusTest(data_
                                                               patient_ids=train_pids,
                                                               random=True, infinite=True)
 
-valid_data_iterator =data_iterators.DSBPatientsDataGeneratorTestWithLabels(data_path=pathfinder.DATA_PATH,
+valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
                                                               batch_size=1,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
                                                               data_prep_fun=data_prep_function_valid,
                                                               id2candidates_path=id2candidates_path,
                                                               rng=rng,
-                                                              patient_ids=test_pids,
+                                                              patient_ids=valid_pids,
                                                               random=False, infinite=False)
 
 
-
-test_data_iterator = data_iterators.DSBPatientsDataGeneratorTestWithLabels(data_path=pathfinder.DATA_PATH,
+test_data_iterator = data_iterators.DSBPatientsDataGeneratorTest(data_path=pathfinder.DATA_PATH,
                                                               batch_size=1,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -105,11 +105,16 @@ save_every = int(0.25 * nchunks_per_epoch)
 
 learning_rate_schedule = {
     0: 1e-5,
-    int(5 * nchunks_per_epoch): 2e-6,
-    int(6 * nchunks_per_epoch): 1e-6,
-    int(7 * nchunks_per_epoch): 5e-7,
-    int(9 * nchunks_per_epoch): 2e-7
+    int(7 * nchunks_per_epoch): 5e-9,
+    int(9 * nchunks_per_epoch): 2e-9
 }
+
+weight_decay_schedule = {
+    0: 1e-6,
+    int(7 * nchunks_per_epoch): 5e-10,
+    int(9 * nchunks_per_epoch): 2e-10
+}
+
 
 # model
 # model
@@ -237,7 +242,7 @@ def build_model():
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 
 
-def build_objective(model, deterministic=False, epsilon=1e-12):
+def build_objective(model, deterministic=False,epsilon=1e-12):
     p = nn.layers.get_output(model.l_out, deterministic=deterministic)
     targets = T.flatten(nn.layers.get_output(model.l_target))
     p = T.clip(p, epsilon, 1.-epsilon)
