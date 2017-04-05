@@ -204,8 +204,9 @@ def feat_red(lin):
 
 def build_model():
     l_in = nn.layers.InputLayer((None,) + p_transform['patch_size'])
+    l_din = nn.layers.DimshuffleLayer(l_in, pattern=[0,'x',1,2,3])
     l_target = nn.layers.InputLayer((None,))
-    l = conv3d(l_in, 64)
+    l = conv3d(l_din, 64)
     l = inrn_v2_red(l)
     l = inrn_v2(l)
 
