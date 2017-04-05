@@ -53,3 +53,11 @@ if not os.path.isfile(LUNA_VALIDATION_SPLIT_PATH):
 
 LUNA_NODULE_ANNOTATIONS_PATH = paths["LUNA_NODULE_ANNOTATIONS"]
 utils.check_data_paths(LUNA_NODULE_ANNOTATIONS_PATH)
+
+LUNA_PROPERTIES_PATH = paths['LUNA_PROPERTIES_PATH']
+if not os.path.isfile(LUNA_PROPERTIES_PATH):
+    raise ValueError('no LUNA properties file')
+
+VALIDATION_LB_MIXED_SPLIT_PATH = paths['VALIDATION_LB_MIXED_SPLIT_PATH']
+if not os.path.isfile(VALIDATION_LB_MIXED_SPLIT_PATH):
+    raise ValueError('no mixed validation and LB file')
