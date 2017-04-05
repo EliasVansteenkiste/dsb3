@@ -13,13 +13,14 @@ FG_CONFIGS = ['fgodin/' + config for config in
 CONFIGS = ['dsb_a04_c3ns2_mse_s5_p8a1', 'dsb_a07_c3ns3_mse_s5_p8a1', 'dsb_a08_c3ns3_mse_s5_p8a1',
            'dsb_a11_m1zm_s5_p8a1', 'dsb_af25lmeaapm_mal2_s5_p8a1',
            'dsb_a_liolme16_c3_s2_p8a1', 'dsb_a_liolme32_c3_s5_p8a1', 'dsb_a_liox10_c3_s2_p8a1',
-           'dsb_a_liox11_c3_s5_p8a1', 'dsb_a_liox12_c3_s2_p8a1',
+           'dsb_a_liox11_c3_s5_p8a1', 'dsb_a_liox12_c3_s2_p8a1', 'dsb_af25lmelr10-2_mal2_s5_p8a1',
+           'dsb_af25lmelr10-1_mal2_s5_p8a1', 'dsb_a_eliasz1_c3_s5_p8a1',
            'dsb_a_liox13_c3_s2_p8a1', 'dsb_a_liox14_c3_s2_p8a1', 'dsb_a_liox15_c3_s2_p8a1', 'dsb_a_liox6_c3_s2_p8a1',
            'dsb_a_liox7_c3_s2_p8a1', 'dsb_a_liox8_c3_s2_p8a1', 'dsb_a_liolunalme16_c3_s2_p8a1']
 CONFIGS += FG_CONFIGS
-OUTLIER_THRESHOLD = 0.10  # Disagreement threshold (%)
+OUTLIER_THRESHOLD = 0.20  # Disagreement threshold (%)
 DO_MAJORITY_VOTE = False
-VERBOSE = False
+VERBOSE = 0
 
 
 # TODO: to other file
@@ -33,7 +34,6 @@ class Ensemble(object):
 
     def predict_one_sample(self, X):
         assert len(X.values()[0]) == 1
-        # TODO FIX BUG BECAUSE X contains only one pid
         return self._weighted_average(X, self.weights).values()[0]
 
     def _weighted_average(self, predictions, weights):
@@ -103,11 +103,16 @@ def majority_vote_rensemble_prediction(X_test, ensemble_pred, pid):
 
 
 def remove_outlier_configs(config_predictions, ensemble_prediction, pid):
+    relative_diff = False
     configs_to_reuse = []
     for config in config_predictions.keys():
         config_prediction = config_predictions[config][pid]
-        if ((ensemble_prediction - config_prediction) / ensemble_prediction) <= OUTLIER_THRESHOLD:
+        diff = ((ensemble_prediction - config_prediction) / ensemble_prediction) \
+            if relative_diff else abs(ensemble_prediction - config_prediction)
+        if diff <= OUTLIER_THRESHOLD:
             configs_to_reuse.append(config)
+        elif VERBOSE:
+            print 'Removing config ', config, ' from ensemble'
     return configs_to_reuse
 
 
@@ -154,4 +159,5 @@ def linear_optimal_ensemble(predictions, labels):
 
 
 # profile.run('ensemble(CONFIGS)')
+
 ensemble(CONFIGS)
