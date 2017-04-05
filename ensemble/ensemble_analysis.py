@@ -1,10 +1,14 @@
-import matplotlib.pyplot as plt
+
 import numpy as np
 import scipy
 import scipy.stats
 
 import utils
 import utils_lung
+import utils_plots
+import matplotlib.pyplot as plt
+from matplotlib import cm as cm
+from ensemble import utils_ensemble
 
 analysis_dir = '/home/adverley/Code/Projects/Kaggle/dsb3/analysis'
 utils.auto_make_dir(analysis_dir)
@@ -109,10 +113,9 @@ def relationship_config_weights_validation_losses(cv_result, ensemble_method_nam
 
 def analyse_predictions(valid_set_predictions, labels):
     from scipy.stats import pearsonr
-    from ensemble import ensemble_predictions as ens
 
     if VERBOSE: print 'Correlation between predictions: '
-    X = ens.predictions_dict_to_3d_array(valid_set_predictions, labels)
+    X = utils_ensemble.predictions_dict_to_3d_array(valid_set_predictions)
     X = X[:, :, 0]
 
     config_names = valid_set_predictions.keys()
@@ -130,9 +133,6 @@ def analyse_predictions(valid_set_predictions, labels):
 
 
 def correlation_matrix_plot(corr_matrix, config_names):
-    from matplotlib import pyplot as plt
-    from matplotlib import cm as cm
-
     fig = plt.figure(figsize=(8.0, 6.0))
 
     ax1 = fig.add_subplot(111)

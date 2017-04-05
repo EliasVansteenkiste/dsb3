@@ -1,6 +1,7 @@
 import data_loading
 import numpy as np
 import utils_ensemble
+import ensemble_analysis as anal
 import ensemble_models as em
 import utils_lung
 import collections
@@ -25,6 +26,7 @@ VERBOSE = True
 
 def ensemble(configs):
     X_valid, y_valid = load_data(configs, 'validation')
+    anal.analyse_predictions(X_valid, y_valid)
     ensemble_model = em.linear_optimal_ensemble(X_valid, y_valid)
 
     X_test, y_test = load_data(configs, 'test')
