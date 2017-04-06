@@ -29,8 +29,8 @@ if not os.path.isfile(SAMPLE_SUBMISSION_PATH):
     raise ValueError('no sample submission file')
 
 VALIDATION_SPLIT_PATH = paths["VALIDATION_SPLIT_PATH"]
-# if not os.path.isfile(VALIDATION_SPLIT_PATH):
-#     raise ValueError('no validation file')
+if not os.path.isfile(VALIDATION_SPLIT_PATH):
+    raise ValueError('no validation file')
 
 # luna data
 LUNA_DATA_PATH = paths["LUNA_DATA_PATH"]
