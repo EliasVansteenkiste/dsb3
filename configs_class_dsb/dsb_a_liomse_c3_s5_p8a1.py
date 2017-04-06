@@ -1,4 +1,4 @@
-# fred with order 0, luna malignancy
+# fred with order 0, luna malignancy max
 
 import numpy as np
 import data_transforms
@@ -88,7 +88,7 @@ train_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(  data_path_
                                                               id2candidates_path=id2candidates_path,
                                                               rng=rng,
                                                               patient_ids=train_pids,
-                                                              random=True, infinite=True)
+                                                              random=True, infinite=True, use_max=True)
 
 valid_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(data_path_dsb=pathfinder.DATA_PATH,
                                                             data_path_luna=pathfinder.LUNA_DATA_PATH,
@@ -99,7 +99,7 @@ valid_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(data_path_ds
                                                               id2candidates_path=id2candidates_path,
                                                               rng=rng,
                                                               patient_ids=valid_pids,
-                                                              random=False, infinite=False)
+                                                              random=False, infinite=False, use_max=True)
 
 
 test_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(data_path_dsb=pathfinder.DATA_PATH,
@@ -111,7 +111,7 @@ test_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(data_path_dsb
                                                               id2candidates_path=id2candidates_path,
                                                               rng=rng,
                                                               patient_ids=test_pids,
-                                                              random=False, infinite=False)
+                                                              random=False, infinite=False, use_max=True)
 
 
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size
@@ -259,13 +259,14 @@ def build_model():
 def build_objective(model, deterministic=False, epsilon=1e-12):
     p = nn.layers.get_output(model.l_out, deterministic=deterministic)
     targets = T.flatten(nn.layers.get_output(model.l_target))
-    p = T.clip(p, epsilon, 1.-epsilon)
-#    hard_targets = targets > 0.5
-    bce = T.nnet.binary_crossentropy(p, targets)
- #   bce_soft = T.nnet.binary_crossentropy(targets, hard_targets)
-  #  loss = abs(bce-bce_soft)
-    return T.mean(bce)
 
+    if deterministic:
+        p = T.clip(p, epsilon, 1. - epsilon)
+        bce = T.nnet.binary_crossentropy(p, targets)
+        return T.mean(bce)
+    else:
+        objective = nn.objectives.squared_error(p, targets)
+        return T.mean(objective)
 
 def build_updates(train_loss, model, learning_rate):
     # final_layer=nn.layers.get_all_layers(model.l_out)[-3]

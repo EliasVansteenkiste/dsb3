@@ -135,7 +135,7 @@
 			"file": "configs_class_dsb/dsb_lio_segm.py",
 			"settings":
 			{
-				"buffer_size": 6036,
+				"buffer_size": 6042,
 				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
@@ -144,7 +144,7 @@
 			"file": "configs_class_dsb/dsb_a_liolme16_c3_s2_p8a1.py",
 			"settings":
 			{
-				"buffer_size": 10407,
+				"buffer_size": 9366,
 				"line_ending": "Unix"
 			}
 		},
@@ -161,7 +161,7 @@
 			"file": "train_class_dsb.py",
 			"settings":
 			{
-				"buffer_size": 6814,
+				"buffer_size": 6829,
 				"line_ending": "Unix"
 			}
 		},
@@ -178,7 +178,7 @@
 			"file": "nn_lung.py",
 			"settings":
 			{
-				"buffer_size": 14689,
+				"buffer_size": 16273,
 				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
@@ -195,7 +195,7 @@
 			"file": "SETTINGS.json",
 			"settings":
 			{
-				"buffer_size": 759,
+				"buffer_size": 999,
 				"line_ending": "Unix"
 			}
 		},
@@ -203,7 +203,7 @@
 			"file": "pathfinder.py",
 			"settings":
 			{
-				"buffer_size": 1631,
+				"buffer_size": 1945,
 				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
@@ -212,7 +212,7 @@
 			"file": "data_iterators.py",
 			"settings":
 			{
-				"buffer_size": 55834,
+				"buffer_size": 96453,
 				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
@@ -221,7 +221,7 @@
 			"file": "data_transforms.py",
 			"settings":
 			{
-				"buffer_size": 14575,
+				"buffer_size": 16996,
 				"encoding": "UTF-8",
 				"line_ending": "Unix"
 			}
@@ -581,7 +581,7 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 6036,
+						"buffer_size": 6042,
 						"regions":
 						{
 						},
@@ -611,15 +611,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 10407,
+						"buffer_size": 9366,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								5563,
-								5563
+								0,
+								0
 							]
 						],
 						"settings":
@@ -671,15 +671,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 6814,
+						"buffer_size": 6829,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								3336,
-								3336
+								0,
+								0
 							]
 						],
 						"settings":
@@ -731,15 +731,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 14689,
+						"buffer_size": 16273,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								9954,
-								9954
+								0,
+								0
 							]
 						],
 						"settings":
@@ -791,7 +791,7 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 759,
+						"buffer_size": 999,
 						"regions":
 						{
 						},
@@ -821,15 +821,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 1631,
+						"buffer_size": 1945,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								676,
-								676
+								0,
+								0
 							]
 						],
 						"settings":
@@ -851,15 +851,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 55834,
+						"buffer_size": 96453,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								48477,
-								48477
+								0,
+								0
 							]
 						],
 						"settings":
@@ -881,15 +881,15 @@
 					"semi_transient": false,
 					"settings":
 					{
-						"buffer_size": 14575,
+						"buffer_size": 16996,
 						"regions":
 						{
 						},
 						"selection":
 						[
 							[
-								10671,
-								10671
+								0,
+								0
 							]
 						],
 						"settings":

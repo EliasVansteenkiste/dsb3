@@ -1464,6 +1464,7 @@ class DSBPatientsDataGenerator(object):
                  n_candidates_per_patient, rng, random, infinite, return_patch_locs=False, shuffle_top_n=False, patient_ids=None):
 
         self.id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
+        self.id2label.update(utils_lung.read_test_labels(pathfinder.TEST_LABELS_PATH))
         self.id2candidates_path = id2candidates_path
         self.patient_paths = []
         if patient_ids is not None:
@@ -1533,9 +1534,77 @@ class DSBPatientsDataGenerator(object):
             if not self.infinite:
                 break
 
+
+import glob
+class HaralickDataGenerator(object):
+    def __init__(self, data_path, config, batch_size, n_candidates_per_patient, rng, random, infinite, patient_ids=None):
+        self.id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
+        self.id2label.update(utils_lung.read_test_labels(pathfinder.TEST_LABELS_PATH))
+
+        with open(data_path, "rb") as f: self.haralick = cPickle.load(f)
+        predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH, no_name=True)
+        predictions_path_train = glob.glob(predictions_dir + '/%s-*train.pkl' % config)
+        # print predictions_dir + '/%s-*train.pkl' % config
+        if len(predictions_path_train) != 1: raise ValueError('Multiple or no train predicitons files for config %s' % config)
+        predictions_path_valid = glob.glob(predictions_dir + '/%s-*valid.pkl' % config)
+        if len(predictions_path_valid) != 1: raise ValueError('Multiple or no valid ppredicitons files for config %s' % config)
+        predictions_path_test = glob.glob(predictions_dir + '/%s-*test.pkl' % config)
+        if len(predictions_path_test) != 1: raise ValueError('Multiple or no test ppredicitons files for config %s' % config)
+
+        self.predictions = utils.load_pkl(predictions_path_train[0])
+        self.predictions.update(utils.load_pkl(predictions_path_valid[0]))
+        self.predictions.update(utils.load_pkl(predictions_path_test[0]))
+
+        self.patients = []
+        if patient_ids is not None:
+            for pid in patient_ids:
+                if pid in self.predictions:  # TODO: this should be redundant if fpr and segemntation are correctly generated
+                    self.patients.append(pid)
+        else:
+            raise ValueError('provide patient ids')
+
+        self.nsamples = len(self.patients)
+        self.data_path = data_path
+        self.batch_size = batch_size
+        self.n_candidates_per_patient = n_candidates_per_patient
+        self.rng = rng
+        self.random = random
+        self.infinite = infinite
+        print "    nsamples:", self.nsamples
+
+    def generate(self):
+        while True:
+            rand_idxs = np.arange(self.nsamples)
+            if self.random:
+                self.rng.shuffle(rand_idxs)
+
+            for pos in xrange(0, len(rand_idxs), self.batch_size):
+                idxs_batch = rand_idxs[pos:pos + self.batch_size]
+
+                x_batch = np.zeros((self.batch_size, self.n_candidates_per_patient*169+1), dtype='float32')
+
+                y_batch = np.zeros((self.batch_size,), dtype='float32')
+                pids_batch = []
+
+                for i, idx in enumerate(idxs_batch):
+                    pid = self.patients[idx]
+
+                    x_batch[i, 0] = np.float32(self.predictions[pid])
+                    x_batch[i, 1:] = self.haralick[pid][:self.n_candidates_per_patient].flatten()
+
+                    y_batch[i] = self.id2label.get(pid)
+                    pids_batch.append(pid)
+
+                if len(idxs_batch) == self.batch_size:
+                    yield x_batch, y_batch, pids_batch
+
+            if not self.infinite:
+                break
+
+
 class DSBLUNAMalignancyDataGenerator(object):
     def __init__(self, data_path_dsb, data_path_luna, batch_size, transform_params, id2candidates_path, data_prep_fun,
-                 n_candidates_per_patient, rng, random, infinite, shuffle_top_n=False, patient_ids=None):
+                 n_candidates_per_patient, rng, random, infinite, shuffle_top_n=False, patient_ids=None, use_max=False, mix=False):
         ###################
         # PREPARE DSB
         ###################
@@ -1582,8 +1651,11 @@ class DSBLUNAMalignancyDataGenerator(object):
             # (malignancy-1)/4
             probs = np.asarray([(annot[3]-1.)/4. for annot in id2positive_annotations[pid]])
             # nodules assumed i.i.d.
-            luna_labels[pid] = 1. - np.prod(1. - probs)
-            print luna_labels[pid], probs
+            if not use_max:
+                luna_labels[pid] = 1. - np.prod(1. - probs)
+            else:
+                luna_labels[pid] = np.max(probs)
+            # print luna_labels[pid], probs
 
 
         # ADD patient_diagnosis.csv HARD LABELS -> OVERWRITES SOFTLABELS (bad idea?)
@@ -1625,6 +1697,8 @@ class DSBLUNAMalignancyDataGenerator(object):
             self.is_train = False
             self.id2label.update(luna_labels)
 
+        self.mix = mix
+        if mix: assert self.batch_size == 2 # has to be 2
         self.nsamples = len(self.patient_paths)
         print '  nsamples', self.nsamples
 
@@ -1644,16 +1718,20 @@ class DSBLUNAMalignancyDataGenerator(object):
                 pids_batch = []
 
                 for i, idx in enumerate(idxs_batch):
-                    patient_path = self.patient_paths[idx]
-                    pid = utils_lung.extract_pid_dir(patient_path)
-
-                    # BALANCE TO TRAIN SET:
-                    # if "." in pid:
-                    #     if self.rng.rand() > self.luna_sample_prob:
-                    #         # sample benign to balance out the training set
-                    #         while self.id2label.get(pid) != 0:
-                    #             patient_path = self.rng.choice(self.patient_paths, size=1)[0]
-                    #             pid = utils_lung.extract_pid_dir(patient_path)
+                    if self.mix:
+                        if i==0:
+                            pid = "."
+                            while "." in pid:
+                                patient_path = self.rng.choice(self.patient_paths, size=1)[0]
+                                pid = utils_lung.extract_pid_dir(patient_path)
+                        else:
+                            pid = ""
+                            while not "." in pid:
+                                patient_path = self.rng.choice(self.patient_paths, size=1)[0]
+                                pid = utils_lung.extract_pid_dir(patient_path)
+                    else:
+                        patient_path = self.patient_paths[idx]
+                        pid = utils_lung.extract_pid_dir(patient_path)
 
                     isLUNA = "." in pid
 
@@ -1678,7 +1756,7 @@ class DSBLUNAMalignancyDataGenerator(object):
 
                         if self.shuffle_top_n: self.rng.shuffle(top_candidates)
 
-                        x_batch[i, :, :, :] = self.data_prep_fun(data=img,
+                        x_batch[i, :, :, :] = self.data_prep_fun(data=img.astype(np.float32),
                                                                  patch_centers=top_candidates,
                                                                  pixel_spacing=pixel_spacing,
                                                                  luna_origin=origin)

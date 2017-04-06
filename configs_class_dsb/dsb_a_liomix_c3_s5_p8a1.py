@@ -1,4 +1,4 @@
-# fred with order 0, luna malignancy
+# fred with order 0, luna malignancy max
 
 import numpy as np
 import data_transforms
@@ -49,6 +49,7 @@ def data_prep_function(data, patch_centers, pixel_spacing, p_transform,
                                                      p_transform_augment=p_transform_augment,
                                                      pixel_spacing=pixel_spacing,
                                                      order=0)
+        # print "dsb", x.min(), x.mean(), x.max()
     else:
         patches_out = []
         for zyxd in patch_centers:
@@ -61,6 +62,7 @@ def data_prep_function(data, patch_centers, pixel_spacing, p_transform,
                                                         order=0)
             patches_out.append(x_[None, :, :, :])
         x = np.concatenate(patches_out, axis=0)
+        # print "luna", x.min(), x.mean(), x.max()
     x = data_transforms.hu2normHU(x)
     return x
 
@@ -71,7 +73,7 @@ data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
                                    p_transform=p_transform)
 
 # data iterators
-batch_size = 1
+batch_size = 2
 
 train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
 train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
@@ -88,7 +90,8 @@ train_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(  data_path_
                                                               id2candidates_path=id2candidates_path,
                                                               rng=rng,
                                                               patient_ids=train_pids,
-                                                              random=True, infinite=True)
+                                                              random=True, infinite=True, mix=True,
+                                                                      use_max=True)
 
 valid_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(data_path_dsb=pathfinder.DATA_PATH,
                                                             data_path_luna=pathfinder.LUNA_DATA_PATH,
@@ -99,7 +102,7 @@ valid_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(data_path_ds
                                                               id2candidates_path=id2candidates_path,
                                                               rng=rng,
                                                               patient_ids=valid_pids,
-                                                              random=False, infinite=False)
+                                                              random=False, infinite=False, use_max=True)
 
 
 test_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(data_path_dsb=pathfinder.DATA_PATH,
@@ -111,7 +114,7 @@ test_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(data_path_dsb
                                                               id2candidates_path=id2candidates_path,
                                                               rng=rng,
                                                               patient_ids=test_pids,
-                                                              random=False, infinite=False)
+                                                              random=False, infinite=False, use_max=True)
 
 
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size
@@ -259,13 +262,21 @@ def build_model():
 def build_objective(model, deterministic=False, epsilon=1e-12):
     p = nn.layers.get_output(model.l_out, deterministic=deterministic)
     targets = T.flatten(nn.layers.get_output(model.l_target))
-    p = T.clip(p, epsilon, 1.-epsilon)
-#    hard_targets = targets > 0.5
-    bce = T.nnet.binary_crossentropy(p, targets)
- #   bce_soft = T.nnet.binary_crossentropy(targets, hard_targets)
-  #  loss = abs(bce-bce_soft)
-    return T.mean(bce)
 
+    if deterministic:
+        p = T.clip(p, epsilon, 1. - epsilon)
+        bce = T.nnet.binary_crossentropy(p, targets)
+        return T.mean(bce)
+    else:
+        p_dsb, p_luna = p[0], p[1]
+        targets_dsb, targets_luna = targets[0], targets[1]
+
+        p_dsb = T.clip(p_dsb, epsilon, 1. - epsilon)
+        bce = T.nnet.binary_crossentropy(p_dsb, targets_dsb)
+        bce = T.mean(bce)
+
+        mse = T.mean(nn.objectives.squared_error(p_luna, targets_luna))
+        return bce + 5*mse
 
 def build_updates(train_loss, model, learning_rate):
     # final_layer=nn.layers.get_all_layers(model.l_out)[-3]

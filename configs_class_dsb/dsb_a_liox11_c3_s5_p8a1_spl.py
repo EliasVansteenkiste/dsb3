@@ -1,4 +1,4 @@
-# fred with order 0, luna malignancy
+# fred with order 0, patch size 48->res 64
 
 import numpy as np
 import data_transforms
@@ -25,7 +25,7 @@ candidates_path = predictions_dir + '/%s' % candidates_config
 id2candidates_path = utils_lung.get_candidates_paths(candidates_path)
 
 # transformations
-p_transform = {'patch_size': (48, 48, 48),
+p_transform = {'patch_size': (64, 64, 64),
                'mm_patch_size': (48, 48, 48),
                'pixel_spacing': (1., 1., 1.)
                }
@@ -41,26 +41,13 @@ n_candidates_per_patient = 8
 
 
 def data_prep_function(data, patch_centers, pixel_spacing, p_transform,
-                       p_transform_augment, luna_origin=None, **kwargs):
-    if luna_origin is None:
-        x = data_transforms.transform_dsb_candidates(data=data,
-                                                     patch_centers=patch_centers,
-                                                     p_transform=p_transform,
-                                                     p_transform_augment=p_transform_augment,
-                                                     pixel_spacing=pixel_spacing,
-                                                     order=0)
-    else:
-        patches_out = []
-        for zyxd in patch_centers:
-            x_, _ = data_transforms.transform_patch3d(data=data,
-                                                     patch_center=zyxd,
-                                                     luna_origin=luna_origin,
-                                                     p_transform=p_transform,
-                                                     p_transform_augment=p_transform_augment,
-                                                     pixel_spacing=pixel_spacing,
-                                                        order=0)
-            patches_out.append(x_[None, :, :, :])
-        x = np.concatenate(patches_out, axis=0)
+                       p_transform_augment, **kwargs):
+    x = data_transforms.transform_dsb_candidates(data=data,
+                                                 patch_centers=patch_centers,
+                                                 p_transform=p_transform,
+                                                 p_transform_augment=p_transform_augment,
+                                                 pixel_spacing=pixel_spacing,
+                                                 order=0)
     x = data_transforms.hu2normHU(x)
     return x
 
@@ -73,14 +60,13 @@ data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
 # data iterators
 batch_size = 1
 
-train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
-train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
-train_pids.extend(utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH).keys())
+train_valid_ids = utils.load_pkl(pathfinder.MIXED_SPLIT_PATH)
+train_pids, valid_pids, test_pids = train_valid_ids['training'],train_valid_ids['validation'], train_valid_ids['test']
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
+print 'n test', len(test_pids)
 
-train_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(  data_path_dsb=pathfinder.DATA_PATH,
-                                                            data_path_luna=pathfinder.LUNA_DATA_PATH,
+train_data_iterator = data_iterators.DSBPatientsDataGenerator(  data_path=pathfinder.DATA_PATH,
                                                               batch_size=batch_size,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -90,8 +76,7 @@ train_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(  data_path_
                                                               patient_ids=train_pids,
                                                               random=True, infinite=True)
 
-valid_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(data_path_dsb=pathfinder.DATA_PATH,
-                                                            data_path_luna=pathfinder.LUNA_DATA_PATH,
+valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
                                                               batch_size=1,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -102,8 +87,7 @@ valid_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(data_path_ds
                                                               random=False, infinite=False)
 
 
-test_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(data_path_dsb=pathfinder.DATA_PATH,
-                                                            data_path_luna=pathfinder.LUNA_DATA_PATH,
+test_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
                                                               batch_size=1,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -175,7 +159,7 @@ def inrn_v2(lin):
     return l
 
 
-def inrn_v2_red(lin):
+def inrn_v2_red(lin, name=None):
     # We want to reduce our total volume /4
 
     den = 16
@@ -196,7 +180,7 @@ def inrn_v2_red(lin):
     l4 = conv3d(l4, ins // den * nom3, filter_size=3)
     l4 = conv3d(l4, ins // den * nom4, filter_size=3, stride=2)
 
-    l = nn.layers.ConcatLayer([l1, l2, l3, l4])
+    l = nn.layers.ConcatLayer([l1, l2, l3, l4], name=name)
 
     return l
 
@@ -217,16 +201,16 @@ def load_pretrained_model(l_in):
     l = inrn_v2(l)
 
     l = inrn_v2_red(l)
-    l = inrn_v2_red(l)
+    l = inrn_v2_red(l, name="final pretrained")
 
-    l = dense(drop(l), 512)
-
-    l = nn.layers.DenseLayer(l,1,nonlinearity=nn.nonlinearities.sigmoid, W=nn.init.Orthogonal(),
-                b=nn.init.Constant(0))
+    # l = dense(drop(l), 512)
+    #
+    # l = nn.layers.DenseLayer(l,1,nonlinearity=nn.nonlinearities.sigmoid, W=nn.init.Orthogonal(),
+    #             b=nn.init.Constant(0))
 
 
     metadata = utils.load_pkl(os.path.join("/mnt/storage/metadata/dsb3/models/frederic/","r_fred_malignancy_2-20170328-230443.pkl"))
-    nn.layers.set_all_param_values(l, metadata['param_values'])
+    nn.layers.set_all_param_values(l, metadata['param_values'][:-4])
 
     return l
 
@@ -238,19 +222,13 @@ def build_model():
 
     l = load_pretrained_model(l_in_rshp)
 
-    # ins = penultimate_layer.output_shape[1]
-    # l = conv3d(penultimate_layer, ins, filter_size=3, stride=2)
-    # #l = feat_red(l)
+    l = dense(drop(l), 128)
     #
-    #
-    # l = nn.layers.DropoutLayer(l)
-    # #
-    # l = nn.layers.DenseLayer(l, num_units=256, W=nn.init.Orthogonal(),
-    #                          nonlinearity=nn.nonlinearities.rectify)
-
-    # l = nn.layers.DropoutLayer(l)
+    l = nn.layers.DenseLayer(l,1,nonlinearity=nn.nonlinearities.sigmoid, W=nn.init.Orthogonal(),
+                b=nn.init.Constant(0))
 
     l = nn.layers.ReshapeLayer(l, (-1, n_candidates_per_patient, 1))
+
     l_out = nn_lung.LogMeanExp(l, r=16, axis=(1, 2), name='LME')
 
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
@@ -260,10 +238,7 @@ def build_objective(model, deterministic=False, epsilon=1e-12):
     p = nn.layers.get_output(model.l_out, deterministic=deterministic)
     targets = T.flatten(nn.layers.get_output(model.l_target))
     p = T.clip(p, epsilon, 1.-epsilon)
-#    hard_targets = targets > 0.5
     bce = T.nnet.binary_crossentropy(p, targets)
- #   bce_soft = T.nnet.binary_crossentropy(targets, hard_targets)
-  #  loss = abs(bce-bce_soft)
     return T.mean(bce)
 
 

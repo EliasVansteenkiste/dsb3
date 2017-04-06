@@ -1,4 +1,4 @@
-# fred with order 0, luna malignancy
+# fred with order 0, luna malignancy max
 
 import numpy as np
 import data_transforms
@@ -88,7 +88,7 @@ train_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(  data_path_
                                                               id2candidates_path=id2candidates_path,
                                                               rng=rng,
                                                               patient_ids=train_pids,
-                                                              random=True, infinite=True)
+                                                              random=True, infinite=True, use_max=True)
 
 valid_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(data_path_dsb=pathfinder.DATA_PATH,
                                                             data_path_luna=pathfinder.LUNA_DATA_PATH,
@@ -99,7 +99,7 @@ valid_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(data_path_ds
                                                               id2candidates_path=id2candidates_path,
                                                               rng=rng,
                                                               patient_ids=valid_pids,
-                                                              random=False, infinite=False)
+                                                              random=False, infinite=False, use_max=True)
 
 
 test_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(data_path_dsb=pathfinder.DATA_PATH,
@@ -111,7 +111,7 @@ test_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(data_path_dsb
                                                               id2candidates_path=id2candidates_path,
                                                               rng=rng,
                                                               patient_ids=test_pids,
-                                                              random=False, infinite=False)
+                                                              random=False, infinite=False, use_max=True)
 
 
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size

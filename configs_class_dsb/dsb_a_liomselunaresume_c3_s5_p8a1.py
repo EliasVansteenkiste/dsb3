@@ -1,4 +1,4 @@
-# fred with order 0, luna malignancy
+# fred with order 0, luna malignancy max
 
 import numpy as np
 import data_transforms
@@ -41,26 +41,13 @@ n_candidates_per_patient = 8
 
 
 def data_prep_function(data, patch_centers, pixel_spacing, p_transform,
-                       p_transform_augment, luna_origin=None, **kwargs):
-    if luna_origin is None:
-        x = data_transforms.transform_dsb_candidates(data=data,
-                                                     patch_centers=patch_centers,
-                                                     p_transform=p_transform,
-                                                     p_transform_augment=p_transform_augment,
-                                                     pixel_spacing=pixel_spacing,
-                                                     order=0)
-    else:
-        patches_out = []
-        for zyxd in patch_centers:
-            x_, _ = data_transforms.transform_patch3d(data=data,
-                                                     patch_center=zyxd,
-                                                     luna_origin=luna_origin,
-                                                     p_transform=p_transform,
-                                                     p_transform_augment=p_transform_augment,
-                                                     pixel_spacing=pixel_spacing,
-                                                        order=0)
-            patches_out.append(x_[None, :, :, :])
-        x = np.concatenate(patches_out, axis=0)
+                       p_transform_augment, **kwargs):
+    x = data_transforms.transform_dsb_candidates(data=data,
+                                                 patch_centers=patch_centers,
+                                                 p_transform=p_transform,
+                                                 p_transform_augment=p_transform_augment,
+                                                 pixel_spacing=pixel_spacing,
+                                                 order=0)
     x = data_transforms.hu2normHU(x)
     return x
 
@@ -73,14 +60,14 @@ data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
 # data iterators
 batch_size = 1
 
+
 train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
 train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
-train_pids.extend(utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH).keys())
+# train_pids.extend(utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH).keys())
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
 
-train_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(  data_path_dsb=pathfinder.DATA_PATH,
-                                                            data_path_luna=pathfinder.LUNA_DATA_PATH,
+train_data_iterator = data_iterators.DSBPatientsDataGenerator(  data_path=pathfinder.DATA_PATH,
                                                               batch_size=batch_size,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -90,8 +77,7 @@ train_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(  data_path_
                                                               patient_ids=train_pids,
                                                               random=True, infinite=True)
 
-valid_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(data_path_dsb=pathfinder.DATA_PATH,
-                                                            data_path_luna=pathfinder.LUNA_DATA_PATH,
+valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
                                                               batch_size=1,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -102,8 +88,7 @@ valid_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(data_path_ds
                                                               random=False, infinite=False)
 
 
-test_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(data_path_dsb=pathfinder.DATA_PATH,
-                                                            data_path_luna=pathfinder.LUNA_DATA_PATH,
+test_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
                                                               batch_size=1,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -112,7 +97,6 @@ test_data_iterator = data_iterators.DSBLUNAMalignancyDataGenerator(data_path_dsb
                                                               rng=rng,
                                                               patient_ids=test_pids,
                                                               random=False, infinite=False)
-
 
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size
 max_nchunks = nchunks_per_epoch * 10
@@ -225,8 +209,8 @@ def load_pretrained_model(l_in):
                 b=nn.init.Constant(0))
 
 
-    metadata = utils.load_pkl(os.path.join("/mnt/storage/metadata/dsb3/models/frederic/","r_fred_malignancy_2-20170328-230443.pkl"))
-    nn.layers.set_all_param_values(l, metadata['param_values'])
+    # metadata = utils.load_pkl(os.path.join("/mnt/storage/metadata/dsb3/models/frederic/","r_fred_malignancy_2-20170328-230443.pkl"))
+    # nn.layers.set_all_param_values(l, metadata['param_values'])
 
     return l
 
@@ -253,19 +237,27 @@ def build_model():
     l = nn.layers.ReshapeLayer(l, (-1, n_candidates_per_patient, 1))
     l_out = nn_lung.LogMeanExp(l, r=16, axis=(1, 2), name='LME')
 
+    metadata = utils.load_pkl(os.path.join("/mnt/storage/metadata/dsb3/models/lpigou/","dsb_a_liomseluna_c3_s5_p8a1-20170406-133020.pkl"))
+    nn.layers.set_all_param_values(l_out, metadata['param_values'])
+
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 
 
 def build_objective(model, deterministic=False, epsilon=1e-12):
     p = nn.layers.get_output(model.l_out, deterministic=deterministic)
     targets = T.flatten(nn.layers.get_output(model.l_target))
-    p = T.clip(p, epsilon, 1.-epsilon)
-#    hard_targets = targets > 0.5
+
+    p = T.clip(p, epsilon, 1. - epsilon)
     bce = T.nnet.binary_crossentropy(p, targets)
- #   bce_soft = T.nnet.binary_crossentropy(targets, hard_targets)
-  #  loss = abs(bce-bce_soft)
     return T.mean(bce)
 
+    # if deterministic:
+    #     p = T.clip(p, epsilon, 1. - epsilon)
+    #     bce = T.nnet.binary_crossentropy(p, targets)
+    #     return T.mean(bce)
+    # else:
+    #     objective = nn.objectives.squared_error(p, targets)
+    #     return T.mean(objective)
 
 def build_updates(train_loss, model, learning_rate):
     # final_layer=nn.layers.get_all_layers(model.l_out)[-3]

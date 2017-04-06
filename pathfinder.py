@@ -37,6 +37,9 @@ if not os.path.isfile(SAMPLE_SUBMISSION_PATH):
     raise ValueError('no sample submission file')
 
 VALIDATION_SPLIT_PATH = paths["VALIDATION_SPLIT_PATH"]
+MIXED_SPLIT_PATH = paths["MIXED_SPLIT_PATH"]
+HARALICK_PATH = paths["HARALICK_PATH"]
+
 # if not os.path.isfile(VALIDATION_SPLIT_PATH):
 #     raise ValueError('no validation file')
 

@@ -115,5 +115,29 @@ elif set == 'valid':
     print 'Saved validation predictions into pkl', os.path.basename(output_pkl_file)
     valid_loss = utils_lung.evaluate_log_loss(pid2prediction, pid2label)
     print 'Validation loss', valid_loss
+elif set == 'train':
+    data_iterator = config().train_data_iterator
+    data_iterator.batch_size = 1
+    if hasattr(data_iterator, "random"): data_iterator.random = False
+    if hasattr(data_iterator, "infinite"): data_iterator.infinite = False
+    if hasattr(data_iterator, "data_prep_fun"): data_iterator.data_prep_fun = config().data_prep_function_valid
+
+    print
+    print 'Data'
+    print 'n train: %d' % data_iterator.nsamples
+
+    pid2prediction, pid2label = {}, {}
+    for i, (x_test, y_test, id_test) in enumerate(buffering.buffered_gen_threaded(
+            data_iterator.generate())):
+        predictions = iter_test(x_test)
+        pid = id_test[0]
+        pid2prediction[pid] = predictions[0, 1] if predictions.shape[-1] == 2 else predictions[0]
+        pid2label[pid] = y_test[0]
+        print i, pid, predictions, pid2label[pid]
+
+    utils.save_pkl(pid2prediction, output_pkl_file)
+    print 'Saved training predictions into pkl', os.path.basename(output_pkl_file)
+    train_loss = utils_lung.evaluate_log_loss(pid2prediction, pid2label)
+    print 'Training loss', train_loss
 else:
     raise ValueError('wrong set argument')
