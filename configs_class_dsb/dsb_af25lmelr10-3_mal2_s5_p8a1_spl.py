@@ -1,6 +1,6 @@
 import numpy as np
 import data_transforms
-import data_iterators_hond as data_iterators
+import data_iterators
 import pathfinder
 import lasagne as nn
 import nn_lung
@@ -103,10 +103,8 @@ save_every = int(0.25 * nchunks_per_epoch)
 
 learning_rate_schedule = {
     0: 1e-5,
-    int(5 * nchunks_per_epoch): 1e-7,
-    int(6 * nchunks_per_epoch): 2e-8,
     int(7 * nchunks_per_epoch): 5e-9,
-    int(9 * nchunks_per_epoch): 2e-9
+    int(9 * nchunks_per_epoch): 1e-9
 }
 
 # model

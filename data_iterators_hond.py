@@ -1767,8 +1767,8 @@ class DSBPatientsDataGeneratorTestWithLabels(object):
             for pos in xrange(0, len(rand_idxs), self.batch_size):
                 idxs_batch = rand_idxs[pos:pos + self.batch_size]
 
-                x_batch = np.zeros((self.batch_size, self.n_candidates_per_patient, 1,)
-                                   + self.transform_params['patch_size'], dtype='float32')
+                x_batch = np.zeros((self.batch_size * self.n_candidates_per_patient,) + self.transform_params['patch_size'], dtype='float32')
+                x_batch_tmp = np.zeros((self.batch_size, self.n_candidates_per_patient,) + self.transform_params['patch_size'], dtype='float32')
                 y_batch = np.zeros((self.batch_size,), dtype='float32')
                 pids_batch = []
 
@@ -1783,13 +1783,14 @@ class DSBPatientsDataGeneratorTestWithLabels(object):
                     if self.shuffle_top_n:
                         self.rng.shuffle(top_candidates)
 
-                    x_batch[i] = np.float32(self.data_prep_fun(data=img,
+                    x_batch_tmp[i] = np.float32(self.data_prep_fun(data=img,
                                                                patch_centers=top_candidates,
-                                                               pixel_spacing=pixel_spacing))[:, None, :, :, :]
+                                                               pixel_spacing=pixel_spacing))[:, :, :, :]
                     y_batch[i] = self.id2label[pid]
                     pids_batch.append(pid)
 
                 if len(idxs_batch) == self.batch_size:
+                    x_batch=x_batch_tmp.reshape((self.batch_size * self.n_candidates_per_patient,) + self.transform_params['patch_size'])
                     yield x_batch, y_batch, pids_batch
 
             if not self.infinite:

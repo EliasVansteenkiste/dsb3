@@ -60,10 +60,13 @@ batch_size = 1
 
 train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
 train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
+train_pids.extend(valid_pids)
+train_pids.extend(test_pids)
+
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
 
-train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
+train_data_iterator = data_iterators.DSBPatientsDataGeneratorTrainPlusTest(data_path=pathfinder.DATA_PATH,
                                                               batch_size=batch_size,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -84,7 +87,7 @@ valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               random=False, infinite=False)
 
 
-test_data_iterator = data_iterators.DSBPatientsDataGeneratorTest(data_path=pathfinder.DATA_PATH,
+test_data_iterator = data_iterators.DSBPatientsDataGeneratorTestWithLabels(data_path=pathfinder.DATA_PATH,
                                                               batch_size=1,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -103,10 +106,8 @@ save_every = int(0.25 * nchunks_per_epoch)
 
 learning_rate_schedule = {
     0: 1e-5,
-    int(5 * nchunks_per_epoch): 1e-7,
-    int(6 * nchunks_per_epoch): 2e-8,
     int(7 * nchunks_per_epoch): 5e-9,
-    int(9 * nchunks_per_epoch): 2e-9
+    int(9 * nchunks_per_epoch): 1e-9
 }
 
 # model
