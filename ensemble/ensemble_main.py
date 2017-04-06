@@ -33,17 +33,22 @@ GOOD_CONFIGS = ['dsb_af25lmeaapm_mal2_s5_p8a1', 'dsb_a_liolme32_c3_s5_p8a1', 'ds
 
 CONFIGS = FG_CONFIGS + CONFIGS + EV_CONFIGS
 OUTLIER_THRESHOLD = 0.10  # Disagreement threshold (%)
-DO_MAJORITY_VOTE = False
+DO_MAJORITY_VOTE = True
 DO_CV = False
-VERBOSE = True
+VERBOSE = False
 
 
-def pruning_ensemble(configs):
+def pruning_ensemble(configs, with_majority_vote):
     """
     Take models trained on all the data. Do a cross validation to get a ranking between the models. Choose the top N models.
     Merge these top N model into an equally weighted model.
     """
-    expid = utils.generate_expid('aggressive_ensembling')
+    name = 'pruning_ensembling_{}'.format('with_majority_vote' if with_majority_vote else 'without_majority_vote')
+
+    ensemble_info = {}
+    ensemble_info['Name'] = name
+    expid = utils.generate_expid(name)
+
     X_valid, y_valid = load_data(configs, 'validation')
     anal.analyse_predictions(X_valid, y_valid)
 
@@ -53,12 +58,13 @@ def pruning_ensemble(configs):
         anal.analyse_cv_result(do_cross_validation(X_valid, y_valid, configs, em.equal_weights), 'equal weight')
 
     configs_to_use = prune_configs(configs, cv)
-    print 'final ensemble will use configs: ', configs_to_use
+    ensemble_info['final ensemble will use configs'] = configs_to_use
+
     X_valid, y_valid = load_data(configs_to_use, 'validation')
     ensemble_model = em.WeightedEnsemble(configs_to_use, optimization_method=em.equal_weights)
     ensemble_model.train(X_valid, y_valid)
-    print 'Ensemble training error: ', ensemble_model.training_error
-    ensemble_model.print_weights()
+    ensemble_info['Ensemble training error'] = ensemble_model.training_error
+    ensemble_info['Ensemble model weights'] = ensemble_model.print_weights()
 
     X_test, y_test = load_data(configs_to_use, 'test')
     test_pids = y_test.keys()
@@ -71,16 +77,23 @@ def pruning_ensemble(configs):
         y_test_pred[pid] = majority_vote_rensemble_prediction(X_test, ensemble_pred,
                                                               pid) if DO_MAJORITY_VOTE else ensemble_pred
 
-    evaluate_test_set_performance(y_test, y_test_pred)
+    ensemble_info['Ensemble model test set error'] = evaluate_test_set_performance(y_test, y_test_pred)
     utils_ensemble.persist_test_set_predictions(expid, y_test_pred)
 
+    return ensemble_info
 
-def optimal_linear_ensembling(configs):
+
+def optimal_linear_ensembling(configs, with_majority_vote):
     """
     Take models trained on training data. Optimise the hell out of it using the validation data.
     This is to protect against overfitted or very bad models.
     """
-    expid = utils.generate_expid('conservative_ensembling')
+    name = 'optimal_linear_ensemble_{}'.format('with_majority_vote' if with_majority_vote else 'without_majority_vote')
+
+    ensemble_info = {}
+    ensemble_info['Name'] = name
+    expid = utils.generate_expid(name)
+
     X_valid, y_valid = load_data(configs, 'validation')
     anal.analyse_predictions(X_valid, y_valid)
 
@@ -91,8 +104,8 @@ def optimal_linear_ensembling(configs):
 
     ensemble_model = em.WeightedEnsemble(configs, optimization_method=em.optimal_linear_weights)
     ensemble_model.train(X_valid, y_valid)
-    print 'Ensemble training error: ', ensemble_model.training_error
-    ensemble_model.print_weights()
+    ensemble_info['ensemble training error'] = ensemble_model.training_error
+    ensemble_info['Ensemble model weights'] = ensemble_model.print_weights()
 
     X_test, y_test = load_data(configs, 'test')
     test_pids = y_test.keys()
@@ -105,15 +118,22 @@ def optimal_linear_ensembling(configs):
         y_test_pred[pid] = majority_vote_rensemble_prediction(X_test, ensemble_pred,
                                                               pid) if DO_MAJORITY_VOTE else ensemble_pred
 
-    evaluate_test_set_performance(y_test, y_test_pred)
+    ensemble_info['Ensemble model test set error'] = evaluate_test_set_performance(y_test, y_test_pred)
     utils_ensemble.persist_test_set_predictions(expid, y_test_pred)
+    return ensemble_info
 
 
-def cv_averaged_weight_ensembling(configs):
+def cv_averaged_weight_ensembling(configs, with_majority_vote):
     """
     Average the weights of a 10 SKF CV together with a full retrain of the weights to get the final ensemble weights.
     """
-    expid = utils.generate_expid('cv_averaged_weight_ensembling')
+    name = 'cv_averaged_weight_ensembling_{}'.format(
+        'with_majority_vote' if with_majority_vote else 'without_majority_vote')
+
+    ensemble_info = {}
+    ensemble_info['Name'] = name
+    expid = utils.generate_expid(name)
+
     X_valid, y_valid = load_data(configs, 'validation')
     anal.analyse_predictions(X_valid, y_valid)
 
@@ -123,7 +143,7 @@ def cv_averaged_weight_ensembling(configs):
     ensemble_model.train(X_valid, y_valid)
 
     ensemble_model = average_weights_with_cv(ensemble_model, cv)
-    ensemble_model.print_weights()
+    ensemble_info['Ensemble model weights'] = ensemble_model.print_weights()
 
     X_test, y_test = load_data(configs, 'test')
     test_pids = y_test.keys()
@@ -136,8 +156,9 @@ def cv_averaged_weight_ensembling(configs):
         y_test_pred[pid] = majority_vote_rensemble_prediction(X_test, ensemble_pred,
                                                               pid) if DO_MAJORITY_VOTE else ensemble_pred
 
-    evaluate_test_set_performance(y_test, y_test_pred)
+    ensemble_info['Ensemble model test set error'] = evaluate_test_set_performance(y_test, y_test_pred)
     utils_ensemble.persist_test_set_predictions(expid, y_test_pred)
+    return ensemble_info
 
 
 def average_weights_with_cv(ensemble_model, cv_result):
@@ -175,13 +196,9 @@ def prune_configs(configs_used, cv_result, prune_percent=0.5):
 
 
 def evaluate_test_set_performance(y_test, y_test_pred):
-    test_set_predictions = {config: data_loading.get_predictions_of_config(config, 'test') for config in CONFIGS}
-    individual_performance = {config: calc_test_performance(config, pred_test) for config, pred_test in
-                              test_set_predictions.iteritems()}
-    # for config, performance in individual_performance.iteritems():
-    #     print 'Logloss of config {} is {} on test set'.format(config, performance)
     test_logloss = utils_lung.evaluate_log_loss(y_test_pred, y_test)
-    print 'Ensemble test logloss: ', test_logloss
+    # print 'Ensemble test logloss: ', test_logloss
+    return test_logloss
 
 
 def do_cross_validation(X, y, config_names, ensemble_method=em.optimal_linear_weights):
@@ -273,19 +290,58 @@ def calc_test_performance(config_name, predictions):
     return loss
 
 
+def print_individual_configs_test_set_performance(configs):
+    test_set_predictions = {config: data_loading.get_predictions_of_config(config, 'test') for config in configs}
+    individual_performance = {config: calc_test_performance(config, pred_test) for config, pred_test in
+                              test_set_predictions.iteritems()}
+    for config, performance in individual_performance.iteritems():
+        print 'Logloss of config {} is {} on test set'.format(config, performance)
+
+
+def print_individual_configs_validation_set_performance(configs):
+    valid_set_predictions = {config: data_loading.get_predictions_of_config(config, 'validation') for config in configs}
+    individual_performance = {config: calc_test_performance(config, pred_valid) for config, pred_valid in
+                              valid_set_predictions.iteritems()}
+    for config, performance in individual_performance.iteritems():
+        print 'Logloss of config {} is {} on validation set'.format(config, performance)
+
+
+def print_ensemble_result(result):
+    for k, v in result.iteritems():
+        print k, ': ', v
+
+
 print 'Starting ensemble procedure with {} configs'.format(len(CONFIGS))
+
+print '\n--------------------'
+print 'INDIVIDUAL MODEL PERFORMANCE'
+print '--------------------\n'
+print_individual_configs_validation_set_performance(CONFIGS)
+print_individual_configs_test_set_performance(CONFIGS)
 
 print '\n--------------------'
 print 'PRUNING ENSEMBLE'
 print '--------------------\n'
-pruning_ensemble(CONFIGS)
+info = pruning_ensemble(CONFIGS, with_majority_vote=False)
+print_ensemble_result(info)
+
+info = pruning_ensemble(CONFIGS, with_majority_vote=True)
+print_ensemble_result(info)
 
 print '\n--------------------'
 print 'optimal_linear_ensembling'
 print '--------------------\n'
-optimal_linear_ensembling(CONFIGS)
+info = optimal_linear_ensembling(CONFIGS, with_majority_vote=False)
+print_ensemble_result(info)
+
+info = optimal_linear_ensembling(CONFIGS, with_majority_vote=True)
+print_ensemble_result(info)
 
 print '\n--------------------'
 print 'CV AVERAGED ENSEMBLE'
 print '--------------------\n'
-cv_averaged_weight_ensembling(CONFIGS)
+info = cv_averaged_weight_ensembling(CONFIGS, with_majority_vote=False)
+print_ensemble_result(info)
+
+info = cv_averaged_weight_ensembling(CONFIGS, with_majority_vote=True)
+print_ensemble_result(info)
