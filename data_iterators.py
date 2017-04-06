@@ -142,15 +142,17 @@ class PatchPositiveLunaDataGenerator(object):
 
         self.id2annotations = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
 
+        self.file_extension = '.pkl' if 'pkl' in data_path else '.mhd'
+
         if patient_ids:
-            self.patient_paths = [data_path + '/' + p + '.mhd' for p in patient_ids]
+            self.patient_paths = [data_path + '/' + p + self.file_extension for p in patient_ids]
         else:
             patient_paths = utils_lung.get_patient_data_paths(data_path)
-            self.patient_paths = [p for p in patient_paths if '.mhd' in p]
+            self.patient_paths = [p for p in patient_paths if self.file_extension in p]
 
         patient_ids_all = [utils_lung.extract_pid_filename(p) for p in self.patient_paths]
         patient_ids_pos = [pid for pid in patient_ids_all if pid in self.id2annotations.keys()]
-        self.patient_paths = [data_path + '/' + p + '.mhd' for p in patient_ids_pos]
+        self.patient_paths = [data_path + '/' + p + self.file_extension for p in patient_ids_pos]
 
         self.nsamples = len(self.patient_paths)
         self.data_path = data_path
@@ -177,9 +179,10 @@ class PatchPositiveLunaDataGenerator(object):
 
                 for i, idx in enumerate(idxs_batch):
                     patient_path = self.patient_paths[idx]
-                    id = utils_lung.extract_pid_filename(patient_path)
+                    id = utils_lung.extract_pid_filename(patient_path, self.file_extension)
                     patients_ids.append(id)
-                    img, origin, pixel_spacing = utils_lung.read_mhd(patient_path)
+                    img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
+                        if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
 
                     patient_annotations = self.id2annotations[id]
                     patch_center = patient_annotations[self.rng.randint(len(patient_annotations))]
@@ -203,6 +206,8 @@ class ValidPatchPositiveLunaDataGenerator(object):
 
         id2positive_annotations = utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH)
 
+        self.file_extension = '.pkl' if 'pkl' in data_path else '.mhd'
+
         self.id2positive_annotations = {}
         self.id2patient_path = {}
         n_positive = 0
@@ -210,7 +215,7 @@ class ValidPatchPositiveLunaDataGenerator(object):
             if pid in id2positive_annotations:
                 self.id2positive_annotations[pid] = id2positive_annotations[pid]
                 n_pos = len(id2positive_annotations[pid])
-                self.id2patient_path[pid] = data_path + '/' + pid + '.mhd'
+                self.id2patient_path[pid] = data_path + '/' + pid + self.file_extension
                 n_positive += n_pos
 
         self.nsamples = n_positive
@@ -223,7 +228,8 @@ class ValidPatchPositiveLunaDataGenerator(object):
         for pid in self.id2positive_annotations.iterkeys():
             for patch_center in self.id2positive_annotations[pid]:
                 patient_path = self.id2patient_path[pid]
-                img, origin, pixel_spacing = utils_lung.read_mhd(patient_path)
+                img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
+                    if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
 
                 patient_annotations = self.id2positive_annotations[pid]
                 x_batch, y_batch = self.data_prep_fun(data=img,
