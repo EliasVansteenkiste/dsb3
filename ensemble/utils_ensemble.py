@@ -40,10 +40,13 @@ def persist_predictions(y_test_pred, y_valid_pred, expid):
     print 'Pickled ensemble predictions on validation set ({})'.format(
         get_destination_path('validation_set_predictions.pkl', expid))
 
+    persist_test_set_predictions(expid, y_test_pred)
+
+
+def persist_test_set_predictions(expid, y_test_pred):
     utils.save_pkl(y_test_pred, get_destination_path('test_set_predictions.pkl', expid))
     print 'Pickled ensemble predictions on test set ({})'.format(
         get_destination_path('test_set_predictions.pkl', expid))
-
     utils_lung.write_submission(y_test_pred, get_destination_path('test_set_predictions.csv', expid))
     print 'Saved ensemble predictions into csv file ({})'.format(
         get_destination_path('test_set_predictions.csv', expid))

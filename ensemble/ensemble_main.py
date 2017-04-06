@@ -1,3 +1,4 @@
+import utils
 import data_loading
 import numpy as np
 import os
@@ -22,7 +23,8 @@ CONFIGS = ['dsb_a04_c3ns2_mse_s5_p8a1', 'dsb_a07_c3ns3_mse_s5_p8a1', 'dsb_a08_c3
            'dsb_a_liox11_c3_s5_p8a1', 'dsb_a_liox12_c3_s2_p8a1', 'dsb_af25lmelr10-2_mal2_s5_p8a1',
            'dsb_af25lmelr10-1_mal2_s5_p8a1', 'dsb_a_eliasz1_c3_s5_p8a1',
            'dsb_a_liox13_c3_s2_p8a1', 'dsb_a_liox14_c3_s2_p8a1', 'dsb_a_liox15_c3_s2_p8a1', 'dsb_a_liox6_c3_s2_p8a1',
-           'dsb_a_liox7_c3_s2_p8a1', 'dsb_a_liox8_c3_s2_p8a1', 'dsb_a_liolunalme16_c3_s2_p8a1']
+           'dsb_a_liox7_c3_s2_p8a1', 'dsb_a_liox8_c3_s2_p8a1', 'dsb_a_liolunalme16_c3_s2_p8a1',
+           'dsb_a_lionoclip_c3_s5_p8a1', 'dsb_a_liomse_c3_s5_p8a1', 'dsb_af25lmeo0_s5_p8a1', 'dsb_af25lmelr10-3_mal2_s5_p8a1']
 
 FG_CONFIGS = ['fgodin/' + config for config in ['dsb_af25lme_mal2_s5_p8a1']]
 GOOD_CONFIGS = ['dsb_af25lmeaapm_mal2_s5_p8a1', 'dsb_a_liolme32_c3_s5_p8a1', 'dsb_af25lmelr10-1_mal2_s5_p8a1',
@@ -31,11 +33,51 @@ GOOD_CONFIGS = ['dsb_af25lmeaapm_mal2_s5_p8a1', 'dsb_a_liolme32_c3_s5_p8a1', 'ds
 CONFIGS = FG_CONFIGS + CONFIGS + EV_CONFIGS
 OUTLIER_THRESHOLD = 0.10  # Disagreement threshold (%)
 DO_MAJORITY_VOTE = False
-DO_CV = 0
+DO_CV = False
 VERBOSE = True
+expid = utils.generate_expid('ensemble')
 
 
-def ensemble(configs):
+def aggressive_ensembling(configs):
+    """
+    Take models trained on all the data. Do a cross validation to get a ranking between the models. Choose the top N models.
+    Merge these top N model into an equally weighted model.
+    """
+    X_valid, y_valid = load_data(configs, 'validation')
+    anal.analyse_predictions(X_valid, y_valid)
+
+    cv = do_cross_validation(X_valid, y_valid, configs, em.optimal_linear_weights)
+    if DO_CV:
+        anal.analyse_cv_result(cv, 'linear optimal weight')
+        anal.analyse_cv_result(do_cross_validation(X_valid, y_valid, configs, em.equal_weights), 'equal weight')
+
+    configs_to_use = prune_configs(configs, cv)
+    print 'final ensemble will use configs: ', configs_to_use
+    ensemble_model = em.WeightedEnsemble(configs_to_use, optimization_method=em.equal_weights)
+    ensemble_model.train(X_valid, y_valid)
+    print 'Ensemble training error: ', ensemble_model.training_error
+    ensemble_model.print_weights()
+
+    X_test, y_test = load_data(configs_to_use, 'test')
+    test_pids = y_test.keys()
+
+    y_test_pred = {}
+
+    for pid in test_pids:
+        test_sample = filter_set(X_test, pid, configs_to_use)
+        ensemble_pred = ensemble_model.predict_one_sample(test_sample)
+        y_test_pred[pid] = majority_vote_rensemble_prediction(X_test, ensemble_pred,
+                                                              pid) if DO_MAJORITY_VOTE else ensemble_pred
+
+    evaluate_test_set_performance(y_test, y_test_pred)
+    utils_ensemble.persist_test_set_predictions(expid, y_test_pred)
+
+
+def conservative_ensembling(configs):
+    """
+    Take models trained on training data. Optimise the hell out of it using the validation data.
+    This is to protect against overfitted or very bad models.
+    """
     X_valid, y_valid = load_data(configs, 'validation')
     anal.analyse_predictions(X_valid, y_valid)
 
@@ -44,13 +86,10 @@ def ensemble(configs):
                                'linear optimal weight')
         anal.analyse_cv_result(do_cross_validation(X_valid, y_valid, configs, em.equal_weights), 'equal weight')
 
-    # use_x_best_models = 5
-    # ranking = rank_models(configs, X_valid, y_valid)
-    # configs = ranking[0:use_x_best_models]
-
     ensemble_model = em.WeightedEnsemble(configs, optimization_method=em.optimal_linear_weights)
     ensemble_model.train(X_valid, y_valid)
     print 'Ensemble training error: ', ensemble_model.training_error
+    ensemble_model.print_weights()
 
     X_test, y_test = load_data(configs, 'test')
     test_pids = y_test.keys()
@@ -64,6 +103,22 @@ def ensemble(configs):
                                                               pid) if DO_MAJORITY_VOTE else ensemble_pred
 
     evaluate_test_set_performance(y_test, y_test_pred)
+    utils_ensemble.persist_test_set_predictions(expid, y_test_pred)
+
+
+def prune_configs(configs_used, cv_result):
+    # prune if a config was never used during all the folds of CV.
+    configs_that_are_never_used = list(configs_used)
+    for cv in cv_result:
+        weights = cv['weights']
+        config_names = np.array(cv['configs'])
+
+        unused_configs = config_names[(np.isclose(weights, np.zeros_like(weights)))]
+        for c in configs_that_are_never_used:
+            if c not in unused_configs:
+                configs_that_are_never_used.remove(c)
+
+    return [config for config in configs_used if config not in configs_that_are_never_used]
 
 
 def evaluate_test_set_performance(y_test, y_test_pred):
@@ -165,4 +220,6 @@ def calc_test_performance(config_name, predictions):
     return loss
 
 
-ensemble(CONFIGS)
+print 'Starting ensemble procedure with {} configs'.format(len(CONFIGS))
+# aggressive_ensembling(CONFIGS)
+conservative_ensembling(CONFIGS)
