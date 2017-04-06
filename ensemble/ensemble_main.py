@@ -24,7 +24,8 @@ CONFIGS = ['dsb_a04_c3ns2_mse_s5_p8a1', 'dsb_a07_c3ns3_mse_s5_p8a1', 'dsb_a08_c3
            'dsb_af25lmelr10-1_mal2_s5_p8a1', 'dsb_a_eliasz1_c3_s5_p8a1',
            'dsb_a_liox13_c3_s2_p8a1', 'dsb_a_liox14_c3_s2_p8a1', 'dsb_a_liox15_c3_s2_p8a1', 'dsb_a_liox6_c3_s2_p8a1',
            'dsb_a_liox7_c3_s2_p8a1', 'dsb_a_liox8_c3_s2_p8a1', 'dsb_a_liolunalme16_c3_s2_p8a1',
-           'dsb_a_lionoclip_c3_s5_p8a1', 'dsb_a_liomse_c3_s5_p8a1', 'dsb_af25lmeo0_s5_p8a1', 'dsb_af25lmelr10-3_mal2_s5_p8a1']
+           'dsb_a_lionoclip_c3_s5_p8a1', 'dsb_a_liomse_c3_s5_p8a1', 'dsb_af25lmeo0_s5_p8a1',
+           'dsb_af25lmelr10-3_mal2_s5_p8a1']
 
 FG_CONFIGS = ['fgodin/' + config for config in ['dsb_af25lme_mal2_s5_p8a1']]
 GOOD_CONFIGS = ['dsb_af25lmeaapm_mal2_s5_p8a1', 'dsb_a_liolme32_c3_s5_p8a1', 'dsb_af25lmelr10-1_mal2_s5_p8a1',
@@ -35,7 +36,6 @@ OUTLIER_THRESHOLD = 0.10  # Disagreement threshold (%)
 DO_MAJORITY_VOTE = False
 DO_CV = False
 VERBOSE = True
-expid = utils.generate_expid('ensemble')
 
 
 def aggressive_ensembling(configs):
@@ -43,6 +43,7 @@ def aggressive_ensembling(configs):
     Take models trained on all the data. Do a cross validation to get a ranking between the models. Choose the top N models.
     Merge these top N model into an equally weighted model.
     """
+    expid = utils.generate_expid('aggressive_ensembling')
     X_valid, y_valid = load_data(configs, 'validation')
     anal.analyse_predictions(X_valid, y_valid)
 
@@ -79,12 +80,13 @@ def conservative_ensembling(configs):
     Take models trained on training data. Optimise the hell out of it using the validation data.
     This is to protect against overfitted or very bad models.
     """
+    expid = utils.generate_expid('conservative_ensembling')
     X_valid, y_valid = load_data(configs, 'validation')
     anal.analyse_predictions(X_valid, y_valid)
 
+    cv = do_cross_validation(X_valid, y_valid, configs, em.optimal_linear_weights)
     if DO_CV:
-        anal.analyse_cv_result(do_cross_validation(X_valid, y_valid, configs, em.optimal_linear_weights),
-                               'linear optimal weight')
+        anal.analyse_cv_result(cv, 'linear optimal weight')
         anal.analyse_cv_result(do_cross_validation(X_valid, y_valid, configs, em.equal_weights), 'equal weight')
 
     ensemble_model = em.WeightedEnsemble(configs, optimization_method=em.optimal_linear_weights)
@@ -222,5 +224,13 @@ def calc_test_performance(config_name, predictions):
 
 
 print 'Starting ensemble procedure with {} configs'.format(len(CONFIGS))
+
+print '\n--------------------\n'
+print 'AGGRESSIVE ENSEMBLE'
+print '\n--------------------\n'
 aggressive_ensembling(CONFIGS)
-# conservative_ensembling(CONFIGS)
+
+print '\n--------------------\n'
+print 'CONSERVATIVE ENSEMBLE'
+print '\n--------------------\n'
+conservative_ensembling(CONFIGS)
