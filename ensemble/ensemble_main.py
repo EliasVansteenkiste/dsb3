@@ -53,6 +53,7 @@ def aggressive_ensembling(configs):
 
     configs_to_use = prune_configs(configs, cv)
     print 'final ensemble will use configs: ', configs_to_use
+    X_valid, y_valid = load_data(configs_to_use, 'validation')
     ensemble_model = em.WeightedEnsemble(configs_to_use, optimization_method=em.equal_weights)
     ensemble_model.train(X_valid, y_valid)
     print 'Ensemble training error: ', ensemble_model.training_error
@@ -106,19 +107,19 @@ def conservative_ensembling(configs):
     utils_ensemble.persist_test_set_predictions(expid, y_test_pred)
 
 
-def prune_configs(configs_used, cv_result):
-    # prune if a config was never used during all the folds of CV.
-    configs_that_are_never_used = list(configs_used)
+def prune_configs(configs_used, cv_result, prune_percent=0.5):
+    # prune if a config was used less than prune_percent of the time
+    config_usage_count = {config_name: 0.0 for config_name in configs_used}
+
     for cv in cv_result:
         weights = cv['weights']
         config_names = np.array(cv['configs'])
 
-        unused_configs = config_names[(np.isclose(weights, np.zeros_like(weights)))]
-        for c in configs_that_are_never_used:
-            if c not in unused_configs:
-                configs_that_are_never_used.remove(c)
+        used_configs = config_names[np.invert((np.isclose(weights, np.zeros_like(weights))))]
+        for used_config in used_configs:
+            config_usage_count[used_config] += 0.1
 
-    return [config for config in configs_used if config not in configs_that_are_never_used]
+    return [config for config in configs_used if config_usage_count[config] >= prune_percent]
 
 
 def evaluate_test_set_performance(y_test, y_test_pred):
@@ -221,5 +222,5 @@ def calc_test_performance(config_name, predictions):
 
 
 print 'Starting ensemble procedure with {} configs'.format(len(CONFIGS))
-# aggressive_ensembling(CONFIGS)
-conservative_ensembling(CONFIGS)
+aggressive_ensembling(CONFIGS)
+# conservative_ensembling(CONFIGS)

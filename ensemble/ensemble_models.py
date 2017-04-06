@@ -22,8 +22,9 @@ class WeightedEnsemble(object):
         y = np.array(labels.values())
 
         weights = self.optimization_method(X, np.array(utils_ensemble.one_hot(y)))
-        for model_nr in range(len(self.models)):
-            config = self.models[model_nr]
+        models = predictions.keys()
+        for model_nr in range(len(models)):
+            config = models[model_nr]
             self.weights[config] = weights[model_nr]
 
         y_pred = self._weighted_average(predictions, self.weights)
@@ -35,6 +36,12 @@ class WeightedEnsemble(object):
     def predict_one_sample(self, X):
         assert len(X.values()[0]) == 1
         return self._weighted_average(X, self.weights).values()[0]
+
+    def print_weights(self):
+        print 'Ensemble weights: '
+        for config, weight in self.weights.iteritems():
+            if weight > 0.01:
+                print 'Weight for config {} is {:0.2%}'.format(config, weight)
 
     def _weighted_average(self, predictions, weights):
         """
