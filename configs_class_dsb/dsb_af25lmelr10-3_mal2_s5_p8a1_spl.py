@@ -1,6 +1,6 @@
 import numpy as np
 import data_transforms
-import data_iterators
+import data_iterators_hond as data_iterators
 import pathfinder
 import lasagne as nn
 import nn_lung
@@ -58,8 +58,8 @@ data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
 # data iterators
 batch_size = 1
 
-train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
-train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
+train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_LB_MIXED_SPLIT_PATH)
+train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['test']
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
 
@@ -83,16 +83,6 @@ valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               patient_ids=valid_pids,
                                                               random=False, infinite=False)
 
-
-test_data_iterator = data_iterators.DSBPatientsDataGeneratorTest(data_path=pathfinder.DATA_PATH,
-                                                              batch_size=1,
-                                                              transform_params=p_transform,
-                                                              n_candidates_per_patient=n_candidates_per_patient,
-                                                              data_prep_fun=data_prep_function_valid,
-                                                              id2candidates_path=id2candidates_path,
-                                                              rng=rng,
-                                                              patient_ids=test_pids,
-                                                              random=False, infinite=False)
 
 num_epochs=10
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size

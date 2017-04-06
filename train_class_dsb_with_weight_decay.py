@@ -184,7 +184,6 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
         print 'Validation loss: ', valid_loss
         losses_eval_valid.append(valid_loss)
 
-
         # load test data to GPU
         tmp_losses_test = []
         for i, (x_chunk_test, y_chunk_test, ids_batch) in enumerate(
