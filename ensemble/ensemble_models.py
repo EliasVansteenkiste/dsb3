@@ -38,10 +38,10 @@ class WeightedEnsemble(object):
         return self._weighted_average(X, self.weights).values()[0]
 
     def print_weights(self):
-        msg = 'Ensemble weights: '
+        msg = 'Ensemble weights:\n'
         for config, weight in self.weights.iteritems():
             if weight > 0.01:
-                msg += 'Weight for config {} is {:0.2%}'.format(config, weight)
+                msg += '\t\tWeight for config {} is {:0.2%}\n'.format(config, weight)
         return msg
 
     def _weighted_average(self, predictions, weights):

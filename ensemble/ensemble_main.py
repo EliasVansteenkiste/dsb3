@@ -33,7 +33,6 @@ GOOD_CONFIGS = ['dsb_af25lmeaapm_mal2_s5_p8a1', 'dsb_a_liolme32_c3_s5_p8a1', 'ds
 
 CONFIGS = FG_CONFIGS + CONFIGS + EV_CONFIGS
 OUTLIER_THRESHOLD = 0.10  # Disagreement threshold (%)
-DO_MAJORITY_VOTE = True
 DO_CV = False
 VERBOSE = False
 
@@ -75,7 +74,7 @@ def pruning_ensemble(configs, with_majority_vote):
         test_sample = filter_set(X_test, pid, configs_to_use)
         ensemble_pred = ensemble_model.predict_one_sample(test_sample)
         y_test_pred[pid] = majority_vote_rensemble_prediction(X_test, ensemble_pred,
-                                                              pid) if DO_MAJORITY_VOTE else ensemble_pred
+                                                              pid) if with_majority_vote else ensemble_pred
 
     ensemble_info['Ensemble model test set error'] = evaluate_test_set_performance(y_test, y_test_pred)
     utils_ensemble.persist_test_set_predictions(expid, y_test_pred)
@@ -116,7 +115,7 @@ def optimal_linear_ensembling(configs, with_majority_vote):
         test_sample = filter_set(X_test, pid, configs)
         ensemble_pred = ensemble_model.predict_one_sample(test_sample)
         y_test_pred[pid] = majority_vote_rensemble_prediction(X_test, ensemble_pred,
-                                                              pid) if DO_MAJORITY_VOTE else ensemble_pred
+                                                              pid) if with_majority_vote else ensemble_pred
 
     ensemble_info['Ensemble model test set error'] = evaluate_test_set_performance(y_test, y_test_pred)
     utils_ensemble.persist_test_set_predictions(expid, y_test_pred)
@@ -154,7 +153,7 @@ def cv_averaged_weight_ensembling(configs, with_majority_vote):
         test_sample = filter_set(X_test, pid, configs)
         ensemble_pred = ensemble_model.predict_one_sample(test_sample)
         y_test_pred[pid] = majority_vote_rensemble_prediction(X_test, ensemble_pred,
-                                                              pid) if DO_MAJORITY_VOTE else ensemble_pred
+                                                              pid) if with_majority_vote else ensemble_pred
 
     ensemble_info['Ensemble model test set error'] = evaluate_test_set_performance(y_test, y_test_pred)
     utils_ensemble.persist_test_set_predictions(expid, y_test_pred)
@@ -196,8 +195,8 @@ def prune_configs(configs_used, cv_result, prune_percent=0.5):
 
 
 def evaluate_test_set_performance(y_test, y_test_pred):
+    # TODO implement this in case we first reserve a part of the validation set as final test set to use internally
     test_logloss = utils_lung.evaluate_log_loss(y_test_pred, y_test)
-    # print 'Ensemble test logloss: ', test_logloss
     return test_logloss
 
 
@@ -300,15 +299,17 @@ def print_individual_configs_test_set_performance(configs):
 
 def print_individual_configs_validation_set_performance(configs):
     valid_set_predictions = {config: data_loading.get_predictions_of_config(config, 'valid') for config in configs}
-    individual_performance = {config: calc_test_performance(config, pred_valid) for config, pred_valid in
-                              valid_set_predictions.iteritems()}
-    for config, performance in individual_performance.iteritems():
-        print 'Logloss of config {} is {} on validation set'.format(config, performance)
+    valid_labels = data_loading.load_validation_labels()
+    for config, valid_preds in valid_set_predictions.iteritems():
+        print 'Logloss of config {} is {} on validation set'.format(config, utils_lung.evaluate_log_loss(valid_preds,
+                                                                                                         valid_labels))
 
 
 def print_ensemble_result(result):
     for k, v in result.iteritems():
         print k, ': ', v
+
+    print '\n'
 
 
 print 'Starting ensemble procedure with {} configs'.format(len(CONFIGS))
