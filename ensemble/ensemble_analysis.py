@@ -114,8 +114,8 @@ def analyse_predictions(valid_set_predictions, labels):
     from scipy.stats import pearsonr
 
     # Performance on validation set
-    for config, valid_preds in valid_set_predictions.iteritems():
-        print 'validation set logloss of config {} is {} '.format(config, utils_lung.evaluate_log_loss(valid_preds, labels))
+    # for config, valid_preds in valid_set_predictions.iteritems():
+    #     print 'validation set logloss of config {} is {} '.format(config, utils_lung.evaluate_log_loss(valid_preds, labels))
 
     if VERBOSE: print 'Correlation between predictions: '
     X = utils_ensemble.predictions_dict_to_3d_array(valid_set_predictions)

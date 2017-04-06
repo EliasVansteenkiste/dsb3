@@ -38,7 +38,7 @@ DO_CV = False
 VERBOSE = True
 
 
-def aggressive_ensembling(configs):
+def pruning_ensemble(configs):
     """
     Take models trained on all the data. Do a cross validation to get a ranking between the models. Choose the top N models.
     Merge these top N model into an equally weighted model.
@@ -75,7 +75,7 @@ def aggressive_ensembling(configs):
     utils_ensemble.persist_test_set_predictions(expid, y_test_pred)
 
 
-def conservative_ensembling(configs):
+def optimal_linear_ensembling(configs):
     """
     Take models trained on training data. Optimise the hell out of it using the validation data.
     This is to protect against overfitted or very bad models.
@@ -109,6 +109,56 @@ def conservative_ensembling(configs):
     utils_ensemble.persist_test_set_predictions(expid, y_test_pred)
 
 
+def cv_averaged_weight_ensembling(configs):
+    """
+    Average the weights of a 10 SKF CV together with a full retrain of the weights to get the final ensemble weights.
+    """
+    expid = utils.generate_expid('cv_averaged_weight_ensembling')
+    X_valid, y_valid = load_data(configs, 'validation')
+    anal.analyse_predictions(X_valid, y_valid)
+
+    cv = do_cross_validation(X_valid, y_valid, configs, em.optimal_linear_weights)
+
+    ensemble_model = em.WeightedEnsemble(configs, optimization_method=em.optimal_linear_weights)
+    ensemble_model.train(X_valid, y_valid)
+
+    ensemble_model = average_weights_with_cv(ensemble_model, cv)
+    ensemble_model.print_weights()
+
+    X_test, y_test = load_data(configs, 'test')
+    test_pids = y_test.keys()
+
+    y_test_pred = {}
+
+    for pid in test_pids:
+        test_sample = filter_set(X_test, pid, configs)
+        ensemble_pred = ensemble_model.predict_one_sample(test_sample)
+        y_test_pred[pid] = majority_vote_rensemble_prediction(X_test, ensemble_pred,
+                                                              pid) if DO_MAJORITY_VOTE else ensemble_pred
+
+    evaluate_test_set_performance(y_test, y_test_pred)
+    utils_ensemble.persist_test_set_predictions(expid, y_test_pred)
+
+
+def average_weights_with_cv(ensemble_model, cv_result):
+    config_weights = dict(ensemble_model.weights)
+    N = 1
+    for cv in cv_result:
+        N += 1
+        weights = cv['weights']
+        config_names = np.array(cv['configs'])
+
+        for config_nr in range(len(config_names)):
+            config_name = config_names[config_nr]
+            weight = weights[config_nr]
+
+            config_weights[config_name] = config_weights[config_name] + 1.0 / N * (weight - config_weights[config_name])
+
+    new_ensemble_model = em.WeightedEnsemble(ensemble_model.models, optimization_method=em.linear_optimal_ensemble)
+    new_ensemble_model.weights = config_weights
+    return new_ensemble_model
+
+
 def prune_configs(configs_used, cv_result, prune_percent=0.5):
     # prune if a config was used less than prune_percent of the time
     config_usage_count = {config_name: 0.0 for config_name in configs_used}
@@ -128,8 +178,8 @@ def evaluate_test_set_performance(y_test, y_test_pred):
     test_set_predictions = {config: data_loading.get_predictions_of_config(config, 'test') for config in CONFIGS}
     individual_performance = {config: calc_test_performance(config, pred_test) for config, pred_test in
                               test_set_predictions.iteritems()}
-    for config, performance in individual_performance.iteritems():
-        print 'Logloss of config {} is {} on test set'.format(config, performance)
+    # for config, performance in individual_performance.iteritems():
+    #     print 'Logloss of config {} is {} on test set'.format(config, performance)
     test_logloss = utils_lung.evaluate_log_loss(y_test_pred, y_test)
     print 'Ensemble test logloss: ', test_logloss
 
@@ -225,12 +275,17 @@ def calc_test_performance(config_name, predictions):
 
 print 'Starting ensemble procedure with {} configs'.format(len(CONFIGS))
 
-print '\n--------------------\n'
-print 'AGGRESSIVE ENSEMBLE'
-print '\n--------------------\n'
-aggressive_ensembling(CONFIGS)
+print '\n--------------------'
+print 'PRUNING ENSEMBLE'
+print '--------------------\n'
+pruning_ensemble(CONFIGS)
 
-print '\n--------------------\n'
-print 'CONSERVATIVE ENSEMBLE'
-print '\n--------------------\n'
-conservative_ensembling(CONFIGS)
+print '\n--------------------'
+print 'optimal_linear_ensembling'
+print '--------------------\n'
+optimal_linear_ensembling(CONFIGS)
+
+print '\n--------------------'
+print 'CV AVERAGED ENSEMBLE'
+print '--------------------\n'
+cv_averaged_weight_ensembling(CONFIGS)
