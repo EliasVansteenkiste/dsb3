@@ -299,7 +299,7 @@ def print_individual_configs_test_set_performance(configs):
 
 
 def print_individual_configs_validation_set_performance(configs):
-    valid_set_predictions = {config: data_loading.get_predictions_of_config(config, 'validation') for config in configs}
+    valid_set_predictions = {config: data_loading.get_predictions_of_config(config, 'valid') for config in configs}
     individual_performance = {config: calc_test_performance(config, pred_valid) for config, pred_valid in
                               valid_set_predictions.iteritems()}
     for config, performance in individual_performance.iteritems():
