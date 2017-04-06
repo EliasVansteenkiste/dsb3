@@ -74,7 +74,7 @@ train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               patient_ids=train_pids,
                                                               random=True, infinite=True)
 
-valid_data_iterator =data_iterators.DSBPatientsDataGeneratorTest(data_path=pathfinder.DATA_PATH,
+valid_data_iterator =data_iterators.DSBPatientsDataGeneratorTestWithLabels(data_path=pathfinder.DATA_PATH,
                                                               batch_size=1,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -97,7 +97,7 @@ valid_data_iterator =data_iterators.DSBPatientsDataGeneratorTest(data_path=pathf
                                                               # random=False, infinite=False)
 
 
-test_data_iterator = data_iterators.DSBPatientsDataGeneratorTest(data_path=pathfinder.DATA_PATH,
+test_data_iterator = data_iterators.DSBPatientsDataGeneratorTestWithLabels(data_path=pathfinder.DATA_PATH,
                                                               batch_size=1,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
