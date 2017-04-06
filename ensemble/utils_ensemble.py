@@ -77,8 +77,8 @@ def find_model_preds_expid(preds_dir, config_name):
         raise ValueError('No prediction files for config %s' % (config_name))
     elif len(exp_ids) > 1:
         print '\nWARNING: Multiple prediction files for config %s' % config_name
-        print 'Taking the most recent predictions for this config...\n'
-        return exp_ids[len(exp_ids) - 1]
+        print 'Taking the most recent predictions for this config ({})\n'.format(max(np.array(exp_ids)))
+        return max(np.array(exp_ids))
     return exp_ids[0]
 
 
