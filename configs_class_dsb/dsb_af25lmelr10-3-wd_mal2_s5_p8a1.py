@@ -23,7 +23,7 @@ candidates_path = predictions_dir + '/%s' % candidates_config
 id2candidates_path = utils_lung.get_candidates_paths(candidates_path)
 
 # used regularization norm 
-reg_norm=lambda x : T.sum(x**2,keepdims=False)
+reg_norm=lambda x : T.sum(np.sqrt(x**2),keepdims=False)
 
 # transformations
 p_transform = {'patch_size': (48, 48, 48),

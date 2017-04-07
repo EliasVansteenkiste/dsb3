@@ -63,7 +63,7 @@ train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['test']
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
 
-train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
+train_data_iterator = data_iterators.DSBPatientsDataGeneratorTrainPlusTest(data_path=pathfinder.DATA_PATH,
                                                               batch_size=batch_size,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -73,7 +73,7 @@ train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               patient_ids=train_pids,
                                                               random=True, infinite=True)
 
-valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
+valid_data_iterator = data_iterators.DSBPatientsDataGeneratorTrainPlusTest(data_path=pathfinder.DATA_PATH,
                                                               batch_size=1,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,

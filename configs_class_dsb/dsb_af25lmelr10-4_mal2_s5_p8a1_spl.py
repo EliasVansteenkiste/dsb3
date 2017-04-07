@@ -1,6 +1,6 @@
 import numpy as np
 import data_transforms
-import data_iterators
+import data_iterators_hond as data_iterators
 import pathfinder
 import lasagne as nn
 import nn_lung
@@ -21,9 +21,6 @@ rng = np.random.RandomState(42)
 predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH)
 candidates_path = predictions_dir + '/%s' % candidates_config
 id2candidates_path = utils_lung.get_candidates_paths(candidates_path)
-
-# used regularization norm 
-reg_norm=lambda x : T.sum(x**2,keepdims=False)
 
 # transformations
 p_transform = {'patch_size': (48, 48, 48),
@@ -61,12 +58,12 @@ data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
 # data iterators
 batch_size = 1
 
-train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
-train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
+train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_LB_MIXED_SPLIT_PATH)
+train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['test']
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
 
-train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
+train_data_iterator = data_iterators.DSBPatientsDataGeneratorTrainPlusTest(data_path=pathfinder.DATA_PATH,
                                                               batch_size=batch_size,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -76,7 +73,7 @@ train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               patient_ids=train_pids,
                                                               random=True, infinite=True)
 
-valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
+valid_data_iterator = data_iterators.DSBPatientsDataGeneratorTrainPlusTest(data_path=pathfinder.DATA_PATH,
                                                               batch_size=1,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
@@ -87,34 +84,18 @@ valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               random=False, infinite=False)
 
 
-test_data_iterator = data_iterators.DSBPatientsDataGeneratorTestWithLabels(data_path=pathfinder.DATA_PATH,
-                                                              batch_size=1,
-                                                              transform_params=p_transform,
-                                                              n_candidates_per_patient=n_candidates_per_patient,
-                                                              data_prep_fun=data_prep_function_valid,
-                                                              id2candidates_path=id2candidates_path,
-                                                              rng=rng,
-                                                              patient_ids=test_pids,
-                                                              random=False, infinite=False)
-
+num_epochs=10
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size
-max_nchunks = nchunks_per_epoch * 10
+max_nchunks = nchunks_per_epoch * num_epochs
 
 validate_every = int(1 * nchunks_per_epoch)
 save_every = int(0.25 * nchunks_per_epoch)
 
 learning_rate_schedule = {
     0: 1e-5,
-    int(7 * nchunks_per_epoch): 5e-9,
-    int(9 * nchunks_per_epoch): 2e-9
+    int(6* nchunks_per_epoch): 5e-9,
+    int(9 * nchunks_per_epoch): 1e-9
 }
-
-weight_decay_schedule = {
-    0: 1e-6,
-    int(7 * nchunks_per_epoch): 5e-10,
-    int(9 * nchunks_per_epoch): 2e-10
-}
-
 
 # model
 # model
@@ -217,9 +198,10 @@ def load_pretrained_model(l_in):
 
 
 def build_model():
-    l_in = nn.layers.InputLayer((None, n_candidates_per_patient, 1,) + p_transform['patch_size'])
-    l_in_rshp = nn.layers.ReshapeLayer(l_in, (-1, 1,) + p_transform['patch_size'])
-    l_target = nn.layers.InputLayer((batch_size,))
+    l_in = nn.layers.InputLayer((batch_size*n_candidates_per_patient,) + p_transform['patch_size'])
+    l_in_rshp =nn.layers.DimshuffleLayer(l_in,(0,'x',1,2,3))
+    #l_in_rshp = nn.layers.ReshapeLayer(l_in, (-1, 1,) + p_transform['patch_size'])
+    l_target = nn.layers.InputLayer((None,))
 
     l = load_pretrained_model(l_in_rshp)
 
@@ -235,14 +217,14 @@ def build_model():
 
     #l = nn.layers.DropoutLayer(l)
 
-    l = nn.layers.ReshapeLayer(l, (-1, n_candidates_per_patient, 1))
+    l = nn.layers.ReshapeLayer(l, (batch_size,n_candidates_per_patient))
 
-    l_out = nn_lung.LogMeanExp(l,r=16, axis=(1, 2), name='LME')
+    l_out = nn_lung.LogMeanExp(l,r=16, axis=(1, ), name='LME')
 
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 
 
-def build_objective(model, deterministic=False,epsilon=1e-12):
+def build_objective(model, deterministic=False, epsilon=1e-12):
     p = nn.layers.get_output(model.l_out, deterministic=deterministic)
     targets = T.flatten(nn.layers.get_output(model.l_target))
     p = T.clip(p, epsilon, 1.-epsilon)
