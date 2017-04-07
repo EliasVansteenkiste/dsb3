@@ -30,7 +30,7 @@ def pruning_ensemble(configs, with_majority_vote):
     expid = utils.generate_expid(name)
 
     X_valid, y_valid = load_data(configs, 'validation')
-    anal.analyse_predictions(X_valid, y_valid)
+    # anal.analyse_predictions(X_valid, y_valid)
 
     cv = do_cross_validation(X_valid, y_valid, configs, em.optimal_linear_weights)
     if DO_CV:
@@ -42,14 +42,14 @@ def pruning_ensemble(configs, with_majority_vote):
 
     X_valid, y_valid = load_data(configs_to_use, 'validation')
     ensemble_model = em.WeightedEnsemble(configs_to_use,
-                                         optimization_method=em.optimal_linear_weights)  # TODO find best setting !!!
+                                         optimization_method=em.optimal_linear_weights)
     ensemble_model.train(X_valid, y_valid)
     ensemble_info['Ensemble training error'] = ensemble_model.training_error
     ensemble_info['Ensemble model weights'] = ensemble_model.print_weights()
     ensemble_info['ensemble_model'] = ensemble_model
 
     X_test, y_test = load_data(configs_to_use, 'test')
-    test_pids = y_test.keys()
+    test_pids = X_test.values()[0].keys()
 
     y_test_pred = {}
 
@@ -61,7 +61,6 @@ def pruning_ensemble(configs, with_majority_vote):
 
     ensemble_info['out_of_sample_error'] = evaluate_test_set_performance(y_test, y_test_pred)
     ensemble_info['y_test_pred'] = y_test_pred
-    utils_ensemble.persist_test_set_predictions(expid, y_test_pred)
 
     return ensemble_info
 
@@ -91,7 +90,7 @@ def optimal_linear_ensembling(configs, with_majority_vote):
     ensemble_info['Ensemble model weights'] = ensemble_model.print_weights()
 
     X_test, y_test = load_data(configs, 'test')
-    test_pids = y_test.keys()
+    test_pids = X_test.values()[0].keys()
 
     y_test_pred = {}
 
@@ -103,7 +102,6 @@ def optimal_linear_ensembling(configs, with_majority_vote):
 
     ensemble_info['out_of_sample_error'] = evaluate_test_set_performance(y_test, y_test_pred)
     ensemble_info['y_test_pred'] = y_test_pred
-    utils_ensemble.persist_test_set_predictions(expid, y_test_pred)
     return ensemble_info
 
 
@@ -130,7 +128,7 @@ def cv_averaged_weight_ensembling(configs, with_majority_vote):
     ensemble_info['Ensemble model weights'] = ensemble_model.print_weights()
 
     X_test, y_test = load_data(configs, 'test')
-    test_pids = y_test.keys()
+    test_pids = X_test.values()[0].keys()
 
     y_test_pred = {}
 
@@ -142,7 +140,6 @@ def cv_averaged_weight_ensembling(configs, with_majority_vote):
 
     ensemble_info['out_of_sample_error'] = evaluate_test_set_performance(y_test, y_test_pred)
     ensemble_info['y_test_pred'] = y_test_pred
-    utils_ensemble.persist_test_set_predictions(expid, y_test_pred)
     return ensemble_info
 
 
@@ -435,12 +432,12 @@ def offensive_ensemble(configs_to_use):
         return uniform_ensemble, y_test_pred
 
 
-if __name__ == '__main__':
+if __name__ == '__main__' and not experimental_mode:
     print 'Starting ensembling for stage ', pathfinder.STAGE, ' of the competition'
     defensive_ensemble_model, defensive_ensemble_test_predictions = defensive_ensemble(ec.get_spl_configs())
     offensive_ensemble_model, offensive_ensemble_test_predictions = offensive_ensemble(defensive_ensemble_model.models)
 
-    ensemble_submission_path = utils.get_dir_path('submissions/ensemble', pathfinder.METADATA_PATH)
+    ensemble_submission_path = utils.get_dir_path('submissions/final', pathfinder.METADATA_PATH)
     submission_1_path = ensemble_submission_path + 'final_kaggle_submission_1.csv'
     submission_2_path = ensemble_submission_path + 'final_kaggle_submission_2.csv'
     utils_lung.write_submission(defensive_ensemble_test_predictions, submission_1_path)
