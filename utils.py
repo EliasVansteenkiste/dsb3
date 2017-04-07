@@ -39,7 +39,7 @@ def check_data_paths(data_path):
         raise ValueError('wrong path to DICOM data')
 
 
-def get_dir_path(dir_name, root_dir, no_name=False):
+def get_dir_path(dir_name, root_dir, no_name=True):
     if no_name:
         username = ''
     else:
