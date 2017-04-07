@@ -21,6 +21,10 @@ config_name = sys.argv[1]
 set_configuration('configs_class_dsb', config_name)
 
 set = sys.argv[2] if len(sys.argv) == 3 else 'test'
+type_set = set
+if set=="test" and pathfinder.STAGE==2:
+    set="stage2"
+
 
 # metadata
 metadata_dir = utils.get_dir_path('models', pathfinder.METADATA_PATH)
@@ -68,7 +72,7 @@ nn.layers.set_all_param_values(model.l_out, metadata['param_values'])
 # theano functions
 iter_test = theano.function([model.l_in.input_var,model.l_in_coords.input_var], nn.layers.get_output(model.l_out, deterministic=True))
 
-if set == 'test':
+if type_set == 'test':
     pid2label = utils_lung.read_test_labels(pathfinder.TEST_LABELS_PATH)
     data_iterator = config().test_data_iterator
 
@@ -95,7 +99,7 @@ if set == 'test':
     loss = evaluate_submission.leaderboard_performance(output_csv_file)
     print loss
 
-elif set == 'valid':
+elif type_set == 'valid':
     data_iterator = config().valid_data_iterator
 
     print
