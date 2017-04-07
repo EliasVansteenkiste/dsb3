@@ -57,26 +57,19 @@ def label_prep_function(annotation,properties_included):
 
 
 # data preparation function
-def data_prep_function(data, patch_center, pixel_spacing, luna_origin, p_transform,
-                       p_transform_augment, world_coord_system, centroid,**kwargs):
-    x, patch_annotation_tf,patch_centroid_diff = data_transforms.transform_patch3d(data=data,
-                                                               luna_annotations=None,
+def data_prep_function(patch_center, pixel_spacing, luna_origin,  centroid, world_coord_system,**kwargs):
+    patch_centroid_diff = data_transforms.transform_centroiddiff(
+
                                                                patch_center=patch_center,
-                                                               p_transform=p_transform,
-                                                               p_transform_augment=p_transform_augment,
                                                                pixel_spacing=pixel_spacing,
                                                                luna_origin=luna_origin,
                                                                world_coord_system=world_coord_system,
                                                                centroid=centroid)
-    x = data_transforms.hu2normHU(x)
-
-    return x,patch_centroid_diff
+    return patch_centroid_diff
 
 
-data_prep_function_train = partial(data_prep_function, p_transform_augment=p_transform_augment,
-                                   p_transform=p_transform, world_coord_system=True)
-data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
-                                   p_transform=p_transform, world_coord_system=True)
+data_prep_function_train = partial(data_prep_function, world_coord_system=True)
+data_prep_function_valid = partial(data_prep_function, world_coord_system=True)
 
 # data iterators
 batch_size = 16
@@ -127,9 +120,8 @@ def build_model():
     l_in = nn.layers.InputLayer((None,3))
     l_target = nn.layers.InputLayer((None, 1))
 
-    l = nn.layers.DenseLayer(l_in,50,W=nn.init.Orthogonal("relu"),nonlinearity=nn.nonlinearities.rectify)
-    #l = nn.layers.DropoutLayer(l)
-    l = nn.layers.DenseLayer(l, 50, W=nn.init.Orthogonal("relu"), nonlinearity=nn.nonlinearities.rectify)
+    l = nn.layers.DenseLayer(l_in,50,W=nn.init.Orthogonal("relu"),nonlinearity=nn.nonlinearities.very_leaky_rectify)
+    l = nn.layers.DenseLayer(l, 50, W=nn.init.Orthogonal("relu"), nonlinearity=nn.nonlinearities.very_leaky_rectify)
 
     l_out = nn.layers.DenseLayer(l,1,nonlinearity=nn.nonlinearities.sigmoid)
 

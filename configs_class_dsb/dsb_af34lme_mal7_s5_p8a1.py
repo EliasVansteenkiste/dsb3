@@ -22,8 +22,6 @@ predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PA
 candidates_path = predictions_dir + '/%s' % candidates_config
 id2candidates_path = utils_lung.get_candidates_paths(candidates_path)
 
-pretrained_weights = "r_fred_malignancy_2-20170328-230443.pkl"
-
 # transformations
 p_transform = {'patch_size': (48, 48, 48),
                'mm_patch_size': (48, 48, 48),
@@ -38,7 +36,7 @@ p_transform_augment = {
     'rotation_range_y': [-10, 10],
     'rotation_range_x': [-10, 10]
 }
-n_candidates_per_patient = 8
+n_candidates_per_patient = 12
 
 
 def data_prep_function(data, patch_centers, pixel_spacing, p_transform,
@@ -47,7 +45,7 @@ def data_prep_function(data, patch_centers, pixel_spacing, p_transform,
                                                  patch_centers=patch_centers,
                                                  p_transform=p_transform,
                                                  p_transform_augment=p_transform_augment,
-                                                 pixel_spacing=pixel_spacing)
+                                                 pixel_spacing=pixel_spacing,order=0)
     x = data_transforms.hu2normHU(x)
     return x
 
@@ -86,15 +84,15 @@ valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               random=False, infinite=False)
 
 
-# test_data_iterator = data_iterators.DSBPatientsDataGeneratorTest(data_path=pathfinder.DATA_PATH,
-#                                                               batch_size=1,
-#                                                               transform_params=p_transform,
-#                                                               n_candidates_per_patient=n_candidates_per_patient,
-#                                                               data_prep_fun=data_prep_function_valid,
-#                                                               id2candidates_path=id2candidates_path,
-#                                                               rng=rng,
-#                                                               patient_ids=test_pids,
-#                                                               random=False, infinite=False)
+test_data_iterator = data_iterators.DSBPatientsDataGeneratorTest(data_path=pathfinder.DATA_PATH,
+                                                              batch_size=1,
+                                                              transform_params=p_transform,
+                                                              n_candidates_per_patient=n_candidates_per_patient,
+                                                              data_prep_fun=data_prep_function_valid,
+                                                              id2candidates_path=id2candidates_path,
+                                                              rng=rng,
+                                                              patient_ids=test_pids,
+                                                              random=False, infinite=False)
 
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size
 max_nchunks = nchunks_per_epoch * 10
@@ -205,7 +203,7 @@ def load_pretrained_model(l_in):
                 b=nn.init.Constant(0))
 
 
-    metadata = utils.load_pkl(os.path.join(pathfinder.METADATA_PATH,"models",pretrained_weights))
+    metadata = utils.load_pkl(os.path.join("/home/frederic/kaggle-dsb3/metadata/models/frederic/","r_fred_malignancy_7-20170404-163552.pkl"))
     nn.layers.set_all_param_values(l, metadata['param_values'])
 
     return l

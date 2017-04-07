@@ -22,6 +22,8 @@ predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PA
 candidates_path = predictions_dir + '/%s' % candidates_config
 id2candidates_path = utils_lung.get_candidates_paths(candidates_path)
 
+pretrained_weights = "r_fred_malignancy_2-20170328-230443.pkl"
+
 # transformations
 p_transform = {'patch_size': (48, 48, 48),
                'mm_patch_size': (48, 48, 48),
@@ -37,6 +39,8 @@ p_transform_augment = {
     'rotation_range_x': [-10, 10]
 }
 n_candidates_per_patient = 8
+
+pretrained_weights = "r_fred_malignancy_2-20170328-230443.pkl"
 
 
 def data_prep_function(data, patch_centers, pixel_spacing, p_transform,
@@ -202,8 +206,7 @@ def load_pretrained_model(l_in):
     l = nn.layers.DenseLayer(l,1,nonlinearity=nn.nonlinearities.sigmoid, W=nn.init.Orthogonal(),
                 b=nn.init.Constant(0))
 
-
-    metadata = utils.load_pkl(os.path.join("/home/frederic/kaggle-dsb3/metadata/models/frederic/","r_fred_malignancy_2-20170328-230443.pkl"))
+    metadata = utils.load_pkl(os.path.join(pathfinder.METADATA_PATH, "models", pretrained_weights))
     nn.layers.set_all_param_values(l, metadata['param_values'])
 
     return l

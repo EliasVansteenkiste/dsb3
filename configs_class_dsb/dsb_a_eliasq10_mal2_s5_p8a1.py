@@ -1,3 +1,5 @@
+# like dsb_af25lme_mal2_s5_p8a1, but 12 candidates instead of 8 and interpolation order 0 instead of 1
+
 import numpy as np
 import data_transforms
 import data_iterators
@@ -22,12 +24,11 @@ predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PA
 candidates_path = predictions_dir + '/%s' % candidates_config
 id2candidates_path = utils_lung.get_candidates_paths(candidates_path)
 
-pretrained_weights = "r_fred_malignancy_2-20170328-230443.pkl"
-
 # transformations
 p_transform = {'patch_size': (48, 48, 48),
                'mm_patch_size': (48, 48, 48),
-               'pixel_spacing': (1., 1., 1.)
+               'pixel_spacing': (1., 1., 1.),
+               'order': 0,
                }
 
 p_transform_augment = {
@@ -38,7 +39,7 @@ p_transform_augment = {
     'rotation_range_y': [-10, 10],
     'rotation_range_x': [-10, 10]
 }
-n_candidates_per_patient = 8
+n_candidates_per_patient = 12
 
 
 def data_prep_function(data, patch_centers, pixel_spacing, p_transform,
@@ -56,6 +57,23 @@ data_prep_function_train = partial(data_prep_function, p_transform_augment=p_tra
                                    p_transform=p_transform)
 data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
                                    p_transform=p_transform)
+data_prep_function_tta = partial(data_prep_function, p_transform_augment=p_transform_augment,
+                                   p_transform=p_transform)
+
+
+cutoff_p_nodule = 0.75
+def candidates_prep_function(all_candidates, n_selection=None):
+    if n_selection:
+        all_candidates = all_candidates[:n_selection]
+
+    selected_candidates = []
+    for candidate in all_candidates:
+        if candidate[-1]<cutoff_p_nodule:
+            selected_candidates.append([-1,-1,-1,-1])
+        else:
+            selected_candidates.append(candidate)
+
+    return selected_candidates
 
 # data iterators
 batch_size = 1
@@ -70,6 +88,7 @@ train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
                                                               data_prep_fun=data_prep_function_train,
+                                                              candidates_prep_fun = candidates_prep_function,
                                                               id2candidates_path=id2candidates_path,
                                                               rng=rng,
                                                               patient_ids=train_pids,
@@ -80,21 +99,33 @@ valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
                                                               data_prep_fun=data_prep_function_valid,
+                                                              candidates_prep_fun = candidates_prep_function,
                                                               id2candidates_path=id2candidates_path,
                                                               rng=rng,
                                                               patient_ids=valid_pids,
                                                               random=False, infinite=False)
 
 
-# test_data_iterator = data_iterators.DSBPatientsDataGeneratorTest(data_path=pathfinder.DATA_PATH,
-#                                                               batch_size=1,
-#                                                               transform_params=p_transform,
-#                                                               n_candidates_per_patient=n_candidates_per_patient,
-#                                                               data_prep_fun=data_prep_function_valid,
-#                                                               id2candidates_path=id2candidates_path,
-#                                                               rng=rng,
-#                                                               patient_ids=test_pids,
-#                                                               random=False, infinite=False)
+test_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
+                                                              batch_size=1,
+                                                              transform_params=p_transform,
+                                                              n_candidates_per_patient=n_candidates_per_patient,
+                                                              data_prep_fun=data_prep_function_valid,
+                                                              candidates_prep_fun = candidates_prep_function,
+                                                              id2candidates_path=id2candidates_path,
+                                                              rng=rng,
+                                                              patient_ids=test_pids,
+                                                              random=False, infinite=False)
+
+
+tta_test_data_iterator = data_iterators.DSBPatientsDataGeneratorTTA(data_path=pathfinder.DATA_PATH,
+                                                              transform_params=p_transform,
+                                                              id2candidates_path=id2candidates_path,
+                                                              data_prep_fun=data_prep_function_tta,
+                                                              candidates_prep_fun = candidates_prep_function,
+                                                              n_candidates_per_patient=n_candidates_per_patient,
+                                                              patient_ids=test_pids,
+                                                              tta = 64)
 
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size
 max_nchunks = nchunks_per_epoch * 10
@@ -205,14 +236,14 @@ def load_pretrained_model(l_in):
                 b=nn.init.Constant(0))
 
 
-    metadata = utils.load_pkl(os.path.join(pathfinder.METADATA_PATH,"models",pretrained_weights))
+    metadata = utils.load_pkl(os.path.join("/home/eavsteen/dsb3/storage/metadata/dsb3/models/eavsteen/","r_fred_malignancy_2-20170328-230443.pkl"))
     nn.layers.set_all_param_values(l, metadata['param_values'])
 
     return l
 
 
 def build_model():
-    l_in = nn.layers.InputLayer((None, n_candidates_per_patient, 1,) + p_transform['patch_size'])
+    l_in = nn.layers.InputLayer((None, n_candidates_per_patient,) + p_transform['patch_size'])
     l_in_rshp = nn.layers.ReshapeLayer(l_in, (-1, 1,) + p_transform['patch_size'])
     l_target = nn.layers.InputLayer((batch_size,))
 

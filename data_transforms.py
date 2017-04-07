@@ -173,78 +173,20 @@ def transform_patch3d(data, pixel_spacing, p_transform,
     else:
         return data_out, patch_annotation_out, difference
 
-def transform_centroiddiff(data, pixel_spacing, p_transform,
-                      patch_center,
+def transform_centroiddiff(pixel_spacing,
                       luna_origin,
-                      luna_annotations=None,
-                      p_transform_augment=None,
-                      world_coord_system=True, centroid=None):
-    mm_patch_size = np.asarray(p_transform['mm_patch_size'], dtype='float32')
-    out_pixel_spacing = np.asarray(p_transform['pixel_spacing'])
-
-    input_shape = np.asarray(data.shape)
-    mm_shape = input_shape * pixel_spacing / out_pixel_spacing
-    output_shape = p_transform['patch_size']
+                      patch_center,
+                      centroid,
+                      world_coord_system=True):
 
     zyx = np.array(patch_center[:3])
     voxel_coords = utils_lung.world2voxel(zyx, luna_origin, pixel_spacing) if world_coord_system else zyx
-    voxel_coords_mm = voxel_coords * mm_shape / input_shape
 
-    # here we give parameters to affine transform as if it's T in
-    # output = T.dot(input)
-    # https://www.cs.mtu.edu/~shene/COURSES/cs3621/NOTES/geometry/geo-tran.html
-    # but the affine_transform() makes it reversed for scipy
-    tf_mm_scale = affine_transform(scale=mm_shape / input_shape)
-    tf_shift_center = affine_transform(translation=-voxel_coords_mm)
+    difference = voxel_coords[0:3]-centroid
+    difference*=pixel_spacing
 
-    tf_shift_uncenter = affine_transform(translation=mm_patch_size / 2.)
-    tf_output_scale = affine_transform(scale=output_shape / mm_patch_size)
 
-    if p_transform_augment:
-        augment_params_sample = sample_augmentation_parameters(p_transform_augment)
-        # print 'augmentation parameters', augment_params_sample
-        tf_augment = affine_transform(translation=augment_params_sample.translation,
-                                      rotation=augment_params_sample.rotation)
-        tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_augment).dot(tf_shift_uncenter).dot(tf_output_scale)
-    else:
-        tf_total = tf_mm_scale.dot(tf_shift_center).dot(tf_shift_uncenter).dot(tf_output_scale)
-
-    data_out = apply_affine_transform(data, tf_total, order=order, output_shape=output_shape)
-
-    # transform patch annotations
-    diameter_mm = patch_center[-1]
-    diameter_out = diameter_mm * output_shape[1] / mm_patch_size[1] / out_pixel_spacing[1]
-
-    voxel_coords = np.append(voxel_coords, [1])
-    voxel_coords_out = np.linalg.inv(tf_total).dot(voxel_coords)[:3]
-
-    if centroid is not None:
-        #patch_center_out = voxel_coords
-
-        difference = voxel_coords[0:3]-centroid
-        difference*=pixel_spacing
-
-    patch_annotation_out = np.rint(np.append(voxel_coords_out, diameter_out))
-    # print 'pathch_center_after_transform', patch_annotation_out
-
-    if luna_annotations is not None:
-        annotatations_out = []
-        for zyxd in luna_annotations:
-            zyx = np.array(zyxd[:3])
-            voxel_coords = utils_lung.world2voxel(zyx, luna_origin, pixel_spacing) if world_coord_system else zyx
-            voxel_coords = np.append(voxel_coords, [1])
-            voxel_coords_out = np.linalg.inv(tf_total).dot(voxel_coords)[:3]
-            diameter_mm = zyxd[-1]
-            diameter_out = diameter_mm * output_shape[1] / mm_patch_size[1] / out_pixel_spacing[1]
-            zyxd_out = np.rint(np.append(voxel_coords_out, diameter_out))
-            annotatations_out.append(zyxd_out)
-        annotatations_out = np.asarray(annotatations_out)
-        return data_out, patch_annotation_out, annotatations_out
-
-    if centroid is None:
-        return data_out, patch_annotation_out
-    else:
-        return data_out, patch_annotation_out, difference
+    return difference
 
 def transform_dsb_candidates(data, patch_centers, pixel_spacing, p_transform,
                              p_transform_augment=None,order=1,centroid=None):
@@ -279,12 +221,14 @@ def transform_dsb_candidates(data, patch_centers, pixel_spacing, p_transform,
 
         if centroid is not None:
             diff = (zyx-centroid)*pixel_spacing
+            if p_transform_augment:
+                diff+=augment_params_sample.translation
             diffs_out.append(diff)
 
     if centroid is None:
         return np.concatenate(patches_out, axis=0)
     else:
-        return np.concatenate(patches_out, axis=0), np.concatenate(diffs_out, axis=0)
+        return np.concatenate(patches_out, axis=0), np.vstack(diffs_out)
 
 
 def make_3d_mask(img_shape, center, radius, shape='sphere'):

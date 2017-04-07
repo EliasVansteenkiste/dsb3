@@ -393,6 +393,7 @@ class CandidatesPropertiesLunaXYZDataGenerator(object):
         id2positive_annotations = utils_lung.read_luna_properties(pathfinder.LUNA_PROPERTIES_PATH)
         id2negative_annotations = utils_lung.read_luna_negative_candidates(pathfinder.LUNA_CANDIDATES_PATH)
         self.centroids = utils.load_pkl(pathfinder.CENTROID_LUNA_PATH)
+        self.origin_pixelspacing = utils.load_pkl(pathfinder.PIXEL_SPACING_LUNA_PATH)
 
 
         self.file_extension = '.pkl' if 'pkl' in data_path else '.mhd'
@@ -476,13 +477,12 @@ class CandidatesPropertiesLunaXYZDataGenerator(object):
                     y_batch[i] = self.label_prep_fun(patch_annotation,self.properties_included)
                     # print pid, y_batch[i]
 
-                    img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
-                        if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
+                    pixel_spacing = self.origin_pixelspacing[pid]["pixel_spacing"]
+                    origin = self.origin_pixelspacing[pid]["origin"]
 
                     patch_zyxd = patch_annotation[:4]
                     centroid = self.centroids[pid]
-                    x_tf, p_c_difference = self.data_prep_fun(data=img,
-                                                                patch_center=patch_zyxd,
+                    p_c_difference = self.data_prep_fun(  patch_center=patch_zyxd,
                                                                 pixel_spacing=pixel_spacing,
                                                                 luna_origin=origin,
                                                                 centroid=centroid)
@@ -580,7 +580,7 @@ class CandidatesLunaValidXYZDataGenerator(object):
         id2positive_annotations = utils_lung.read_luna_properties(pathfinder.LUNA_PROPERTIES_PATH)
         id2negative_annotations = utils_lung.read_luna_negative_candidates(pathfinder.LUNA_CANDIDATES_PATH)
         self.centroids = utils.load_pkl(pathfinder.CENTROID_LUNA_PATH)
-
+        self.origin_pixelspacing = utils.load_pkl(pathfinder.PIXEL_SPACING_LUNA_PATH)
         self.file_extension = '.pkl' if 'pkl' in data_path else '.mhd'
         self.id2positive_annotations = {}
         self.id2negative_annotations = {}
@@ -620,16 +620,16 @@ class CandidatesLunaValidXYZDataGenerator(object):
 
         for pid in self.id2positive_annotations.iterkeys():
             for patch_center in self.id2positive_annotations[pid]:
-                patient_path = self.id2patient_path[pid]
 
-                img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
-                    if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
+
+                pixel_spacing = self.origin_pixelspacing[pid]["pixel_spacing"]
+                origin = self.origin_pixelspacing[pid]["origin"]
                 if self.label_prep_fun is None:
                     y_batch = np.array([[1.]], dtype='float32')
                 else:
                     y_batch = np.array([self.label_prep_fun(patch_center,self.properties_included)], dtype='float32')
                 centroid = self.centroids[pid]
-                x_tf, p_c_difference = self.data_prep_fun(data=img,
+                p_c_difference = self.data_prep_fun(
                                                             patch_center=patch_center[0:4],
                                                             pixel_spacing=pixel_spacing,
                                                             luna_origin=origin,
@@ -639,13 +639,13 @@ class CandidatesLunaValidXYZDataGenerator(object):
                 yield x_batch, y_batch, [pid]
 
             for patch_center in self.id2negative_annotations[pid]:
-                patient_path = self.id2patient_path[pid]
 
-                img, origin, pixel_spacing = utils_lung.read_pkl(patient_path) \
-                    if self.file_extension == '.pkl' else utils_lung.read_mhd(patient_path)
+
+                pixel_spacing = self.origin_pixelspacing[pid]["pixel_spacing"]
+                origin = self.origin_pixelspacing[pid]["origin"]
                 y_batch = np.array([[0.]], dtype='float32')
                 centroid = self.centroids[pid]
-                x_tf, p_c_difference = self.data_prep_fun(data=img,
+                p_c_difference = self.data_prep_fun(
                                                             patch_center=patch_center[0:4],
                                                             pixel_spacing=pixel_spacing,
                                                             luna_origin=origin,
@@ -810,10 +810,12 @@ class DSBPatientsDataGenerator(object):
     def __init__(self, data_path, batch_size, transform_params, id2candidates_path, data_prep_fun,
                  n_candidates_per_patient, rng, random, infinite, shuffle_top_n=False, patient_ids=None,centroid=False):
 
-        self.id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
+        id2label_list = utils_lung.read_labels(pathfinder.LABELS_PATH).items() # train labels
+        id2label_list.extend(utils_lung.read_test_labels(pathfinder.TEST_LABELS_PATH).items()) # test labels
+        self.id2label = dict(id2label_list)
 
         if centroid:
-            self.centroids = utils.load_pkl(pathfinder.CENTROID_LUNA_PATH)
+            self.centroids = utils.load_pkl(pathfinder.CENTROID_DSB_PATH)
         self.centroid = centroid
 
         self.id2candidates_path = id2candidates_path
@@ -872,16 +874,101 @@ class DSBPatientsDataGenerator(object):
                                            patch_centers=top_candidates,
                                            pixel_spacing=pixel_spacing,centroid=centroid)
                         x_batch[i]=x[:, None, :, :, :]
-                        x_diff[i] = diff[:,None,:]
+                        x_diff[i] = diff[None,:,:]
 
                     y_batch[i] = self.id2label[pid]
                     pids_batch.append(pid)
 
                 if len(idxs_batch) == self.batch_size:
-                    yield x_batch, y_batch, pids_batch
+                    if not self.centroid:
+                        yield x_batch, y_batch, pids_batch
+                    else:
+                        yield x_batch, x_diff, y_batch, pids_batch
 
             if not self.infinite:
                 break
+
+
+class DSBPatientsDataGeneratorElias(object):
+    def __init__(self, data_path, batch_size, transform_params, id2candidates_path, data_prep_fun,
+                 n_candidates_per_patient, rng, random, infinite, candidates_prep_fun, return_patch_locs=False, shuffle_top_n=False, patient_ids=None):
+
+        id2label_list = utils_lung.read_labels(pathfinder.LABELS_PATH).items() # train labels
+        id2label_list.extend(utils_lung.read_test_labels(pathfinder.TEST_LABELS_PATH).items()) # test labels
+        self.id2label = dict(id2label_list)
+        self.id2candidates_path = id2candidates_path
+        self.patient_paths = []
+        if patient_ids is not None:
+            for pid in patient_ids:
+                if pid in self.id2candidates_path:  # TODO: this should be redundant if fpr and segemntation are correctly generated
+                    self.patient_paths.append(data_path + '/' + pid)
+        else:
+            raise ValueError('provide patient ids')
+
+        self.nsamples = len(self.patient_paths)
+        self.data_path = data_path
+        self.data_prep_fun = data_prep_fun
+        self.batch_size = batch_size
+        self.transform_params = transform_params
+        self.n_candidates_per_patient = n_candidates_per_patient
+        self.rng = rng
+        self.random = random
+        self.infinite = infinite
+        self.shuffle_top_n = shuffle_top_n
+        self.return_patch_locs = return_patch_locs
+        self.candidates_prep_fun = candidates_prep_fun
+
+    def generate(self):
+        while True:
+            rand_idxs = np.arange(self.nsamples)
+            if self.random:
+                self.rng.shuffle(rand_idxs)
+
+            for pos in xrange(0, len(rand_idxs), self.batch_size):
+                idxs_batch = rand_idxs[pos:pos + self.batch_size]
+
+                x_batch = np.zeros((self.batch_size, self.n_candidates_per_patient,)
+                                   + self.transform_params['patch_size'], dtype='float32')
+
+                if self.return_patch_locs:
+                    x_loc_batch = np.zeros((self.batch_size, self.n_candidates_per_patient, 3), dtype='float32')
+
+                y_batch = np.zeros((self.batch_size,), dtype='float32')
+                pids_batch = []
+
+                for i, idx in enumerate(idxs_batch):
+                    patient_path = self.patient_paths[idx]
+                    pid = utils_lung.extract_pid_dir(patient_path)
+
+                    img, pixel_spacing = utils_lung.read_dicom_scan(patient_path)
+
+                    all_candidates = utils.load_pkl(self.id2candidates_path[pid])
+                    if self.candidates_prep_fun:
+                        top_candidates = self.candidates_prep_fun(all_candidates, self.n_candidates_per_patient)
+                    else:
+                        top_candidates = all_candidates[:self.n_candidates_per_patient]
+                        if self.shuffle_top_n:
+                            self.rng.shuffle(top_candidates)
+
+                    if self.return_patch_locs:
+                        #TODO move the normalization to the config file
+                        x_loc_batch[i] = np.float32(top_candidates[:,:3])/512.
+
+                    x_batch[i] = np.float32(self.data_prep_fun(data=img, pid=pid,
+                                                               patch_centers=top_candidates,
+                                                               pixel_spacing=pixel_spacing))[:, :, :, :]
+                    y_batch[i] = self.id2label.get(pid)
+                    pids_batch.append(pid)
+
+                if len(idxs_batch) == self.batch_size:
+                    if self.return_patch_locs:
+                        yield x_batch, x_loc_batch, y_batch, pids_batch
+                    else:
+                        yield x_batch, y_batch, pids_batch
+
+            if not self.infinite:
+                break
+
 
 class DSBPatientsDataGeneratorTrainPlusTest(object):
     def __init__(self, data_path, batch_size, transform_params, id2candidates_path, data_prep_fun,
@@ -1068,9 +1155,15 @@ class DSBPatientsDataHeatmapGenerator(object):
 
 class DSBPatientsDataGeneratorTest(object):
     def __init__(self, data_path, batch_size, transform_params, id2candidates_path, data_prep_fun,
-                 n_candidates_per_patient, rng, random, infinite, shuffle_top_n=False, patient_ids=None):
+                 n_candidates_per_patient, rng, random, infinite, shuffle_top_n=False, patient_ids=None,centroid=False):
 
         self.id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
+
+        if centroid:
+            self.centroids = utils.load_pkl(pathfinder.CENTROID_DSB_PATH)
+        self.centroid = centroid
+
+
         self.id2candidates_path = id2candidates_path
         self.patient_paths = []
         if patient_ids is not None:
@@ -1104,6 +1197,7 @@ class DSBPatientsDataGeneratorTest(object):
 
                 x_batch = np.zeros((self.batch_size, self.n_candidates_per_patient, 1,)
                                    + self.transform_params['patch_size'], dtype='float32')
+                x_diff = np.zeros((self.batch_size, self.n_candidates_per_patient, 3,), dtype='float32')
                 y_batch = np.zeros((self.batch_size,), dtype='float32')
                 pids_batch = []
 
@@ -1118,14 +1212,25 @@ class DSBPatientsDataGeneratorTest(object):
                     if self.shuffle_top_n:
                         self.rng.shuffle(top_candidates)
 
-                    x_batch[i] = np.float32(self.data_prep_fun(data=img,
-                                                               patch_centers=top_candidates,
-                                                               pixel_spacing=pixel_spacing))[:, None, :, :, :]
-                    #y_batch[i] = self.id2label[pid]
+                    if not self.centroid:
+                        x_batch[i] = np.float32(self.data_prep_fun(data=img,
+                                                                   patch_centers=top_candidates,
+                                                                   pixel_spacing=pixel_spacing))[:, None, :, :, :]
+                    else:
+                        centroid = self.centroids[pid]
+                        x,diff=self.data_prep_fun(data=img,
+                                           patch_centers=top_candidates,
+                                           pixel_spacing=pixel_spacing,centroid=centroid)
+                        x_batch[i]=x[:, None, :, :, :]
+                        x_diff[i] = diff[None,:,:]                    #y_batch[i] = self.id2label[pid]
                     pids_batch.append(pid)
 
                 if len(idxs_batch) == self.batch_size:
-                    yield x_batch, None, pids_batch
+                    if not self.centroid:
+
+                        yield x_batch, None, pids_batch
+                    else:
+                        yield x_batch, x_diff, None, pids_batch
 
             if not self.infinite:
                 break
