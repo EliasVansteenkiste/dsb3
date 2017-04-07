@@ -63,6 +63,9 @@ train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids
 train_pids.extend(valid_pids)
 train_pids.extend(test_pids)
 
+#TODO: add stage 2 test pids 
+test_pids=valid_pids
+
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
 
@@ -87,7 +90,7 @@ valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               random=False, infinite=False)
 
 
-test_data_iterator = data_iterators.DSBPatientsDataGeneratorTestWithLabels(data_path=pathfinder.DATA_PATH,
+test_data_iterator = data_iterators.DSBPatientsDataGeneratorTest(data_path=pathfinder.DATA_PATH,
                                                               batch_size=1,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,

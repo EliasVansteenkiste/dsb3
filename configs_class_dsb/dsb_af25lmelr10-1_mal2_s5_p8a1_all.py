@@ -64,6 +64,9 @@ train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids
 train_pids.extend(valid_pids)
 train_pids.extend(test_pids)
 
+#TODO: add stage 2 test_pids
+test_pids=valid_pids
+
 
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)

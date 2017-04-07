@@ -62,6 +62,9 @@ batch_size = 1
 train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_LB_MIXED_SPLIT_PATH)
 train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['test']
 
+#TODO: add stage 2 test_pids
+test_pids=valid_pids
+
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
 
@@ -93,7 +96,7 @@ test_data_iterator = data_iterators.DSBPatientsDataGeneratorTest(data_path=pathf
                                                               data_prep_fun=data_prep_function_valid,
                                                               id2candidates_path=id2candidates_path,
                                                               rng=rng,
-                                                              patient_ids=valid_pids,
+                                                              patient_ids=test_pids,
                                                               random=False, infinite=False)
 
 

@@ -75,6 +75,8 @@ aapm_train_pids, aapm_valid_pids, aapm_test_pids = aapm_train_valid_ids,None,Non
 train_valid_ids = utils.load_pkl(pathfinder.FINAL_SPLIT_PATH)
 train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['test']
 
+#TODO: add stage 2 pids
+test_pids = valid_pids
 
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
@@ -93,6 +95,16 @@ train_data_iterator = data_iterators.MixedPatientsDataGenerator(data_path=pathfi
                                                               random=True, infinite=True)
 
 valid_data_iterator = data_iterators.DSBPatientsDataGeneratorTrainPlusTest(data_path=pathfinder.DATA_PATH,
+                                                              batch_size=1,
+                                                              transform_params=p_transform,
+                                                              n_candidates_per_patient=n_candidates_per_patient,
+                                                              data_prep_fun=data_prep_function_valid,
+                                                              id2candidates_path=id2candidates_path,
+                                                              rng=rng,
+                                                              patient_ids=valid_pids,
+                                                              random=False, infinite=False)
+
+valid_data_iterator = data_iterators.DSBPatientsDataGeneratorTest(data_path=pathfinder.DATA_PATH,
                                                               batch_size=1,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
