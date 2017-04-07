@@ -22,8 +22,8 @@ predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PA
 candidates_path = predictions_dir + '/%s' % candidates_config
 id2candidates_path = utils_lung.get_candidates_paths(candidates_path)
 
-pretrained_weights = "r_fred_malignancy_7-20170404-163552.pkl"
-
+pretrained_weights = "r_fred_malignancy_2-20170328-230443.pkl"
+pretrained_weights_centroid = "r_fred_centroid_1-20170406-155149.pkl"
 # transformations
 p_transform = {'patch_size': (48, 48, 48),
                'mm_patch_size': (48, 48, 48),
@@ -42,14 +42,15 @@ n_candidates_per_patient = 8
 
 
 def data_prep_function(data, patch_centers, pixel_spacing, p_transform,
-                       p_transform_augment, **kwargs):
-    x = data_transforms.transform_dsb_candidates(data=data,
+                       p_transform_augment,centroid=None, **kwargs):
+    x,diffs = data_transforms.transform_dsb_candidates(data=data,
                                                  patch_centers=patch_centers,
                                                  p_transform=p_transform,
                                                  p_transform_augment=p_transform_augment,
-                                                 pixel_spacing=pixel_spacing,order=0)
+                                                 pixel_spacing=pixel_spacing,
+                                                 centroid=centroid)
     x = data_transforms.hu2normHU(x)
-    return x
+    return x,diffs
 
 
 data_prep_function_train = partial(data_prep_function, p_transform_augment=p_transform_augment,
@@ -60,10 +61,13 @@ data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
 # data iterators
 batch_size = 1
 
-train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
-train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
+train_valid_ids = utils.load_pkl(pathfinder.DSB_FINAL_SPLIT)
+train_pids, valid_pids = train_valid_ids['train'],  train_valid_ids['test']
+train_pids.extend(valid_pids)
+test_pids = [] # replace with test_pids
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
+print 'n test', len(test_pids)
 
 train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
                                                               batch_size=batch_size,
@@ -73,7 +77,7 @@ train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               id2candidates_path=id2candidates_path,
                                                               rng=rng,
                                                               patient_ids=train_pids,
-                                                              random=True, infinite=True)
+                                                              random=True, infinite=True,centroid=True)
 
 valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
                                                               batch_size=1,
@@ -83,7 +87,7 @@ valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               id2candidates_path=id2candidates_path,
                                                               rng=rng,
                                                               patient_ids=valid_pids,
-                                                              random=False, infinite=False)
+                                                              random=False, infinite=False,centroid=True)
 
 
 test_data_iterator = data_iterators.DSBPatientsDataGeneratorTest(data_path=pathfinder.DATA_PATH,
@@ -94,7 +98,7 @@ test_data_iterator = data_iterators.DSBPatientsDataGeneratorTest(data_path=pathf
                                                               id2candidates_path=id2candidates_path,
                                                               rng=rng,
                                                               patient_ids=test_pids,
-                                                              random=False, infinite=False)
+                                                              random=False, infinite=False,centroid=True)
 
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size
 max_nchunks = nchunks_per_epoch * 10
@@ -104,10 +108,10 @@ save_every = int(0.25 * nchunks_per_epoch)
 
 learning_rate_schedule = {
     0: 1e-5,
-    int(4 * nchunks_per_epoch): 3e-6,
+    int(5 * nchunks_per_epoch): 2e-6,
     int(6 * nchunks_per_epoch): 1e-6,
-    int(7 * nchunks_per_epoch): 3e-7,
-    int(9 * nchunks_per_epoch): 1e-7
+    int(7 * nchunks_per_epoch): 5e-7,
+    int(9 * nchunks_per_epoch): 2e-7
 }
 
 # model
@@ -198,8 +202,13 @@ def load_pretrained_model(l_in):
 
     l = inrn_v2_red(l)
     l = inrn_v2_red(l)
+    l = drop(l)
 
-    l = dense(drop(l), 512)
+    l = nn.layers.DenseLayer(l,512,
+                    W=nn.init.Orthogonal('relu'),
+                    b=nn.init.Constant(0.0),
+                    nonlinearity=None)
+    l = nn.layers.NonlinearityLayer(l,nonlinearity=nn.nonlinearities.very_leaky_rectify)
 
     l = nn.layers.DenseLayer(l,1,nonlinearity=nn.nonlinearities.sigmoid, W=nn.init.Orthogonal(),
                 b=nn.init.Constant(0))
@@ -216,7 +225,21 @@ def build_model():
     l_in_rshp = nn.layers.ReshapeLayer(l_in, (-1, 1,) + p_transform['patch_size'])
     l_target = nn.layers.InputLayer((batch_size,))
 
+    l_in_coords = nn.layers.InputLayer((None, n_candidates_per_patient, 3,))
+    l_in_coords_rshp = nn.layers.ReshapeLayer(l_in_coords, (-1, 3))
+    l_coords = nn.layers.DenseLayer(l_in_coords_rshp,50,W=nn.init.Orthogonal("relu"),nonlinearity=nn.nonlinearities.very_leaky_rectify)
+    l_coords = nn.layers.DenseLayer(l_coords, 50, W=nn.init.Orthogonal("relu"),nonlinearity=nn.nonlinearities.very_leaky_rectify)
+    metadata = utils.load_pkl(os.path.join(pathfinder.METADATA_PATH, "models", pretrained_weights_centroid))
+    nn.layers.set_all_param_values(l_coords, metadata['param_values'][:-2])
+
+    l_coords = nn.layers.DenseLayer(l_coords, 512, W=nn.init.Constant(0),nonlinearity=None)
+
     l = load_pretrained_model(l_in_rshp)
+    all_layers = nn.layers.get_all_layers(l)
+    l_sum = nn.layers.ElemwiseSumLayer([l_coords,all_layers[-3]])
+
+    all_layers[-2].input_layer=l_sum
+
 
     #ins = penultimate_layer.output_shape[1]
     # l = conv3d(penultimate_layer, ins, filter_size=3, stride=2)
@@ -234,7 +257,7 @@ def build_model():
 
     l_out = nn_lung.LogMeanExp(l,r=16, axis=(1, 2), name='LME')
 
-    return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
+    return namedtuple('Model', ['l_in', 'l_in_coords','l_out', 'l_target'])(l_in, l_in_coords,l_out, l_target)
 
 
 def build_objective(model, deterministic=False, epsilon=1e-12):

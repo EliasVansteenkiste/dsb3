@@ -22,8 +22,6 @@ predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PA
 candidates_path = predictions_dir + '/%s' % candidates_config
 id2candidates_path = utils_lung.get_candidates_paths(candidates_path)
 
-pretrained_weights = "r_fred_malignancy_7-20170404-163552.pkl"
-
 # transformations
 p_transform = {'patch_size': (48, 48, 48),
                'mm_patch_size': (48, 48, 48),
@@ -40,6 +38,7 @@ p_transform_augment = {
 }
 n_candidates_per_patient = 8
 
+pretrained_weights = "r_fred_malignancy_2-20170328-230443.pkl"
 
 def data_prep_function(data, patch_centers, pixel_spacing, p_transform,
                        p_transform_augment, **kwargs):
@@ -47,7 +46,7 @@ def data_prep_function(data, patch_centers, pixel_spacing, p_transform,
                                                  patch_centers=patch_centers,
                                                  p_transform=p_transform,
                                                  p_transform_augment=p_transform_augment,
-                                                 pixel_spacing=pixel_spacing,order=0)
+                                                 pixel_spacing=pixel_spacing)
     x = data_transforms.hu2normHU(x)
     return x
 
@@ -60,10 +59,13 @@ data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
 # data iterators
 batch_size = 1
 
-train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
-train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
+train_valid_ids = utils.load_pkl(pathfinder.DSB_FINAL_SPLIT)
+train_pids, valid_pids = train_valid_ids['train'],  train_valid_ids['test']
+train_pids.extend(valid_pids)
+test_pids = [] # replace with test_pids
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
+print 'n test', len(test_pids)
 
 train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
                                                               batch_size=batch_size,
@@ -97,7 +99,7 @@ test_data_iterator = data_iterators.DSBPatientsDataGeneratorTest(data_path=pathf
                                                               random=False, infinite=False)
 
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size
-max_nchunks = nchunks_per_epoch * 10
+max_nchunks = nchunks_per_epoch * 12
 
 validate_every = int(1 * nchunks_per_epoch)
 save_every = int(0.25 * nchunks_per_epoch)
@@ -106,8 +108,8 @@ learning_rate_schedule = {
     0: 1e-5,
     int(4 * nchunks_per_epoch): 3e-6,
     int(6 * nchunks_per_epoch): 1e-6,
-    int(7 * nchunks_per_epoch): 3e-7,
-    int(9 * nchunks_per_epoch): 1e-7
+    int(9 * nchunks_per_epoch): 3e-7,
+    int(11 * nchunks_per_epoch): 1e-7
 }
 
 # model
@@ -203,7 +205,6 @@ def load_pretrained_model(l_in):
 
     l = nn.layers.DenseLayer(l,1,nonlinearity=nn.nonlinearities.sigmoid, W=nn.init.Orthogonal(),
                 b=nn.init.Constant(0))
-
 
     metadata = utils.load_pkl(os.path.join(pathfinder.METADATA_PATH, "models", pretrained_weights))
     nn.layers.set_all_param_values(l, metadata['param_values'])

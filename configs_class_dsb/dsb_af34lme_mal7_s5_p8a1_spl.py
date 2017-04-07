@@ -60,8 +60,10 @@ batch_size = 1
 
 train_valid_ids = utils.load_pkl(pathfinder.DSB_FINAL_SPLIT)
 train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['test']
+test_pids = [] # replace with test_pids
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
+print 'n test', len(test_pids)
 
 train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
                                                               batch_size=batch_size,
@@ -84,15 +86,15 @@ valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               random=False, infinite=False)
 
 
-# test_data_iterator = data_iterators.DSBPatientsDataGeneratorTest(data_path=pathfinder.DATA_PATH,
-#                                                               batch_size=1,
-#                                                               transform_params=p_transform,
-#                                                               n_candidates_per_patient=n_candidates_per_patient,
-#                                                               data_prep_fun=data_prep_function_valid,
-#                                                               id2candidates_path=id2candidates_path,
-#                                                               rng=rng,
-#                                                               patient_ids=test_pids,
-#                                                               random=False, infinite=False)
+test_data_iterator = data_iterators.DSBPatientsDataGeneratorTest(data_path=pathfinder.DATA_PATH,
+                                                              batch_size=1,
+                                                              transform_params=p_transform,
+                                                              n_candidates_per_patient=n_candidates_per_patient,
+                                                              data_prep_fun=data_prep_function_valid,
+                                                              id2candidates_path=id2candidates_path,
+                                                              rng=rng,
+                                                              patient_ids=test_pids,
+                                                              random=False, infinite=False)
 
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size
 max_nchunks = nchunks_per_epoch * 10

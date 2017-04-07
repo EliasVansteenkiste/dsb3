@@ -22,6 +22,9 @@ predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PA
 candidates_path = predictions_dir + '/%s' % candidates_config
 id2candidates_path = utils_lung.get_candidates_paths(candidates_path)
 
+pretrained_weights = "r_fred_malignancy_2-20170328-230443.pkl"
+pretrained_weights_centroid = "r_fred_centroid_1-20170406-155149.pkl"
+
 # transformations
 p_transform = {'patch_size': (48, 48, 48),
                'mm_patch_size': (48, 48, 48),
@@ -61,8 +64,10 @@ batch_size = 1
 
 train_valid_ids = utils.load_pkl(pathfinder.DSB_FINAL_SPLIT)
 train_pids, valid_pids = train_valid_ids['train'],  train_valid_ids['test']
+test_pids = [] # replace with test_pids
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
+print 'n test', len(test_pids)
 
 train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
                                                               batch_size=batch_size,
@@ -85,15 +90,15 @@ valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               random=False, infinite=False,centroid=True)
 
 
-# test_data_iterator = data_iterators.DSBPatientsDataGeneratorTest(data_path=pathfinder.DATA_PATH,
-#                                                               batch_size=1,
-#                                                               transform_params=p_transform,
-#                                                               n_candidates_per_patient=n_candidates_per_patient,
-#                                                               data_prep_fun=data_prep_function_valid,
-#                                                               id2candidates_path=id2candidates_path,
-#                                                               rng=rng,
-#                                                               patient_ids=test_pids,
-#                                                               random=False, infinite=False,centroid=True)
+test_data_iterator = data_iterators.DSBPatientsDataGeneratorTest(data_path=pathfinder.DATA_PATH,
+                                                              batch_size=1,
+                                                              transform_params=p_transform,
+                                                              n_candidates_per_patient=n_candidates_per_patient,
+                                                              data_prep_fun=data_prep_function_valid,
+                                                              id2candidates_path=id2candidates_path,
+                                                              rng=rng,
+                                                              patient_ids=test_pids,
+                                                              random=False, infinite=False,centroid=True)
 
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size
 max_nchunks = nchunks_per_epoch * 10
@@ -208,8 +213,7 @@ def load_pretrained_model(l_in):
     l = nn.layers.DenseLayer(l,1,nonlinearity=nn.nonlinearities.sigmoid, W=nn.init.Orthogonal(),
                 b=nn.init.Constant(0))
 
-
-    metadata = utils.load_pkl(os.path.join("/home/frederic/kaggle-dsb3/metadata/models/frederic/","r_fred_malignancy_2-20170328-230443.pkl"))
+    metadata = utils.load_pkl(os.path.join(pathfinder.METADATA_PATH, "models", pretrained_weights))
     nn.layers.set_all_param_values(l, metadata['param_values'])
 
     return l
@@ -224,7 +228,7 @@ def build_model():
     l_in_coords_rshp = nn.layers.ReshapeLayer(l_in_coords, (-1, 3))
     l_coords = nn.layers.DenseLayer(l_in_coords_rshp,50,W=nn.init.Orthogonal("relu"),nonlinearity=nn.nonlinearities.very_leaky_rectify)
     l_coords = nn.layers.DenseLayer(l_coords, 50, W=nn.init.Orthogonal("relu"),nonlinearity=nn.nonlinearities.very_leaky_rectify)
-    metadata = utils.load_pkl(os.path.join("/home/frederic/kaggle-dsb3/metadata/models/frederic/","r_fred_centroid_1-20170406-155149.pkl"))
+    metadata = utils.load_pkl(os.path.join(pathfinder.METADATA_PATH, "models", pretrained_weights_centroid))
     nn.layers.set_all_param_values(l_coords, metadata['param_values'][:-2])
 
     l_coords = nn.layers.DenseLayer(l_coords, 512, W=nn.init.Constant(0),nonlinearity=None)

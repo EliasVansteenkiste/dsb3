@@ -22,6 +22,9 @@ predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PA
 candidates_path = predictions_dir + '/%s' % candidates_config
 id2candidates_path = utils_lung.get_candidates_paths(candidates_path)
 
+pretrained_weights = "r_fred_malignancy_2-20170328-230443.pkl"
+pretrained_weights_centroid = "r_fred_centroid_1-20170406-155149.pkl"
+
 # transformations
 p_transform = {'patch_size': (48, 48, 48),
                'mm_patch_size': (48, 48, 48),
@@ -209,7 +212,7 @@ def load_pretrained_model(l_in):
                 b=nn.init.Constant(0))
 
 
-    metadata = utils.load_pkl(os.path.join("/home/frederic/kaggle-dsb3/metadata/models/frederic/","r_fred_malignancy_2-20170328-230443.pkl"))
+    metadata = utils.load_pkl(os.path.join(pathfinder.METADATA_PATH, "models", pretrained_weights))
     nn.layers.set_all_param_values(l, metadata['param_values'])
 
     return l
@@ -224,7 +227,7 @@ def build_model():
     l_in_coords_rshp = nn.layers.ReshapeLayer(l_in_coords, (-1, 3))
     l_coords = nn.layers.DenseLayer(l_in_coords_rshp,50,W=nn.init.Orthogonal("relu"),nonlinearity=nn.nonlinearities.very_leaky_rectify)
     l_coords = nn.layers.DenseLayer(l_coords, 50, W=nn.init.Orthogonal("relu"),nonlinearity=nn.nonlinearities.very_leaky_rectify)
-    metadata = utils.load_pkl(os.path.join("/home/frederic/kaggle-dsb3/metadata/models/frederic/","r_fred_centroid_1-20170406-155149.pkl"))
+    metadata = utils.load_pkl(os.path.join(pathfinder.METADATA_PATH, "models", pretrained_weights_centroid))
     nn.layers.set_all_param_values(l_coords, metadata['param_values'][:-2])
 
     l_coords = nn.layers.DenseLayer(l_coords, 512, W=nn.init.Constant(0),nonlinearity=None)
