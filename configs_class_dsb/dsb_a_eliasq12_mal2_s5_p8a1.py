@@ -26,19 +26,9 @@ id2candidates_path = utils_lung.get_candidates_paths(candidates_path)
 
 # transformations
 p_transform = {'patch_size': (48, 48, 48),
-               'mm_patch_size': (48, 48, 48),
-               'pixel_spacing': (1., 1., 1.),
-               'order': 0,
+               'affine_tf': False
                }
 
-p_transform_augment = {
-    'translation_range_z': [-5, 5],
-    'translation_range_y': [-5, 5],
-    'translation_range_x': [-5, 5],
-    'rotation_range_z': [-10, 10],
-    'rotation_range_y': [-10, 10],
-    'rotation_range_x': [-10, 10]
-}
 n_candidates_per_patient = 12
 
 
@@ -53,27 +43,16 @@ def data_prep_function(data, patch_centers, pixel_spacing, p_transform,
     return x
 
 
-data_prep_function_train = partial(data_prep_function, p_transform_augment=p_transform_augment,
+data_prep_function_train = partial(data_prep_function, p_transform_augment=None,
                                    p_transform=p_transform)
 data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
                                    p_transform=p_transform)
-data_prep_function_tta = partial(data_prep_function, p_transform_augment=p_transform_augment,
-                                   p_transform=p_transform)
 
 
-cutoff_p_nodule = 0.75
 def candidates_prep_function(all_candidates, n_selection=None):
     if n_selection:
         all_candidates = all_candidates[:n_selection]
-
-    selected_candidates = [] 
-    for candidate in all_candidates:
-        if candidate[-1]<cutoff_p_nodule:
-            selected_candidates.append([-1,-1,-1,-1])
-        else:
-            selected_candidates.append(candidate)
-
-    return selected_candidates
+    return all_candidates
 
 # data iterators
 batch_size = 1
@@ -117,28 +96,7 @@ test_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinde
                                                               patient_ids=test_pids,
                                                               random=False, infinite=False)
 
-tta_batch_size = 8
-id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
-tta_test_data_iterator = data_iterators.DSBPatientsDataGeneratorTTA(data_path=pathfinder.DATA_PATH,
-                                                              transform_params=p_transform,
-                                                              id2candidates_path=id2candidates_path,
-                                                              id2label = id2label,
-                                                              data_prep_fun=data_prep_function_tta,
-                                                              candidates_prep_fun = candidates_prep_function,
-                                                              n_candidates_per_patient=n_candidates_per_patient,
-                                                              patient_ids=test_pids,
-                                                              tta = 64)
 
-id2label_test = utils_lung.read_test_labels(pathfinder.TEST_LABELS_PATH)
-tta_valid_data_iterator = data_iterators.DSBPatientsDataGeneratorTTA(data_path=pathfinder.DATA_PATH,
-                                                              transform_params=p_transform,
-                                                              id2candidates_path=id2candidates_path,
-                                                              id2label = id2label_test,
-                                                              data_prep_fun=data_prep_function_tta,
-                                                              candidates_prep_fun = candidates_prep_function,
-                                                              n_candidates_per_patient=n_candidates_per_patient,
-                                                              patient_ids=valid_pids,
-                                                              tta = 64)
 
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size
 max_nchunks = nchunks_per_epoch * 10
@@ -243,7 +201,8 @@ def load_pretrained_model(l_in):
     l = inrn_v2_red(l)
     l = inrn_v2_red(l)
 
-    l = dense(drop(l), 512)
+    l = dense(drop(l,p=0.75), 512)
+    l = drop(l,p=0.25)
 
     l = nn.layers.DenseLayer(l,1,nonlinearity=nn.nonlinearities.sigmoid, W=nn.init.Orthogonal(),
                 b=nn.init.Constant(0))

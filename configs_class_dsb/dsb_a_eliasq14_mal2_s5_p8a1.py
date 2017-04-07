@@ -61,7 +61,7 @@ data_prep_function_tta = partial(data_prep_function, p_transform_augment=p_trans
                                    p_transform=p_transform)
 
 
-cutoff_p_nodule = 0.75
+cutoff_p_nodule = 0.85
 def candidates_prep_function(all_candidates, n_selection=None):
     if n_selection:
         all_candidates = all_candidates[:n_selection]
@@ -119,6 +119,9 @@ test_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinde
 
 tta_batch_size = 8
 id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
+id2label_test = utils_lung.read_test_labels(pathfinder.TEST_LABELS_PATH)
+
+
 tta_test_data_iterator = data_iterators.DSBPatientsDataGeneratorTTA(data_path=pathfinder.DATA_PATH,
                                                               transform_params=p_transform,
                                                               id2candidates_path=id2candidates_path,
@@ -129,7 +132,7 @@ tta_test_data_iterator = data_iterators.DSBPatientsDataGeneratorTTA(data_path=pa
                                                               patient_ids=test_pids,
                                                               tta = 64)
 
-id2label_test = utils_lung.read_test_labels(pathfinder.TEST_LABELS_PATH)
+
 tta_valid_data_iterator = data_iterators.DSBPatientsDataGeneratorTTA(data_path=pathfinder.DATA_PATH,
                                                               transform_params=p_transform,
                                                               id2candidates_path=id2candidates_path,
@@ -139,6 +142,7 @@ tta_valid_data_iterator = data_iterators.DSBPatientsDataGeneratorTTA(data_path=p
                                                               n_candidates_per_patient=n_candidates_per_patient,
                                                               patient_ids=valid_pids,
                                                               tta = 64)
+
 
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size
 max_nchunks = nchunks_per_epoch * 10
