@@ -17,6 +17,9 @@ import pathfinder
 nn.random.set_rng(np.random.RandomState(317070))
 theano.config.warn_float64 = 'raise'
 
+if pathfinder.STAGE == 2:
+    sys.exit("You are trying to train in stage 2")
+
 if len(sys.argv) < 2:
     sys.exit("Usage: train.py <configuration_name>")
 
@@ -150,7 +153,7 @@ for chunk_idx, (x_chunk_train, y_chunk_train, id_train) in izip(chunk_idxs, buff
             x_shared.set_value(x_chunk_valid)
             y_shared.set_value(y_chunk_valid)
             l_valid = iter_validate()
-            print i, l_valid
+            # print i, l_valid
             tmp_losses_valid.append(l_valid)
 
         # calculate validation loss across validation set

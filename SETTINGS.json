@@ -1,14 +1,17 @@
 {
-  "DATA_PATH": "/data/dsb3/stage1/",
+  "STAGE": 2,
+  "DATA_PATH_1": "/data/dsb3/stage1/",
+  "DATA_PATH_2": "/data/dsb3/stage1/",
+  "METADATA_PATH_1": "/mnt/storage/metadata/dsb3/",
+  "METADATA_PATH_2": "/mnt/storage/metadata/dsb3_stage2/",
+  "SAMPLE_SUBMISSION_PATH_1": "/mnt/storage/data/dsb3/stage1_sample_submission.csv",
+  "SAMPLE_SUBMISSION_PATH_2": "/mnt/storage/data/dsb3/stage1_sample_submission.csv",
+  "VALIDATION_SPLIT_PATH": "/mnt/storage/data/dsb3/dsb_validation_split.pkl",
   "LABELS_PATH": "/mnt/storage/data/dsb3/stage1_labels.csv",
   "TEST_LABELS_PATH": "/mnt/storage/data/dsb3/test_labels.csv",
-  "METADATA_PATH": "/mnt/storage/metadata/dsb3/",
-  "SAMPLE_SUBMISSION_PATH": "/mnt/storage/data/dsb3/stage1_sample_submission.csv",
-  "VALIDATION_SPLIT_PATH": "/mnt/storage/data/dsb3/dsb_validation_split.pkl",
-  "LUNA_DATA_PATH": "/data/dsb3/luna/dataset/",
+  "LUNA_DATA_PATH": "/data/dsb3/luna/dataset_pkl/",
   "LUNA_LABELS_PATH": "/mnt/storage/data/dsb3/luna/annotations.csv",
+  "LUNA_PROPERTIES_PATH": "/mnt/storage/data/dsb3/luna/annotations_extended_mixed.csv",
   "LUNA_CANDIDATES_PATH": "/mnt/storage/data/dsb3/luna/candidates_V2.csv",
   "LUNA_VALIDATION_SPLIT_PATH": "/mnt/storage/data/dsb3/luna/validation_split.pkl"
 }
-
-

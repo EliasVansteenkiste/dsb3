@@ -26,6 +26,17 @@ def pixelnormHU(x):
     return (x - 0.5) / 0.5
 
 
+def clipHU(x):
+    return np.clip(x, -1024, MAX_HU, out=x)
+
+
+def zmuv(x, mean, std):
+    if mean is not None and std is not None:
+        return (x - mean) / std
+    else:
+        return x
+
+
 def sample_augmentation_parameters(transformation):
     shift_z = rng.uniform(*transformation.get('translation_range_z', [0., 0.]))
     shift_y = rng.uniform(*transformation.get('translation_range_y', [0., 0.]))
@@ -240,13 +251,6 @@ def make_gaussian_annotation(patch_annotation_tf, patch_size):
     x_label = np.exp(- 1. * distance_x / (2 * radius ** 2))
     label = np.vstack((z_label, y_label, x_label))
     return label
-
-
-def zmuv(x, mean, std):
-    if mean is not None and std is not None:
-        return (x - mean) / std
-    else:
-        return x
 
 
 def affine_transform(scale=None, rotation=None, translation=None):

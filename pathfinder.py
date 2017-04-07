@@ -10,11 +10,26 @@ else:
     with open('SETTINGS.json') as data_file:
         paths = json.load(data_file)
 
-METADATA_PATH = paths["METADATA_PATH"]
+STAGE = int(paths["STAGE"])
 
-# kaggle data
-DATA_PATH = paths["DATA_PATH"]
-utils.check_data_paths(DATA_PATH)
+if STAGE == 1:
+    METADATA_PATH = paths["METADATA_PATH_1"]
+
+    DATA_PATH = paths["DATA_PATH_1"]
+    utils.check_data_paths(DATA_PATH)
+
+    SAMPLE_SUBMISSION_PATH = paths["SAMPLE_SUBMISSION_PATH_1"]
+    if not os.path.isfile(SAMPLE_SUBMISSION_PATH):
+        raise ValueError('no stage 1 sample submission file')
+elif STAGE == 2:
+    METADATA_PATH = paths["METADATA_PATH_2"]
+
+    DATA_PATH = paths["DATA_PATH_2"]
+    utils.check_data_paths(DATA_PATH)
+
+    SAMPLE_SUBMISSION_PATH = paths["SAMPLE_SUBMISSION_PATH_2"]
+    if not os.path.isfile(SAMPLE_SUBMISSION_PATH):
+        raise ValueError('no stage 2 sample submission file')
 
 LABELS_PATH = paths["LABELS_PATH"]
 if not os.path.isfile(LABELS_PATH):
@@ -24,13 +39,9 @@ TEST_LABELS_PATH = paths["TEST_LABELS_PATH"]
 if not os.path.isfile(TEST_LABELS_PATH):
     raise ValueError('no file with train labels')
 
-SAMPLE_SUBMISSION_PATH = paths["SAMPLE_SUBMISSION_PATH"]
-if not os.path.isfile(SAMPLE_SUBMISSION_PATH):
-    raise ValueError('no sample submission file')
-
 VALIDATION_SPLIT_PATH = paths["VALIDATION_SPLIT_PATH"]
-# if not os.path.isfile(VALIDATION_SPLIT_PATH):
-#     raise ValueError('no validation file')
+if not os.path.isfile(VALIDATION_SPLIT_PATH):
+    raise ValueError('no validation file')
 
 # luna data
 LUNA_DATA_PATH = paths["LUNA_DATA_PATH"]
@@ -47,3 +58,7 @@ if not os.path.isfile(LUNA_CANDIDATES_PATH):
 LUNA_VALIDATION_SPLIT_PATH = paths["LUNA_VALIDATION_SPLIT_PATH"]
 if not os.path.isfile(LUNA_VALIDATION_SPLIT_PATH):
     raise ValueError('no LUNA validation split file')
+
+LUNA_PROPERTIES_PATH = paths['LUNA_PROPERTIES_PATH']
+if not os.path.isfile(LUNA_PROPERTIES_PATH):
+    raise ValueError('no LUNA properties file')

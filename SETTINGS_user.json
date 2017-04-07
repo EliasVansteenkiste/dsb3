@@ -8,5 +8,6 @@
   "LUNA_DATA_PATH": "/mnt/sda3/data/kaggle-lung/luna_test_patient/",
   "LUNA_LABELS_PATH": "/mnt/sda3/data/kaggle-lung/annotations.csv",
   "LUNA_CANDIDATES_PATH": "/mnt/sda3/data/kaggle-lung/candidates_V2.csv",
+  "LUNA_PROPERTIES_PATH": "/mnt/sda3/data/kaggle-lung/annotations_extended_mixed.csv",
   "LUNA_VALIDATION_SPLIT_PATH": "/mnt/sda3/data/kaggle-lung/luna_validation_split.pkl"
 }

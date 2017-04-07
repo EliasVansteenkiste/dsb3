@@ -6,7 +6,6 @@ import utils
 import string
 import numpy as np
 import lasagne as nn
-import os
 import utils_lung
 # TODO: IMPORT A CORRECT PATCH MODEL HERE
 import configs_seg_patch.luna_p8a1 as patch_config
@@ -35,7 +34,7 @@ def data_prep_function(data, pixel_spacing, p_transform=p_transform):
 
 # check if some predictions were generated
 predictions_dir = utils.get_dir_path('model-predictions', pathfinder.METADATA_PATH) + \
-                  '/dsb_s5_p8a1'  # + utils.get_script_name(__file__)
+                  '/dsb_s5_p8a1'
 
 exclude_pids = utils_lung.get_generated_pids(predictions_dir)
 print predictions_dir
