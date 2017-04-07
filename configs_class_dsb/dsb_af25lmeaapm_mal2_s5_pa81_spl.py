@@ -104,7 +104,7 @@ valid_data_iterator = data_iterators.DSBPatientsDataGeneratorTrainPlusTest(data_
                                                               patient_ids=valid_pids,
                                                               random=False, infinite=False)
 
-valid_data_iterator = data_iterators.DSBPatientsDataGeneratorTest(data_path=pathfinder.DATA_PATH,
+test_data_iterator = data_iterators.DSBPatientsDataGeneratorTest(data_path=pathfinder.DATA_PATH,
                                                               batch_size=1,
                                                               transform_params=p_transform,
                                                               n_candidates_per_patient=n_candidates_per_patient,
