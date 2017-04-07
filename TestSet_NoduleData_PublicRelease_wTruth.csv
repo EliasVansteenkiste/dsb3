@@ -1,0 +1,78 @@
+Scan Number;Nodule Number;Nodule Center x,y Position*;Nodule Center Image;Final Diagnosis
+LUNGx-CT001;1;135, 303;142;Benign nodule
+LUNGx-CT002;1;330, 348;205;Benign nodule
+LUNGx-CT002;2;364, 212;150;Benign nodule
+LUNGx-CT003;1;374, 374;146;Primary lung cancer
+LUNGx-CT004;1;197, 290;41;Primary lung cancer
+LUNGx-CT004;2;328, 242;80;Primary lung cancer
+LUNGx-CT005;1;333, 356;42;Primary lung cancer
+LUNGx-CT005;2;164, 420;138;Benign nodule
+LUNGx-CT006;1;381, 284;50;Primary lung cancer
+LUNGx-CT007;1;170, 355;188;Benign nodule
+LUNGx-CT008;1;172, 208;139;Benign nodule
+LUNGx-CT009;1;175, 209;164;Benign nodule
+LUNGx-CT010;1;164, 163;139;Benign nodule
+LUNGx-CT011;1;179, 335;56;Benign nodule
+LUNGx-CT012;1;131, 360;88;Primary lung cancer
+LUNGx-CT013;1;373, 240;91;Benign nodule
+LUNGx-CT014;1;163, 212;204;Primary lung cancer
+LUNGx-CT015;1;353, 413;124;Primary lung cancer
+LUNGx-CT016;1;344, 358;62;Primary lung cancer
+LUNGx-CT016;2;204, 295;55;Primary lung cancer
+LUNGx-CT017;1;354, 355;178;Benign nodule
+LUNGx-CT017;2;376, 283;153;Benign nodule
+LUNGx-CT018;1;116, 242;137;Benign nodule
+LUNGx-CT019;1;128, 362;131;Primary lung cancer 
+LUNGx-CT020;1;379, 285;179;Benign nodule
+LUNGx-CT021;1;296, 267;76;Primary lung cancer 
+LUNGx-CT022;1;159, 355;68;Primary lung cancer 
+LUNGx-CT023;1;332, 277;61;Benign nodule
+LUNGx-CT024;1;107, 284;197;Benign nodule
+LUNGx-CT025;1;134, 300;214;Primary lung cancer 
+LUNGx-CT026;1;427, 316;138;Primary lung cancer 
+LUNGx-CT027;1;357, 250;97;Benign nodule
+LUNGx-CT028;1;117, 312;135;Benign nodule
+LUNGx-CT029;1;179, 369;73;Benign nodule
+LUNGx-CT029;2;353, 277;79;Benign nodule
+LUNGx-CT030;1;118, 310;104;Benign nodule
+LUNGx-CT031;1;130, 230;70;Benign nodule
+LUNGx-CT032;1;392, 341;239;Primary lung cancer 
+LUNGx-CT033;1;188, 312;113;Primary lung cancer 
+LUNGx-CT034;1;128, 274;150;Benign nodule
+LUNGx-CT035;1;154, 355;268;Benign nodule
+LUNGx-CT035;2;454, 300;215;Benign nodule
+LUNGx-CT036;1;150, 392;220;Benign nodule
+LUNGx-CT037;1;374, 315;62;Benign nodule
+LUNGx-CT038;1;184, 249;197;Benign nodule
+LUNGx-CT039;1;149, 380;242;Benign nodule
+LUNGx-CT040;1;336, 353;189;Primary lung cancer 
+LUNGx-CT041;1;107, 292;172;Primary lung cancer 
+LUNGx-CT042;1;326, 391;178;Primary lung cancer 
+LUNGx-CT043;1;394, 162;177;Benign nodule
+LUNGx-CT043;2;440, 289;230;Benign nodule
+LUNGx-CT044;1;136, 298;90;Primary lung cancer 
+LUNGx-CT045;1;314, 216;148;Primary lung cancer 
+LUNGx-CT046;1;309, 211;61;Primary lung cancer 
+LUNGx-CT047;1;199, 306;53;Primary lung cancer 
+LUNGx-CT047;2;236, 276;67;Primary lung cancer 
+LUNGx-CT048;1;368, 312;115;Primary lung cancer 
+LUNGx-CT049;1;398, 296;71;Benign nodule
+LUNGx-CT050;1;385, 316;41;Primary lung cancer 
+LUNGx-CT051;1;303, 297;77;Primary lung cancer 
+LUNGx-CT052;1;135, 202;124;Primary lung cancer
+LUNGx-CT052;2;342, 341;50;Primary lung cancer
+LUNGx-CT053;1;195, 303;213;Primary lung cancer
+LUNGx-CT054;1;196, 336;180;Primary lung cancer
+LUNGx-CT054;2;174, 208;149;Suspicious malignant nodule
+LUNGx-CT055;1;223, 193;125;Primary lung cancer
+LUNGx-CT056;1;209, 308;56;Primary lung cancer
+LUNGx-CT056;2;374, 218;98;Suspicious malignant nodule
+LUNGx-CT057;1;396, 353;169;Benign nodule
+LUNGx-CT058;1;377, 234;157;Benign nodule
+LUNGx-CT059;1;75, 288;235;Benign nodule
+LUNGx-CT059;2;371, 207;258;Benign nodule
+LUNGx-CT060;1;192, 298;133;Benign nodule
+;;;;
+"*specified in pixels, where position (1,1) corresponds to the upper-leftmost pixel in an image; x increases with column to the right, and y increases with row going down";;;;
+;;;;
+All images are in DICOM format with a matrix size of 512x512 pixels.;;;;

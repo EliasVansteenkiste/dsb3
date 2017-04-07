@@ -1,0 +1,15 @@
+Scan Number;Nodule Center x,y Position*;Nodule Center Image;Diagnosis
+CT-Training-lc001;120,325;135;malignant
+CT-Training-lc002;139,359;70;malignant
+CT-Training-lc003;375,323;70;malignant
+CT-Training-lc008;95,328;65;malignant
+CT-Training-lc009;145,299;63;malignant
+CT-Training-be001;405,296;169;benign
+CT-Training-be002;184,268;117;benign
+CT-Training-be006;449,266;241;benign
+CT-Training-be007;385,206;194;benign
+CT-Training-be010;120,336;69;benign
+;;;
+"*specified in pixels, where position (1,1) corresponds to the upper-leftmost pixel in an image; x increases with column to the right, and y increases with row going down";;;
+;;;
+All images are in DICOM format with a matrix size of 512x512 pixels.;;;
