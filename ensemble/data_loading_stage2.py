@@ -38,10 +38,10 @@ def get_predictions_of_config(config_name, which_set):
     assert which_set in ('valid', 'test_spl', 'test_all')
     if which_set == 'test_all':
         config_name = config_name.replace('_spl', '_all')
-        which_set = 'test'
+        which_set = 'stage2'
 
     if which_set == 'test_spl':
-        which_set = 'test'
+        which_set = 'stage2'
     predictions_dir = os.path.join(pathfinder.METADATA_PATH, 'model-predictions')
     exp_id = utils_ensemble.find_model_preds_expid(predictions_dir, config_name)
 
