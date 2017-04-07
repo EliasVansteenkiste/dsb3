@@ -58,7 +58,7 @@ data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
 batch_size = 1
 
 train_valid_ids = utils.load_pkl(pathfinder.MIXED_SPLIT_PATH)
-train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
+train_pids, valid_pids, test_pids = train_valid_ids['train'], train_valid_ids['test'], []
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
 
@@ -107,8 +107,8 @@ test_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinde
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size
 max_nchunks = nchunks_per_epoch * 10
 
-validate_every = int(0.5 * nchunks_per_epoch)
-save_every = int(0.25 * nchunks_per_epoch)
+validate_every = int(10 * nchunks_per_epoch)
+save_every = int(1 * nchunks_per_epoch)
 
 learning_rate_schedule = {
     0: 1e-5,
@@ -220,9 +220,9 @@ def load_pretrained_model(l_in):
 
 
 def build_model():
-    l_in = nn.layers.InputLayer((None, n_candidates_per_patient, 1,) + p_transform['patch_size'])
+    l_in = nn.layers.InputLayer((None, n_candidates_per_patient,) + p_transform['patch_size'])
     l_in_rshp = nn.layers.ReshapeLayer(l_in, (-1, 1,) + p_transform['patch_size'])
-    l_target = nn.layers.InputLayer((batch_size,))
+    l_target = nn.layers.InputLayer((None,))
 
     penultimate_layer = load_pretrained_model(l_in_rshp)
 

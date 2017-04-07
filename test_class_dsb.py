@@ -81,7 +81,33 @@ if set == 'test':
             data_iterator.generate())):
         predictions = iter_test(x_test)
         pid = id_test[0]
-        pid2prediction[pid] = predictions[0, 1] if predictions.shape[-1] == 2 else predictions[0, 0]
+        pid2prediction[pid] = predictions[0, 1] if predictions.shape[-1] == 2 else predictions[0]
+        print i, pid, predictions, pid2label[pid]
+
+    utils.save_pkl(pid2prediction, output_pkl_file)
+    print 'Saved validation predictions into pkl', os.path.basename(output_pkl_file)
+
+    test_loss = utils_lung.evaluate_log_loss(pid2prediction, pid2label)
+    print 'Test loss', test_loss
+
+    utils_lung.write_submission(pid2prediction, output_csv_file)
+    print 'Saved predictions into csv'
+    loss = evaluate_submission.leaderboard_performance(output_csv_file)
+    print loss
+elif set == 'newsplit':
+    pid2label = utils_lung.read_test_labels(pathfinder.MIXED_SPLIT_PATH)["test"]
+    data_iterator = config().test_data_iterator
+
+    print
+    print 'Data'
+    print 'n test: %d' % data_iterator.nsamples
+
+    pid2prediction = {}
+    for i, (x_test, _, id_test) in enumerate(buffering.buffered_gen_threaded(
+            data_iterator.generate())):
+        predictions = iter_test(x_test)
+        pid = id_test[0]
+        pid2prediction[pid] = predictions[0, 1] if predictions.shape[-1] == 2 else predictions[0]
         print i, pid, predictions, pid2label[pid]
 
     utils.save_pkl(pid2prediction, output_pkl_file)

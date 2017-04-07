@@ -61,7 +61,7 @@ data_prep_function_valid = partial(data_prep_function, p_transform_augment=None,
 batch_size = 1
 
 train_valid_ids = utils.load_pkl(pathfinder.MIXED_SPLIT_PATH)
-train_pids, valid_pids, test_pids = train_valid_ids['training'],train_valid_ids['validation'], train_valid_ids['test']
+train_pids, valid_pids, test_pids = train_valid_ids['train'], train_valid_ids['test'], []
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
 print 'n test', len(test_pids)
@@ -101,7 +101,7 @@ test_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinde
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size
 max_nchunks = nchunks_per_epoch * 10
 
-validate_every = int(1 * nchunks_per_epoch)
+validate_every = int(10 * nchunks_per_epoch)
 save_every = int(1 * nchunks_per_epoch)
 
 learning_rate_schedule = {

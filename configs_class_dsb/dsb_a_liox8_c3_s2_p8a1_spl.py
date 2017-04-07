@@ -1,4 +1,4 @@
-# fred with order 0, reinit denses
+# fred with order 0
 
 import numpy as np
 import data_transforms
@@ -62,9 +62,9 @@ batch_size = 1
 
 train_valid_ids = utils.load_pkl(pathfinder.MIXED_SPLIT_PATH)
 train_pids, valid_pids, test_pids = train_valid_ids['train'], train_valid_ids['test'], []
+# train_pids.extend(utils_lung.read_luna_annotations(pathfinder.LUNA_LABELS_PATH).keys())
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
-print 'n test', len(test_pids)
 
 train_data_iterator = data_iterators.DSBPatientsDataGenerator(  data_path=pathfinder.DATA_PATH,
                                                               batch_size=batch_size,
@@ -202,7 +202,6 @@ def load_pretrained_model(l_in):
 
     l = inrn_v2_red(l)
     l = inrn_v2_red(l)
-    l_out = l
 
     l = dense(drop(l), 512)
 
@@ -213,7 +212,7 @@ def load_pretrained_model(l_in):
     metadata = utils.load_pkl(os.path.join("/mnt/storage/metadata/dsb3/models/frederic/","r_fred_malignancy_2-20170328-230443.pkl"))
     nn.layers.set_all_param_values(l, metadata['param_values'])
 
-    return l_out
+    return l
 
 
 def build_model():
@@ -223,13 +222,26 @@ def build_model():
 
     l = load_pretrained_model(l_in_rshp)
 
-    l = dense(drop(l), 512)
+    # ins = penultimate_layer.output_shape[1]
+    # l = conv3d(penultimate_layer, ins, filter_size=3, stride=2)
+    # #l = feat_red(l)
+    #
+    #
+    # l = nn.layers.DropoutLayer(l)
+    # #
+    # l = nn.layers.DenseLayer(l, num_units=256, W=nn.init.Orthogonal(),
+    #                          nonlinearity=nn.nonlinearities.rectify)
 
-    l = nn.layers.DenseLayer(l, 1, nonlinearity=nn.nonlinearities.sigmoid, W=nn.init.Orthogonal(),
-                             b=nn.init.Constant(0))
+    # l = nn.layers.DropoutLayer(l)
 
     l = nn.layers.ReshapeLayer(l, (-1, n_candidates_per_patient, 1))
     l_out = nn_lung.LogMeanExp(l, r=16, axis=(1, 2), name='LME')
+
+    #########
+    # THIS WAS NOT MAX BUT LME16
+    ###########"
+    # l = nn.layers.ReshapeLayer(l, (-1, n_candidates_per_patient))
+    # l_out = nn.layers.ExpressionLayer(l, lambda x: T.mean(x, axis=(1,2)), output_shape=(l.output_shape[0], 1))
 
     return namedtuple('Model', ['l_in', 'l_out', 'l_target'])(l_in, l_out, l_target)
 
