@@ -392,8 +392,7 @@ def offensive_ensemble(configs_to_use):
 defensive_ensemble_model, defensive_ensemble_test_predictions = defensive_ensemble(CONFIGS)
 offensive_ensemble_model, offensive_ensemble_test_predictions = offensive_ensemble(defensive_ensemble_model.models)
 
-# TODO find this path with pathfinder
-ensemble_submission_path = '/mnt/storage/metadata/dsb3/submissions/ensemble/'
+ensemble_submission_path = utils.get_dir_path('submissions/ensemble', pathfinder.METADATA_PATH)
 utils_lung.write_submission(defensive_ensemble_test_predictions,
                             ensemble_submission_path + 'final_kaggle_submission_1.csv')
 utils_lung.write_submission(offensive_ensemble_test_predictions,
