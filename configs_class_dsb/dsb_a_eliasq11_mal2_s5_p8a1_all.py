@@ -68,13 +68,13 @@ def candidates_prep_function(all_candidates, n_selection=None):
 
 # data iterators
 batch_size = 1
-
 train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
 train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
 print 'n test', len(test_pids)
 all_pids = train_pids + valid_pids + test_pids
+stage2_pids = [] #utils.load_pkl(pathfinder.STAGE2_PIDS)
 
 id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
 id2label_test = utils_lung.read_test_labels(pathfinder.TEST_LABELS_PATH)
@@ -118,7 +118,7 @@ test_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinde
                                                               id2candidates_path=id2candidates_path,
                                                               id2label = id2label_all,
                                                               rng=rng,
-                                                              patient_ids=test_pids,
+                                                              patient_ids=stage2_pids,
                                                               random=False, infinite=False)
 
 
@@ -145,7 +145,6 @@ tta_valid_data_iterator = data_iterators.DSBPatientsDataGeneratorTTA(data_path=p
                                                               n_candidates_per_patient=n_candidates_per_patient,
                                                               patient_ids=valid_pids,
                                                               tta = 64)
-
 
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size
 max_nchunks = nchunks_per_epoch * 10

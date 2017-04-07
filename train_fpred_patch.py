@@ -5,6 +5,7 @@ import time
 from itertools import izip
 import lasagne as nn
 import numpy as np
+nn.random.set_rng(np.random.RandomState(317070))
 import theano
 from datetime import datetime, timedelta
 import utils
@@ -25,6 +26,9 @@ expid = utils.generate_expid(config_name)
 print
 print "Experiment ID: %s" % expid
 print
+
+
+
 
 # metadata
 metadata_dir = utils.get_dir_path('models', pathfinder.METADATA_PATH)

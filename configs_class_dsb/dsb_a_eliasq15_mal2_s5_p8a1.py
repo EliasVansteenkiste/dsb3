@@ -49,7 +49,7 @@ def data_prep_function(data, patch_centers, pixel_spacing, p_transform,
                                                  p_transform=p_transform,
                                                  p_transform_augment=p_transform_augment,
                                                  pixel_spacing=pixel_spacing)
-    x = data_transforms.hu2normHU(x)
+    x = data_transforms.hu2normHU_low_clip(x)
     return x
 
 
@@ -61,7 +61,7 @@ data_prep_function_tta = partial(data_prep_function, p_transform_augment=p_trans
                                    p_transform=p_transform)
 
 
-cutoff_p_nodule = 0.85
+cutoff_p_nodule = 0.75
 def candidates_prep_function(all_candidates, n_selection=None):
     if n_selection:
         all_candidates = all_candidates[:n_selection]
@@ -78,18 +78,10 @@ def candidates_prep_function(all_candidates, n_selection=None):
 # data iterators
 batch_size = 1
 
-train_valid_ids = utils.load_pkl(pathfinder.FINAL_SPLIT_PATH)
-#In the final stage we will have to add the pids of the new data
-#test_ids = utils.load_pkl(pathfinder.FINAL_SPLIT_PATH)
-train_pids, valid_pids, test_pids = train_valid_ids['train'], train_valid_ids['test'], [] #test_ids
+train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
+train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
-
-id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
-id2label_test = utils_lung.read_test_labels(pathfinder.TEST_LABELS_PATH)
-id2label_all = id2label.copy()
-id2label_all.update(id2label_test)
-
 
 train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
                                                               batch_size=batch_size,
@@ -98,7 +90,6 @@ train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               data_prep_fun=data_prep_function_train,
                                                               candidates_prep_fun = candidates_prep_function,
                                                               id2candidates_path=id2candidates_path,
-                                                              id2label = id2label_all,
                                                               rng=rng,
                                                               patient_ids=train_pids,
                                                               random=True, infinite=True)
@@ -110,10 +101,10 @@ valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               data_prep_fun=data_prep_function_valid,
                                                               candidates_prep_fun = candidates_prep_function,
                                                               id2candidates_path=id2candidates_path,
-                                                              id2label = id2label_all,
                                                               rng=rng,
                                                               patient_ids=valid_pids,
                                                               random=False, infinite=False)
+
 
 test_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
                                                               batch_size=1,
@@ -125,6 +116,32 @@ test_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinde
                                                               rng=rng,
                                                               patient_ids=test_pids,
                                                               random=False, infinite=False)
+
+tta_batch_size = 8
+id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
+id2label_test = utils_lung.read_test_labels(pathfinder.TEST_LABELS_PATH)
+
+
+tta_test_data_iterator = data_iterators.DSBPatientsDataGeneratorTTA(data_path=pathfinder.DATA_PATH,
+                                                              transform_params=p_transform,
+                                                              id2candidates_path=id2candidates_path,
+                                                              id2label = id2label,
+                                                              data_prep_fun=data_prep_function_tta,
+                                                              candidates_prep_fun = candidates_prep_function,
+                                                              n_candidates_per_patient=n_candidates_per_patient,
+                                                              patient_ids=test_pids,
+                                                              tta = 64)
+
+
+tta_valid_data_iterator = data_iterators.DSBPatientsDataGeneratorTTA(data_path=pathfinder.DATA_PATH,
+                                                              transform_params=p_transform,
+                                                              id2candidates_path=id2candidates_path,
+                                                              id2label = id2label_test,
+                                                              data_prep_fun=data_prep_function_tta,
+                                                              candidates_prep_fun = candidates_prep_function,
+                                                              n_candidates_per_patient=n_candidates_per_patient,
+                                                              patient_ids=valid_pids,
+                                                              tta = 64)
 
 
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size
@@ -236,7 +253,7 @@ def load_pretrained_model(l_in):
                 b=nn.init.Constant(0))
 
 
-    metadata = utils.load_pkl(os.path.join("/home/eavsteen/dsb3/storage/metadata/dsb3/models/eavsteen/","r_fred_malignancy_2-20170328-230443.pkl"))
+    metadata = utils.load_pkl(os.path.join("/home/eavsteen/dsb3/storage/metadata/dsb3/models/eavsteen/","r_fred_malignancy_7-20170404-163552.pkl"))
     nn.layers.set_all_param_values(l, metadata['param_values'])
 
     return l

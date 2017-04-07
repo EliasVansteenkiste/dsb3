@@ -52,7 +52,8 @@ def label_prep_function(annotation,properties_included):
         else:
             for p in properties:
                     label.append(properties_dict[p])
-    return label
+
+    return label[0]
 
 
 
@@ -86,7 +87,7 @@ train_valid_ids = utils.load_pkl(pathfinder.LUNA_VALIDATION_SPLIT_PATH)
 train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['valid']
 
 
-train_data_iterator = data_iterators.CandidatesPropertiesLunaDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
+train_data_iterator = data_iterators.CandidatesPropertiesLunaDataGenerator2(data_path=pathfinder.LUNA_DATA_PATH,
                                                                            batch_size=chunk_size,
                                                                            transform_params=p_transform,
                                                                            label_prep_fun=label_prep_function,
@@ -99,7 +100,7 @@ train_data_iterator = data_iterators.CandidatesPropertiesLunaDataGenerator(data_
                                                                            random_negative_samples=True,
                                                                            properties_included=["malignancy"])
 
-valid_data_iterator = data_iterators.CandidatesLunaValidDataGenerator(data_path=pathfinder.LUNA_DATA_PATH,
+valid_data_iterator = data_iterators.CandidatesLunaValidDataGenerator2(data_path=pathfinder.LUNA_DATA_PATH,
                                                                       transform_params=p_transform,
                                                                       data_prep_fun=data_prep_function_valid,
                                                                       patient_ids=valid_pids,
@@ -109,7 +110,7 @@ valid_data_iterator = data_iterators.CandidatesLunaValidDataGenerator(data_path=
 nchunks_per_epoch = train_data_iterator.nsamples / chunk_size
 max_nchunks = nchunks_per_epoch * 100
 
-validate_every = int(1 * nchunks_per_epoch)
+validate_every = int(5 * nchunks_per_epoch)
 save_every = int(1. * nchunks_per_epoch)
 
 learning_rate_schedule = {
@@ -294,6 +295,7 @@ def build_model():
     for i in range(num_C_blocks):
         l = inception_resnet_v2_C(l)
 
+    l = dnn.Pool3DDNNLayer(l, pool_size=4, mode='average_exc_pad')
     l = dense(drop(l), 512)
 
     l_out = nn.layers.DenseLayer(l,1,nonlinearity=nn.nonlinearities.sigmoid, W=lasagne.init.Orthogonal(),

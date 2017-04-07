@@ -21,6 +21,15 @@ def hu2normHU(x):
     x = np.clip(x, 0., 1., out=x)
     return x
 
+def hu2normHU_low_clip(x):
+    """
+    Modifies input data
+    :param x:
+    :return:
+    """
+    x = (x - MIN_HU) / (MAX_HU - MIN_HU)
+    x = np.clip(x, 0., 10., out=x)
+    return x
 
 def pixelnormHU(x):
     x = (x - MIN_HU) / (MAX_HU - MIN_HU)

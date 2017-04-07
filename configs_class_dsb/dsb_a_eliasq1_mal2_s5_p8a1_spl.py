@@ -70,8 +70,9 @@ def candidates_prep_function(all_candidates, n_selection=None):
 batch_size = 1
 
 train_valid_ids = utils.load_pkl(pathfinder.FINAL_SPLIT_PATH)
-print train_valid_ids.keys()
-train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['test']
+#In the final stage we will have to add the pids of the new data
+#test_ids = utils.load_pkl(pathfinder.FINAL_SPLIT_PATH)
+train_pids, valid_pids, test_pids = train_valid_ids['train'], train_valid_ids['test'], [] #test_ids
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
 
@@ -105,19 +106,17 @@ valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               patient_ids=valid_pids,
                                                               random=False, infinite=False)
 
-
-tta_batch_size = 8
-
-
-tta_test_data_iterator = data_iterators.DSBPatientsDataGeneratorTTA(data_path=pathfinder.DATA_PATH,
+test_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
+                                                              batch_size=1,
                                                               transform_params=p_transform,
-                                                              id2candidates_path=id2candidates_path,
-                                                              id2label = id2label_all,
-                                                              data_prep_fun=data_prep_function_tta,
-                                                              candidates_prep_fun = candidates_prep_function,
                                                               n_candidates_per_patient=n_candidates_per_patient,
-                                                              patient_ids=valid_pids,
-                                                              tta = 64)
+                                                              data_prep_fun=data_prep_function_valid,
+                                                              candidates_prep_fun = candidates_prep_function,
+                                                              id2candidates_path=id2candidates_path,
+                                                              rng=rng,
+                                                              patient_ids=test_pids,
+                                                              random=False, infinite=False)
+
 
 
 nchunks_per_epoch = train_data_iterator.nsamples / batch_size

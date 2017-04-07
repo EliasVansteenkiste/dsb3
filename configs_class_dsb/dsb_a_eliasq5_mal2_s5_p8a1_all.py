@@ -85,6 +85,7 @@ print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
 print 'n test', len(test_pids)
 all_pids = train_pids + valid_pids + test_pids
+stage2_pids = [] #utils.load_pkl(pathfinder.STAGE2_PIDS)
 
 id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
 id2label_test = utils_lung.read_test_labels(pathfinder.TEST_LABELS_PATH)
@@ -128,7 +129,7 @@ test_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinde
                                                               id2candidates_path=id2candidates_path,
                                                               id2label = id2label_all,
                                                               rng=rng,
-                                                              patient_ids=test_pids,
+                                                              patient_ids=stage2_pids,
                                                               random=False, infinite=False)
 
 
