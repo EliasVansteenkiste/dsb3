@@ -1,38 +1,17 @@
 import utils
 import pathfinder
 import data_loading
+import data_loading_stage2
 import numpy as np
 import os
-import evaluate_submission
+import collections
 import utils_ensemble
 import ensemble_analysis as anal
 import ensemble_models as em
 import utils_lung
-import collections
-import profile
+import evaluate_submission
 from sklearn.model_selection import StratifiedKFold
-
-FG_CONFIGS = ['fgodin/' + config for config in
-              ['dsb_af19lme_mal2_s5_p8a1', 'dsb_af25lme_mal2_s5_p8a1', 'dsb_af4_size6_s5_p8a1',
-               'dsb_af5lme_mal2_s5_p8a1', 'dsb_af5_size6_s5_p8a1', 'dsb_af24lme_mal3_s5_p8a1']]
-
-EV_CONFIGS = ['eavsteen/' + config for config in ['dsb_a_eliasq1_mal2_s5_p8a1', 'dsb_a_eliasq10_mal2_s5_p8a1']]
-
-CONFIGS = ['dsb_a04_c3ns2_mse_s5_p8a1', 'dsb_a07_c3ns3_mse_s5_p8a1', 'dsb_a08_c3ns3_mse_s5_p8a1',
-           'dsb_a11_m1zm_s5_p8a1', 'dsb_af25lmeaapm_mal2_s5_p8a1', 'dsb_a_liolme16_c3_s2_p8a1',
-           'dsb_a_liolme32_c3_s5_p8a1', 'dsb_a_liox10_c3_s2_p8a1', 'dsb_a_liox11_c3_s5_p8a1', 'dsb_a_liox12_c3_s2_p8a1',
-           'dsb_af25lmelr10-2_mal2_s5_p8a1', 'dsb_af25lmelr10-1_mal2_s5_p8a1', 'dsb_a_eliasz1_c3_s5_p8a1',
-           'dsb_a_liox13_c3_s2_p8a1', 'dsb_a_liox14_c3_s2_p8a1', 'dsb_a_liox15_c3_s2_p8a1', 'dsb_a_liox6_c3_s2_p8a1',
-           'dsb_a_liox7_c3_s2_p8a1', 'dsb_a_liox8_c3_s2_p8a1', 'dsb_a_liolunalme16_c3_s2_p8a1',
-           'dsb_a_lionoclip_c3_s5_p8a1', 'dsb_a_liomse_c3_s5_p8a1', 'dsb_af25lmeo0_s5_p8a1',
-           'dsb_a_liomseresume_c3_s5_p8a1', 'dsb_af25lmelr10-3_mal2_s5_p8a1', 'dsb_a_liomix_c3_s5_p8a1',
-           'dsb_a_liomselunaresume_c3_s5_p8a1']
-
-GOOD_CONFIGS = ['fgodin/dsb_af25lme_mal2_s5_p8a1', 'dsb_af25lmeaapm_mal2_s5_p8a1', 'dsb_a_liolme16_c3_s2_p8a1',
-                'dsb_a_liolme32_c3_s5_p8a1', 'dsb_af25lmelr10-2_mal2_s5_p8a1', 'dsb_a_liox13_c3_s2_p8a1',
-                'dsb_af25lmeo0_s5_p8a1', 'dsb_af25lmelr10-3_mal2_s5_p8a1', 'eavsteen/dsb_a_eliasq1_mal2_s5_p8a1']
-
-CONFIGS = FG_CONFIGS + CONFIGS + EV_CONFIGS
+import ensemble_configs_to_use as ec
 
 OUTLIER_THRESHOLD = 0.10  # Disagreement threshold (%)
 DO_CV = False
@@ -62,7 +41,8 @@ def pruning_ensemble(configs, with_majority_vote):
     ensemble_info['final ensemble will use configs'] = configs_to_use
 
     X_valid, y_valid = load_data(configs_to_use, 'validation')
-    ensemble_model = em.WeightedEnsemble(configs_to_use, optimization_method=em.equal_weights)
+    ensemble_model = em.WeightedEnsemble(configs_to_use,
+                                         optimization_method=em.optimal_linear_weights)  # TODO find best setting !!!
     ensemble_model.train(X_valid, y_valid)
     ensemble_info['Ensemble training error'] = ensemble_model.training_error
     ensemble_info['Ensemble model weights'] = ensemble_model.print_weights()
@@ -201,9 +181,11 @@ def prune_configs(configs_used, cv_result, prune_percent=0.5):
 
 
 def evaluate_test_set_performance(y_test, y_test_pred):
-    # TODO implement this in case we first reserve a part of the validation set as final test set to use internally
-    test_logloss = utils_lung.evaluate_log_loss(y_test_pred, y_test)
-    return test_logloss
+    if pathfinder.STAGE == 1:
+        test_logloss = utils_lung.evaluate_log_loss(y_test_pred, y_test)
+        return test_logloss
+    else:
+        return None
 
 
 def do_cross_validation(X, y, config_names, ensemble_method=em.optimal_linear_weights):
@@ -278,12 +260,46 @@ def filter_set(X_test, pid, configs):
 
 
 def load_data(configs, dataset_membership):
-    if dataset_membership == 'validation':
-        return data_loading.load_validation_set(configs)
-    elif dataset_membership == 'test':
-        return data_loading.load_test_set(configs)
+    if pathfinder.STAGE == 1:
+        if dataset_membership == 'validation':
+            return data_loading.load_validation_set(configs)
+        elif dataset_membership == 'test':
+            return data_loading.load_test_set(configs)
+        elif dataset_membership == 'all':
+            X_valid, y_valid = data_loading.load_validation_set(configs)
+            X_test, y_test = data_loading.load_test_set(configs)
+
+            # merge
+            X_all = collections.OrderedDict()
+            for config in X_valid.keys():
+                X_all[config] = X_valid[config].copy()
+                X_all[config].update(X_test[config])
+                X_all[config] = collections.OrderedDict(sorted(X_all[config].iteritems()))
+
+            y_all = collections.OrderedDict(sorted(y_valid.iteritems()))
+            y_all.update(y_test)
+
+            y_all = collections.OrderedDict(sorted(y_all.iteritems()))
+
+            return X_all, y_all
+
+        else:
+            raise ValueError(
+                'No data set membership with name {} exists for stage {}'.format(dataset_membership, pathfinder.STAGE))
+
+    elif pathfinder.STAGE == 2:
+        if dataset_membership == 'validation':
+            return data_loading_stage2.load_validation_data_spl(configs)
+        elif dataset_membership == 'test':
+            return data_loading_stage2.load_test_data_spl(configs)
+        elif dataset_membership == 'test_all':
+            return data_loading_stage2.load_test_data_all(configs)
+
+        else:
+            raise ValueError(
+                'No data set membership with name {} exists for stage {}'.format(dataset_membership, pathfinder.STAGE))
     else:
-        raise ValueError('Dude you drunk? No data set membership with name {} exists'.format(dataset_membership))
+        raise ValueError('Data loading for stage {} not supported'.format(pathfinder.STAGE))
 
 
 def calc_test_performance(config_name, predictions):
@@ -319,57 +335,60 @@ def print_ensemble_result(result):
     print '\n'
 
 
-print 'Starting ensemble procedure with {} configs'.format(len(CONFIGS))
-ensemble_strategies = []
-print '\n--------------------'
-print 'INDIVIDUAL MODEL PERFORMANCE'
-print '--------------------\n'
-print_individual_configs_validation_set_performance(CONFIGS)
-print_individual_configs_test_set_performance(CONFIGS)
+experimental_mode = False
+if pathfinder.STAGE == 1 and experimental_mode:
+    CONFIGS = ec.get_spl_configs()
+    print 'Starting ensemble procedure with {} configs'.format(len(CONFIGS))
+    ensemble_strategies = []
+    print '\n--------------------'
+    print 'INDIVIDUAL MODEL PERFORMANCE'
+    print '--------------------\n'
+    print_individual_configs_validation_set_performance(CONFIGS)
+    print_individual_configs_test_set_performance(CONFIGS)
 
-print '\n--------------------'
-print 'PRUNING ENSEMBLE'
-print '--------------------\n'
-info = pruning_ensemble(CONFIGS, with_majority_vote=False)
-print_ensemble_result(info)
-ensemble_strategies.append(info)
+    print '\n--------------------'
+    print 'PRUNING ENSEMBLE'
+    print '--------------------\n'
+    info = pruning_ensemble(CONFIGS, with_majority_vote=False)
+    print_ensemble_result(info)
+    ensemble_strategies.append(info)
 
-info = pruning_ensemble(CONFIGS, with_majority_vote=True)
-print_ensemble_result(info)
-ensemble_strategies.append(info)
+    info = pruning_ensemble(CONFIGS, with_majority_vote=True)
+    print_ensemble_result(info)
+    ensemble_strategies.append(info)
 
-print '\n--------------------'
-print 'optimal_linear_ensembling'
-print '--------------------\n'
-info = optimal_linear_ensembling(CONFIGS, with_majority_vote=False)
-print_ensemble_result(info)
-ensemble_strategies.append(info)
+    print '\n--------------------'
+    print 'optimal_linear_ensembling'
+    print '--------------------\n'
+    info = optimal_linear_ensembling(CONFIGS, with_majority_vote=False)
+    print_ensemble_result(info)
+    ensemble_strategies.append(info)
 
-info = optimal_linear_ensembling(CONFIGS, with_majority_vote=True)
-print_ensemble_result(info)
-ensemble_strategies.append(info)
+    info = optimal_linear_ensembling(CONFIGS, with_majority_vote=True)
+    print_ensemble_result(info)
+    ensemble_strategies.append(info)
 
-print '\n--------------------'
-print 'CV AVERAGED ENSEMBLE'
-print '--------------------\n'
-info = cv_averaged_weight_ensembling(CONFIGS, with_majority_vote=False)
-print_ensemble_result(info)
-ensemble_strategies.append(info)
+    print '\n--------------------'
+    print 'CV AVERAGED ENSEMBLE'
+    print '--------------------\n'
+    info = cv_averaged_weight_ensembling(CONFIGS, with_majority_vote=False)
+    print_ensemble_result(info)
+    ensemble_strategies.append(info)
 
-info = cv_averaged_weight_ensembling(CONFIGS, with_majority_vote=True)
-print_ensemble_result(info)
-ensemble_strategies.append(info)
+    info = cv_averaged_weight_ensembling(CONFIGS, with_majority_vote=True)
+    print_ensemble_result(info)
+    ensemble_strategies.append(info)
 
-# Choose two final submissions using the best ensemble
-lowest_log_loss = np.inf
-best_strat = None
-for ensemble_strat in ensemble_strategies:
-    log_loss = ensemble_strat['out_of_sample_error']
-    if log_loss < lowest_log_loss:
-        lowest_log_loss = log_loss
-        best_strat = ensemble_strat
+    # Choose two final submissions using the best ensemble
+    lowest_log_loss = np.inf
+    best_strat = None
+    for ensemble_strat in ensemble_strategies:
+        log_loss = ensemble_strat['out_of_sample_error']
+        if log_loss < lowest_log_loss:
+            lowest_log_loss = log_loss
+            best_strat = ensemble_strat
 
-print 'Best ensemble strategy is {} with out-of-sample error {}'.format(best_strat['Name'], lowest_log_loss)
+    print 'Best ensemble strategy is {} with out-of-sample error {}'.format(best_strat['Name'], lowest_log_loss)
 
 
 def defensive_ensemble(CONFIGS):
@@ -377,7 +396,9 @@ def defensive_ensemble(CONFIGS):
     Load predictions of models trained on the split, do 10 SKF CV and make optimized weighted ensemble using the 
     models that appear in the ensemble at least 50% of the folds. 
     """
+    print 'Starting defensive ensemble...'
     ensembling_result = pruning_ensemble(CONFIGS, with_majority_vote=False)
+    print_ensemble_result(ensembling_result)
     return ensembling_result['ensemble_model'], ensembling_result['y_test_pred']
 
 
@@ -386,14 +407,44 @@ def offensive_ensemble(configs_to_use):
     Load predictions of models specified as argument (preferably the models used by the defensive ensemble), 
     which are trained on ALL the data and make an uniform ensemble out of it. 
     """
-    pass
+    if pathfinder.STAGE == 1:
+        X_valid, y_valid = load_data(configs_to_use, 'all')
+        uniform_ensemble = em.WeightedEnsemble(configs_to_use, em.equal_weights)
+        uniform_ensemble.train(X_valid, y_valid)
+        print 'Offensive uniform stacking ensemble will use {} configs: {}'.format(len(configs_to_use), configs_to_use)
+        print 'This gives an in-sample error of {:0.4}'.format(uniform_ensemble.training_error)
+
+        X_test, _ = load_data(configs_to_use, 'test')
+        y_test_pred = uniform_ensemble.predict(X_test)
+        return uniform_ensemble, y_test_pred
+
+    else:
+        uniform_ensemble = em.WeightedEnsemble(configs_to_use, em.equal_weights)
+
+        weights = {}
+        models = configs_to_use
+        equal_weight = 1.0 / len(models)
+        for model_nr in range(len(models)):
+            config = models[model_nr]
+            weights[config] = equal_weight
+
+        uniform_ensemble.weights = weights
+
+        X_test, _ = load_data(configs_to_use, 'test_all')
+        y_test_pred = uniform_ensemble.predict(X_test)
+        return uniform_ensemble, y_test_pred
 
 
-defensive_ensemble_model, defensive_ensemble_test_predictions = defensive_ensemble(CONFIGS)
-offensive_ensemble_model, offensive_ensemble_test_predictions = offensive_ensemble(defensive_ensemble_model.models)
+if __name__ == '__main__':
+    print 'Starting ensembling for stage ', pathfinder.STAGE, ' of the competition'
+    defensive_ensemble_model, defensive_ensemble_test_predictions = defensive_ensemble(ec.get_spl_configs())
+    offensive_ensemble_model, offensive_ensemble_test_predictions = offensive_ensemble(defensive_ensemble_model.models)
 
-ensemble_submission_path = utils.get_dir_path('submissions/ensemble', pathfinder.METADATA_PATH)
-utils_lung.write_submission(defensive_ensemble_test_predictions,
-                            ensemble_submission_path + 'final_kaggle_submission_1.csv')
-utils_lung.write_submission(offensive_ensemble_test_predictions,
-                            ensemble_submission_path + 'final_kaggle_submission_2.csv')
+    ensemble_submission_path = utils.get_dir_path('submissions/ensemble', pathfinder.METADATA_PATH)
+    submission_1_path = ensemble_submission_path + 'final_kaggle_submission_1.csv'
+    submission_2_path = ensemble_submission_path + 'final_kaggle_submission_2.csv'
+    utils_lung.write_submission(defensive_ensemble_test_predictions, submission_1_path)
+    utils_lung.write_submission(offensive_ensemble_test_predictions, submission_2_path)
+
+    print 'Wrote submission 1 to ', submission_1_path
+    print 'Wrote submission 2 to ', submission_2_path
