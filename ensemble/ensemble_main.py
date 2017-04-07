@@ -18,21 +18,21 @@ FG_CONFIGS = ['fgodin/' + config for config in
 EV_CONFIGS = ['eavsteen/' + config for config in ['dsb_a_eliasq1_mal2_s5_p8a1', 'dsb_a_eliasq10_mal2_s5_p8a1']]
 
 CONFIGS = ['dsb_a04_c3ns2_mse_s5_p8a1', 'dsb_a07_c3ns3_mse_s5_p8a1', 'dsb_a08_c3ns3_mse_s5_p8a1',
-           'dsb_a11_m1zm_s5_p8a1', 'dsb_af25lmeaapm_mal2_s5_p8a1',
-           'dsb_a_liolme16_c3_s2_p8a1', 'dsb_a_liolme32_c3_s5_p8a1', 'dsb_a_liox10_c3_s2_p8a1',
-           'dsb_a_liox11_c3_s5_p8a1', 'dsb_a_liox12_c3_s2_p8a1', 'dsb_af25lmelr10-2_mal2_s5_p8a1',
-           'dsb_af25lmelr10-1_mal2_s5_p8a1', 'dsb_a_eliasz1_c3_s5_p8a1',
+           'dsb_a11_m1zm_s5_p8a1', 'dsb_af25lmeaapm_mal2_s5_p8a1', 'dsb_a_liolme16_c3_s2_p8a1',
+           'dsb_a_liolme32_c3_s5_p8a1', 'dsb_a_liox10_c3_s2_p8a1', 'dsb_a_liox11_c3_s5_p8a1', 'dsb_a_liox12_c3_s2_p8a1',
+           'dsb_af25lmelr10-2_mal2_s5_p8a1', 'dsb_af25lmelr10-1_mal2_s5_p8a1', 'dsb_a_eliasz1_c3_s5_p8a1',
            'dsb_a_liox13_c3_s2_p8a1', 'dsb_a_liox14_c3_s2_p8a1', 'dsb_a_liox15_c3_s2_p8a1', 'dsb_a_liox6_c3_s2_p8a1',
            'dsb_a_liox7_c3_s2_p8a1', 'dsb_a_liox8_c3_s2_p8a1', 'dsb_a_liolunalme16_c3_s2_p8a1',
            'dsb_a_lionoclip_c3_s5_p8a1', 'dsb_a_liomse_c3_s5_p8a1', 'dsb_af25lmeo0_s5_p8a1',
-           'dsb_a_liomseresume_c3_s5_p8a1',
-           'dsb_af25lmelr10-3_mal2_s5_p8a1', 'dsb_a_liomix_c3_s5_p8a1', 'dsb_a_liomselunaresume_c3_s5_p8a1']
+           'dsb_a_liomseresume_c3_s5_p8a1', 'dsb_af25lmelr10-3_mal2_s5_p8a1', 'dsb_a_liomix_c3_s5_p8a1',
+           'dsb_a_liomselunaresume_c3_s5_p8a1']
 
-FG_CONFIGS = ['fgodin/' + config for config in ['dsb_af25lme_mal2_s5_p8a1']]
-GOOD_CONFIGS = ['dsb_af25lmeaapm_mal2_s5_p8a1', 'dsb_a_liolme32_c3_s5_p8a1', 'dsb_af25lmelr10-1_mal2_s5_p8a1',
-                'dsb_a_liox10_c3_s2_p8a1']
+GOOD_CONFIGS = ['fgodin/dsb_af25lme_mal2_s5_p8a1', 'dsb_af25lmeaapm_mal2_s5_p8a1', 'dsb_a_liolme16_c3_s2_p8a1',
+                'dsb_a_liolme32_c3_s5_p8a1', 'dsb_af25lmelr10-2_mal2_s5_p8a1', 'dsb_a_liox13_c3_s2_p8a1',
+                'dsb_af25lmeo0_s5_p8a1', 'dsb_af25lmelr10-3_mal2_s5_p8a1', 'eavsteen/dsb_a_eliasq1_mal2_s5_p8a1']
 
 CONFIGS = FG_CONFIGS + CONFIGS + EV_CONFIGS
+
 OUTLIER_THRESHOLD = 0.10  # Disagreement threshold (%)
 DO_CV = False
 VERBOSE = False
@@ -77,7 +77,8 @@ def pruning_ensemble(configs, with_majority_vote):
         y_test_pred[pid] = majority_vote_rensemble_prediction(X_test, ensemble_pred,
                                                               pid) if with_majority_vote else ensemble_pred
 
-    ensemble_info['Ensemble model test set error'] = evaluate_test_set_performance(y_test, y_test_pred)
+    ensemble_info['out_of_sample_error'] = evaluate_test_set_performance(y_test, y_test_pred)
+    ensemble_info['y_test_pred'] = y_test_pred
     utils_ensemble.persist_test_set_predictions(expid, y_test_pred)
 
     return ensemble_info
@@ -118,7 +119,8 @@ def optimal_linear_ensembling(configs, with_majority_vote):
         y_test_pred[pid] = majority_vote_rensemble_prediction(X_test, ensemble_pred,
                                                               pid) if with_majority_vote else ensemble_pred
 
-    ensemble_info['Ensemble model test set error'] = evaluate_test_set_performance(y_test, y_test_pred)
+    ensemble_info['out_of_sample_error'] = evaluate_test_set_performance(y_test, y_test_pred)
+    ensemble_info['y_test_pred'] = y_test_pred
     utils_ensemble.persist_test_set_predictions(expid, y_test_pred)
     return ensemble_info
 
@@ -156,7 +158,8 @@ def cv_averaged_weight_ensembling(configs, with_majority_vote):
         y_test_pred[pid] = majority_vote_rensemble_prediction(X_test, ensemble_pred,
                                                               pid) if with_majority_vote else ensemble_pred
 
-    ensemble_info['Ensemble model test set error'] = evaluate_test_set_performance(y_test, y_test_pred)
+    ensemble_info['out_of_sample_error'] = evaluate_test_set_performance(y_test, y_test_pred)
+    ensemble_info['y_test_pred'] = y_test_pred
     utils_ensemble.persist_test_set_predictions(expid, y_test_pred)
     return ensemble_info
 
@@ -308,13 +311,14 @@ def print_individual_configs_validation_set_performance(configs):
 
 def print_ensemble_result(result):
     for k, v in result.iteritems():
-        print k, ': ', v
+        if k != 'y_test_pred':
+            print k, ': ', v
 
     print '\n'
 
 
 print 'Starting ensemble procedure with {} configs'.format(len(CONFIGS))
-
+ensemble_strategies = []
 print '\n--------------------'
 print 'INDIVIDUAL MODEL PERFORMANCE'
 print '--------------------\n'
@@ -326,24 +330,42 @@ print 'PRUNING ENSEMBLE'
 print '--------------------\n'
 info = pruning_ensemble(CONFIGS, with_majority_vote=False)
 print_ensemble_result(info)
+ensemble_strategies.append(info)
 
 info = pruning_ensemble(CONFIGS, with_majority_vote=True)
 print_ensemble_result(info)
+ensemble_strategies.append(info)
 
 print '\n--------------------'
 print 'optimal_linear_ensembling'
 print '--------------------\n'
 info = optimal_linear_ensembling(CONFIGS, with_majority_vote=False)
 print_ensemble_result(info)
+ensemble_strategies.append(info)
 
 info = optimal_linear_ensembling(CONFIGS, with_majority_vote=True)
 print_ensemble_result(info)
+ensemble_strategies.append(info)
 
 print '\n--------------------'
 print 'CV AVERAGED ENSEMBLE'
 print '--------------------\n'
 info = cv_averaged_weight_ensembling(CONFIGS, with_majority_vote=False)
 print_ensemble_result(info)
+ensemble_strategies.append(info)
 
 info = cv_averaged_weight_ensembling(CONFIGS, with_majority_vote=True)
 print_ensemble_result(info)
+ensemble_strategies.append(info)
+
+# Choose two final submissions using the best ensemble
+lowest_log_loss = np.inf
+best_strat = None
+for ensemble_strat in ensemble_strategies:
+    log_loss = ensemble_strat['out_of_sample_error']
+    if log_loss < lowest_log_loss:
+        lowest_log_loss = log_loss
+        best_strat = ensemble_strat
+
+print 'Best ensemble strategy is {} with out-of-sample error {}'.format(best_strat['Name'], lowest_log_loss)
+
