@@ -1,4 +1,5 @@
 import utils
+import pathfinder
 import data_loading
 import numpy as np
 import os
@@ -65,6 +66,7 @@ def pruning_ensemble(configs, with_majority_vote):
     ensemble_model.train(X_valid, y_valid)
     ensemble_info['Ensemble training error'] = ensemble_model.training_error
     ensemble_info['Ensemble model weights'] = ensemble_model.print_weights()
+    ensemble_info['ensemble_model'] = ensemble_model
 
     X_test, y_test = load_data(configs_to_use, 'test')
     test_pids = y_test.keys()
@@ -369,3 +371,30 @@ for ensemble_strat in ensemble_strategies:
 
 print 'Best ensemble strategy is {} with out-of-sample error {}'.format(best_strat['Name'], lowest_log_loss)
 
+
+def defensive_ensemble(CONFIGS):
+    """
+    Load predictions of models trained on the split, do 10 SKF CV and make optimized weighted ensemble using the 
+    models that appear in the ensemble at least 50% of the folds. 
+    """
+    ensembling_result = pruning_ensemble(CONFIGS, with_majority_vote=False)
+    return ensembling_result['ensemble_model'], ensembling_result['y_test_pred']
+
+
+def offensive_ensemble(configs_to_use):
+    """
+    Load predictions of models specified as argument (preferably the models used by the defensive ensemble), 
+    which are trained on ALL the data and make an uniform ensemble out of it. 
+    """
+    pass
+
+
+defensive_ensemble_model, defensive_ensemble_test_predictions = defensive_ensemble(CONFIGS)
+offensive_ensemble_model, offensive_ensemble_test_predictions = offensive_ensemble(defensive_ensemble_model.models)
+
+# TODO find this path with pathfinder
+ensemble_submission_path = '/mnt/storage/metadata/dsb3/submissions/ensemble/'
+utils_lung.write_submission(defensive_ensemble_test_predictions,
+                            ensemble_submission_path + 'final_kaggle_submission_1.csv')
+utils_lung.write_submission(offensive_ensemble_test_predictions,
+                            ensemble_submission_path + 'final_kaggle_submission_2.csv')
