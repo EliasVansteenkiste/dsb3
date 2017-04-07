@@ -83,6 +83,11 @@ train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
 
+id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
+id2label_test = utils_lung.read_test_labels(pathfinder.TEST_LABELS_PATH)
+id2label_all = id2label.copy()
+id2label_all.update(id2label_test)
+
 train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
                                                               batch_size=batch_size,
                                                               transform_params=p_transform,
@@ -90,6 +95,7 @@ train_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               data_prep_fun=data_prep_function_train,
                                                               candidates_prep_fun = candidates_prep_function,
                                                               id2candidates_path=id2candidates_path,
+                                                              id2label = id2label_all,
                                                               rng=rng,
                                                               patient_ids=train_pids,
                                                               random=True, infinite=True)
@@ -101,6 +107,7 @@ valid_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfind
                                                               data_prep_fun=data_prep_function_valid,
                                                               candidates_prep_fun = candidates_prep_function,
                                                               id2candidates_path=id2candidates_path,
+                                                              id2label = id2label_all,
                                                               rng=rng,
                                                               patient_ids=valid_pids,
                                                               random=False, infinite=False)
@@ -113,6 +120,7 @@ test_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinde
                                                               data_prep_fun=data_prep_function_valid,
                                                               candidates_prep_fun = candidates_prep_function,
                                                               id2candidates_path=id2candidates_path,
+                                                              id2label = id2label_all,
                                                               rng=rng,
                                                               patient_ids=test_pids,
                                                               random=False, infinite=False)

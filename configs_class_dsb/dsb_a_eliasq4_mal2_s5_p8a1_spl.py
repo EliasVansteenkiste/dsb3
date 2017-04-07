@@ -122,6 +122,7 @@ test_data_iterator = data_iterators.DSBPatientsDataGenerator(data_path=pathfinde
                                                               data_prep_fun=data_prep_function_valid,
                                                               candidates_prep_fun = candidates_prep_function,
                                                               id2candidates_path=id2candidates_path,
+                                                              id2label = None,
                                                               rng=rng,
                                                               patient_ids=test_pids,
                                                               random=False, infinite=False)
