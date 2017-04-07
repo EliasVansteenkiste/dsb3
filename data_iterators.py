@@ -1449,12 +1449,15 @@ class MixedPatientsDataGenerator(object):
         # ok we will not have colliding ids
 
         # build id2label and id2candidate paths
-        dsb_id2label=utils_lung.read_labels(pathfinder.LABELS_PATH) 
+        dsb_id2label=utils_lung.read_labels(pathfinder.LABELS_PATH)
+        dsbtest_id2label=utils_lung.read_test_labels(pathfinder.TEST_LABELS_PATH)
         aapm_id2label=utils_lung.read_aapm_labels_per_patient(pathfinder.AAPM_LABELS_PATH)
         
 
         self.id2label = dsb_id2label.copy()#{**dsb_id2label, **aapm_id2label}
         self.id2label.update(aapm_id2label)
+        self.id2label.update(dsbtest_id2label)
+        
         #print "id2label: {}".format(self.id2label)
         self.id2candidates_path = id2candidates_path.copy()  #{id2candidates_path,aapm_id2candidates_path}
         self.id2candidates_path.update(aapm_id2candidates_path)
