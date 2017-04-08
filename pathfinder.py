@@ -10,8 +10,6 @@ else:
     with open('SETTINGS.json') as data_file:
         paths = json.load(data_file)
 
-METADATA_PATH = paths["METADATA_PATH"]
-
 # kaggle data
 STAGE = int(paths["STAGE"])
 
@@ -25,9 +23,6 @@ if STAGE == 1:
     if not os.path.isfile(SAMPLE_SUBMISSION_PATH):
         raise ValueError('no stage 1 sample submission file')
 
-    TEST_LABELS_PATH = paths["TEST_LABELS_PATH"]
-    if not os.path.isfile(TEST_LABELS_PATH):
-        raise ValueError('no file with train labels')
 elif STAGE == 2:
     METADATA_PATH = paths["METADATA_PATH_2"]
 
@@ -38,6 +33,14 @@ elif STAGE == 2:
     if not os.path.isfile(SAMPLE_SUBMISSION_PATH):
         raise ValueError('no stage 2 sample submission file')
 
+LABELS_PATH = paths["LABELS_PATH"]
+if not os.path.isfile(LABELS_PATH):
+    raise ValueError('no file with train labels')
+
+
+TEST_LABELS_PATH = paths["TEST_LABELS_PATH"]
+if not os.path.isfile(TEST_LABELS_PATH):
+    raise ValueError('no file with test labels')
 
 VALIDATION_SPLIT_PATH = paths["VALIDATION_SPLIT_PATH"]
 if not os.path.isfile(VALIDATION_SPLIT_PATH):
