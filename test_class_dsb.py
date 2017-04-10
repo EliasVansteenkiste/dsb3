@@ -69,9 +69,24 @@ nn.layers.set_all_param_values(model.l_out, metadata['param_values'])
 iter_test = theano.function([model.l_in.input_var], nn.layers.get_output(model.l_out, deterministic=True))
 
 if set == 'test':
-    pid2label = utils_lung.read_test_labels(pathfinder.TEST_LABELS_PATH)
-    data_iterator = config().test_data_iterator
+    if pathfinder.STAGE == 1:
+        pid2label = utils_lung.read_test_labels(pathfinder.TEST_LABELS_PATH)
+        data_iterator = config().test_data_iterator
+    else:
+        output_pkl_file = predictions_dir + '/%s-%s.pkl' % (expid, "stage2")
+        output_csv_file = submissions_dir + '/%s-%s.csv' % (expid, "stage2")
+        test_pids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)["test_stage2"]
+        print "nsamples test_stage2", len(test_pids)
 
+        data_iterator = config().data_iterators.DSBPatientsDataGenerator(data_path=pathfinder.DATA_PATH,
+                                                                     batch_size=1,
+                                                                     transform_params=config().p_transform,
+                                                                     n_candidates_per_patient=config().n_candidates_per_patient,
+                                                                     data_prep_fun=config().data_prep_function_valid,
+                                                                     id2candidates_path=config().id2candidates_path,
+                                                                     rng=config().rng,
+                                                                     patient_ids=test_pids,
+                                                                     random=False, infinite=False)
     print
     print 'Data'
     print 'n test: %d' % data_iterator.nsamples
@@ -82,18 +97,23 @@ if set == 'test':
         predictions = iter_test(x_test)
         pid = id_test[0]
         pid2prediction[pid] = predictions[0, 1] if predictions.shape[-1] == 2 else predictions[0]
-        print i, pid, predictions, pid2label[pid]
+        print i, pid, predictions
+
 
     utils.save_pkl(pid2prediction, output_pkl_file)
-    print 'Saved validation predictions into pkl', os.path.basename(output_pkl_file)
+    print 'Saved test predictions into pkl', os.path.basename(output_pkl_file)
 
-    test_loss = utils_lung.evaluate_log_loss(pid2prediction, pid2label)
-    print 'Test loss', test_loss
+    if pathfinder.STAGE == 1:
+        test_loss = utils_lung.evaluate_log_loss(pid2prediction, pid2label)
+        print 'Test loss', test_loss
 
     utils_lung.write_submission(pid2prediction, output_csv_file)
     print 'Saved predictions into csv'
-    loss = evaluate_submission.leaderboard_performance(output_csv_file)
-    print loss
+
+    if pathfinder.STAGE == 1:
+        loss = evaluate_submission.leaderboard_performance(output_csv_file)
+        print loss
+
 elif set == 'newsplit':
     pid2label = utils_lung.read_test_labels(pathfinder.MIXED_SPLIT_PATH)["test"]
     data_iterator = config().test_data_iterator
