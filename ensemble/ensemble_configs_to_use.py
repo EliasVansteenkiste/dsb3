@@ -32,7 +32,29 @@ GOOD_CONFIGS = ['fgodin/dsb_af25lme_mal2_s5_p8a1', 'dsb_af25lmeaapm_mal2_s5_p8a1
 #############################
 
 # should be the _spl
-STAGE_2_CONFIGS = ['example_config_preds_spl'
+STAGE_2_CONFIGS = [ 'dsb_a_eliasq1_mal2_s5_p8a1_spl' ,
+ 'dsb_a_eliasq3_mal2_s5_p8a1_spl' ,
+ 'dsb_a_eliasq4_mal2_s5_p8a1_spl' ,
+ 'dsb_a_eliasq5_mal2_s5_p8a1_spl' ,
+ 'dsb_a_eliasq6_mal2_s5_p8a1_spl' ,
+ 'dsb_a_eliasq10_mal2_s5_p8a1_spl' ,
+ 'dsb_a_eliasq11_mal2_s5_p8a1_spl' ,
+ 'dsb_a_eliasq14_mal2_s5_p8a1_spl' ,
+ 'dsb_a_eliasq15_mal7_s5_p8a1_spl' ,
+ 'dsb_a_lionoclip_c3_s5_p8a1_spl' ,
+ 'dsb_a_liolme32_c3_s5_p8a1_spll' ,
+ 'dsb_a_liox8_c3_s2_p8a1_spl' ,
+ 'dsb_a_liox11_c3_s5_p8a1_spl' ,
+ 'dsb_a_liox13_c3_s2_p8a1_spl' ,
+'dsb_af25lmelr10-1_mal2_s5_p8a1_spl' ,
+'dsb_af25lmeaapm_mal2_s5_pa81_spl' ,
+'dsb_af25lmelr10-3_mal2_s5_p8a1_spl' ,
+'dsb_af27lme_mal2_s5_p8a1_spl' ,
+'dsb_af30lme_mal2_s5_p8a1_spl' ,
+'dsb_af31lme_mal8_s5_p8a1_spl' ,
+'dsb_af34lme_mal7_s5_p8a1_spl' ,
+'dsb_af35lme_mal7_s5_p8a1_spl' ,
+'dsb_af36_eq10_mal7_s5_p8a1_spl' 
                    ]
 
 
