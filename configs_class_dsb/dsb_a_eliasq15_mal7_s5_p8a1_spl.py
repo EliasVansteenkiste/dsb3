@@ -78,10 +78,11 @@ def candidates_prep_function(all_candidates, n_selection=None):
 # data iterators
 batch_size = 1
 
+d_pids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
+test_pids = d_pids['test_stage2']
+
 train_valid_ids = utils.load_pkl(pathfinder.FINAL_SPLIT_PATH)
-#In the final stage we will have to add the pids of the new data
-#test_ids = utils.load_pkl(pathfinder.STAGE2_PIDS)
-train_pids, valid_pids, test_pids = train_valid_ids['train'], train_valid_ids['test'], [] #test_ids
+train_pids, valid_pids = train_valid_ids['train'], train_valid_ids['test']
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
 

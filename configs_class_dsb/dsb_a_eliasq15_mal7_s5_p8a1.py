@@ -261,7 +261,7 @@ def load_pretrained_model(l_in):
                 b=nn.init.Constant(0))
 
 
-    metadata = utils.load_pkl(os.path.join("/home/eavsteen/dsb3/storage/metadata/dsb3/models/eavsteen/","r_fred_malignancy_7-20170404-163552.pkl"))
+    metadata = utils.load_pkl(os.path.join("/home/eavsteen/dsb3/storage/metadata/dsb3/models/","r_fred_malignancy_7-20170404-163552.pkl"))
     nn.layers.set_all_param_values(l, metadata['param_values'])
 
     return l

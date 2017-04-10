@@ -79,12 +79,12 @@ def candidates_prep_function(all_candidates, n_selection=None):
 batch_size = 1
 
 train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
-train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
+train_pids, valid_pids, test_pids, stage2_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test'], train_valid_ids['test_stage2']
 print 'n train', len(train_pids)
 print 'n valid', len(valid_pids)
 print 'n test', len(test_pids)
 all_pids = train_pids + valid_pids + test_pids
-stage2_pids = [] #utils.load_pkl(pathfinder.STAGE2_PIDS)
+
 
 id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
 id2label_test = utils_lung.read_test_labels(pathfinder.TEST_LABELS_PATH)
@@ -267,7 +267,7 @@ def load_pretrained_model(l_in):
                 b=nn.init.Constant(0))
 
 
-    metadata = utils.load_pkl(os.path.join("/home/eavsteen/dsb3/storage/metadata/dsb3/models/eavsteen/","r_fred_malignancy_7-20170404-163552.pkl"))
+    metadata = utils.load_pkl(os.path.join("/home/eavsteen/dsb3/storage/metadata/dsb3/models/","r_fred_malignancy_7-20170404-163552.pkl"))
     nn.layers.set_all_param_values(l, metadata['param_values'])
 
     return l
