@@ -272,7 +272,7 @@ def load_pretrained_model(l_in):
 def build_model():
     l_in = nn.layers.InputLayer((None, n_candidates_per_patient,) + p_transform['patch_size'])
     l_in_rshp = nn.layers.ReshapeLayer(l_in, (-1, 1,) + p_transform['patch_size'])
-    l_target = nn.layers.InputLayer((batch_size,))
+    l_target = nn.layers.InputLayer((None,))
 
     l = load_pretrained_model(l_in_rshp)
 

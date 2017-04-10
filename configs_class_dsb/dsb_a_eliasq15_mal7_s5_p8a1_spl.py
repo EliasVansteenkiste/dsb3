@@ -252,7 +252,7 @@ def load_pretrained_model(l_in):
                 b=nn.init.Constant(0))
 
 
-    metadata = utils.load_pkl(os.path.join("/home/eavsteen/dsb3/storage/metadata/dsb3/models/eavsteen/","r_fred_malignancy_7-20170404-163552.pkl"))
+    metadata = utils.load_pkl(os.path.join("/home/eavsteen/dsb3/storage/metadata/dsb3/models/","r_fred_malignancy_7-20170404-163552.pkl"))
     nn.layers.set_all_param_values(l, metadata['param_values'])
 
     return l
@@ -261,7 +261,7 @@ def load_pretrained_model(l_in):
 def build_model():
     l_in = nn.layers.InputLayer((None, n_candidates_per_patient,) + p_transform['patch_size'])
     l_in_rshp = nn.layers.ReshapeLayer(l_in, (-1, 1,) + p_transform['patch_size'])
-    l_target = nn.layers.InputLayer((batch_size,))
+    l_target = nn.layers.InputLayer((None,))
 
     l = load_pretrained_model(l_in_rshp)
 

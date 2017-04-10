@@ -75,6 +75,8 @@ def candidates_prep_function(all_candidates, n_selection=None):
 
     return selected_candidates
 
+batch_size = 1
+
 train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
 train_pids, valid_pids, test_pids, stage2_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test'], train_valid_ids['test_stage2']
 print 'n train', len(train_pids)
