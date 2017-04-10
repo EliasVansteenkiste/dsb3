@@ -131,15 +131,13 @@ elif set == 'stage2':
         pid = id_test[0]
         print predictions
         pid2prediction[pid] = predictions[1] if predictions.shape[-1] == 2 else predictions[0]
-        print i, pid, predictions#, pid2label[pid]
+        print i, pid, predictions
 
     utils.save_pkl(pid2prediction, output_pkl_file)
     print 'Saved validation predictions into pkl', os.path.basename(output_pkl_file)
 
     utils_lung.write_submission(pid2prediction, output_csv_file)
     print 'Saved predictions into csv'
-
-    print loss
 
 elif set == 'tta_test':
     pid2label = utils_lung.read_test_labels(pathfinder.TEST_LABELS_PATH)
