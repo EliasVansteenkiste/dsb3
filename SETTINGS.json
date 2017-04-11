@@ -13,5 +13,6 @@
   "LUNA_LABELS_PATH": "/mnt/storage/data/dsb3/luna/annotations.csv",
   "LUNA_PROPERTIES_PATH": "/mnt/storage/data/dsb3/luna/annotations_extended_mixed.csv",
   "LUNA_CANDIDATES_PATH": "/mnt/storage/data/dsb3/luna/candidates_V2.csv",
-  "LUNA_VALIDATION_SPLIT_PATH": "/mnt/storage/data/dsb3/luna/validation_split.pkl"
+  "LUNA_VALIDATION_SPLIT_PATH": "/mnt/storage/data/dsb3/luna/validation_split.pkl",
+  "FINAL_SPLIT_PATH": "/mnt/storage/metadata/dsb3/final_split.pkl"
 }

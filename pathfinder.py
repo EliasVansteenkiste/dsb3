@@ -43,6 +43,10 @@ VALIDATION_SPLIT_PATH = paths["VALIDATION_SPLIT_PATH"]
 if not os.path.isfile(VALIDATION_SPLIT_PATH):
     raise ValueError('no validation file')
 
+FINAL_SPLIT_PATH = paths["FINAL_SPLIT_PATH"]
+if not os.path.isfile(FINAL_SPLIT_PATH):
+    raise ValueError('no FINAL_SPLIT_PATH file')
+
 # luna data
 LUNA_DATA_PATH = paths["LUNA_DATA_PATH"]
 utils.check_data_paths(LUNA_DATA_PATH)
