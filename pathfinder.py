@@ -81,6 +81,10 @@ CENTROID_DSB_PATH = paths['CENTROID_DSB_PATH']
 if not os.path.isfile(CENTROID_DSB_PATH):
     raise ValueError('no DSB centroid file')
 
+CENTROID_DSB_STAGE2_PATH = paths['CENTROID_DSB_STAGE2_PATH']
+if not os.path.isfile(CENTROID_DSB_STAGE2_PATH):
+    raise ValueError('no DSB centroid file')
+
 PIXEL_SPACING_LUNA_PATH = paths['PIXEL_SPACING_LUNA_PATH']
 if not os.path.isfile(PIXEL_SPACING_LUNA_PATH):
     raise ValueError('no pixel spacing pickle')

@@ -88,7 +88,7 @@ if type_set == 'test':
         predictions = iter_test(x_test)
         pid = id_test[0]
         pid2prediction[pid] = predictions[0, 1] if predictions.shape[-1] == 2 else predictions[0]
-        print i, pid, predictions, pid2label[pid]
+        print i, pid, predictions
 
     utils.save_pkl(pid2prediction, output_pkl_file)
     print 'Saved validation predictions into pkl', os.path.basename(output_pkl_file)

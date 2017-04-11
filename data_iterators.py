@@ -1160,7 +1160,9 @@ class DSBPatientsDataGeneratorTest(object):
         self.id2label = utils_lung.read_labels(pathfinder.LABELS_PATH)
 
         if centroid:
-            self.centroids = utils.load_pkl(pathfinder.CENTROID_DSB_PATH)
+            self.centroids = utils.load_pkl(pathfinder.CENTROID_DSB_PATH).items()
+            self.centroids.extend(utils.load_pkl(pathfinder.CENTROID_DSB_STAGE2_PATH).items())
+            self.centroids = dict(self.centroids)
         self.centroid = centroid
 
 
