@@ -255,6 +255,20 @@ def read_test_labels(file_path):
     return id2labels
 
 
+def read_sample_submission(file_path):
+    id2labels = {}
+    train_csv = open(file_path)
+    lines = train_csv.readlines()
+    i = 0
+    for item in lines:
+        if i == 0:
+            i = 1
+            continue
+        id, label = item.replace('\n', '').split(',')
+        id2labels[id] = float(label)
+    return id2labels
+
+
 def read_luna_annotations(file_path):
     id2xyzd = defaultdict(list)
     train_csv = open(file_path)
