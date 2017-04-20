@@ -76,7 +76,11 @@ train_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
 train_pids, valid_pids, test_pids = train_valid_ids['training'], train_valid_ids['validation'], train_valid_ids['test']
 
 #TODO: add stage 2 test pids
-test_pids=valid_pids
+
+stage2_valid_ids = utils.load_pkl(pathfinder.VALIDATION_SPLIT_PATH)
+test_pids=stage2_valid_ids['test_stage2']
+
+
 
 train_pids.extend(valid_pids)
 train_pids.extend(test_pids)
