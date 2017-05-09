@@ -1,0 +1,250 @@
+﻿1) Generating necessary pkl-files
+    $ python elias/make_final_split.py
+2) $ cd ira
+3) In SETTINGS.json set STAGE to 1:
+            "STAGE": 1
+4) Train segmentation networks on LUNA dataset: 
+    $ python train_seg_patch.py luna_p8a1
+    //md5sum 75b63363507b44632c778f3165812000  luna_p8a1-20170226-173608.pkl
+    //trained model can be found at metadata/models/luna_p8a1-20170226-173608.pkl
+5) Generate segmentation maps for DSB: 
+    $ python test_seg_scan_dsb.py  dsb_s5_p8a1
+        Alternatively, to make it in parallel on 4 GPUs do:
+        $ python test_seg_scan_dsb_prl.py  dsb_s5_p8a1  0
+        $ python test_seg_scan_dsb_prl.py  dsb_s5_p8a1  1
+        $ python test_seg_scan_dsb_prl.py  dsb_s5_p8a1  2
+        $ python test_seg_scan_dsb_prl.py  dsb_s5_p8a1  3
+
+
+
+
+6) Generate AAPM Segmentation Maps 
+    $ cd ../matthias
+    $ python test_seg_scan_aapm.py  aapm_s2_p8a1
+
+
+7) Train False Positive Reduction Network on LUNA dataset
+    $ cd ../ira
+    $ python train_fpred_patch.py luna_c3
+    //md5sum c3bedca59e6fa93221ba9c88ece7953d  luna_c3-20170226-174919.pkl
+    //trained model can be found at metadata/models/luna_c3-20170226-174919.pkl
+
+
+8) Generate false positive predictions for DSB candidates
+    $ python test_fpred_scan.py dsb_c3_s5_p8a1
+
+
+9) Generate False Positive predictions AAPM
+    $ cd ../matthias
+    $ python matthias/test_fpred_scan_aapm.py aapm_c3_s2_p8a1
+
+
+10) Train Malignancy Detection Networks on LUNA data for transfer learning
+    $ cd ../fred
+    $ python train_props_patch.py r_fred_malignancy_2
+    //md5sum 676adf509ed8193ecd114b5dcbf0c7f6  r_fred_malignancy_2-20170328-230443.pkl
+    //trained model can be found at metadata/models/r_fred_malignancy_2-20170328-230443.pkl
+    $ python train_props_patch.py r_fred_malignancy_7
+    //md5sum 5689072d7bd49f079654e21ce6d1f423  r_fred_malignancy_7-20170404-163552.pkl
+    //trained model can be found at metadata/models/r_fred_malignancy_7-20170404-163552.pkl
+    $ python train_props_patch.py r_fred_malignancy_8
+    //md5sum ca5cab14549e601628bd7612adba3b23  r_fred_malignancy_8-20170404-171012.pkl
+    //trained model can be found at metadata/models/r_fred_malignancy_8-20170404-171012.pkl
+    $ python train_props_patch.py r_fred_centroid_1
+
+
+11) Train cancer prediction networks on DSB stage 1 data
+    $ cd ../elias
+    $ python train_class_dsb.py  dsb_a_eliasq1_mal2_s5_p8a1_all
+    $ python train_class_dsb.py  dsb_a_eliasq1_mal2_s5_p8a1_spl
+    $ python train_class_dsb.py  dsb_a_eliasq3_mal2_s5_p8a1_all
+    $ python train_class_dsb.py  dsb_a_eliasq3_mal2_s5_p8a1_spl
+    $ python train_class_dsb.py  dsb_a_eliasq4_mal2_s5_p8a1_all
+    $ python train_class_dsb.py  dsb_a_eliasq4_mal2_s5_p8a1_spl
+    $ python train_class_dsb.py  dsb_a_eliasq5_mal2_s5_p8a1_all
+    $ python train_class_dsb.py  dsb_a_eliasq5_mal2_s5_p8a1_spl
+    $ python train_class_dsb.py  dsb_a_eliasq6_mal2_s5_p8a1_all
+    $ python train_class_dsb.py  dsb_a_eliasq6_mal2_s5_p8a1_spl
+    $ python train_class_dsb.py  dsb_a_eliasq10_mal2_s5_p8a1_all
+    $ python train_class_dsb.py  dsb_a_eliasq10_mal2_s5_p8a1_spl
+    $ python train_class_dsb.py  dsb_a_eliasq11_mal2_s5_p8a1_all
+    $ python train_class_dsb.py  dsb_a_eliasq11_mal2_s5_p8a1_spl
+    $ python train_class_dsb.py  dsb_a_eliasq14_mal2_s5_p8a1_all
+    $ python train_class_dsb.py  dsb_a_eliasq14_mal2_s5_p8a1_spl
+    $ python train_class_dsb.py  dsb_a_eliasq15_mal7_s5_p8a1_all
+    $ python train_class_dsb.py  dsb_a_eliasq15_mal7_s5_p8a1_spl
+
+
+    $ cd ../lio
+    $ python train_class_dsb.py  dsb_a_lionoclip_c3_s5_p8a1_spl
+    $ python train_class_dsb.py  dsb_a_liolme32_c3_s5_p8a1_spl
+    $ python train_class_dsb.py  dsb_a_liox8_c3_s2_p8a1_spl
+    $ python train_class_dsb.py  dsb_a_liox11_c3_s5_p8a1_spl
+    $ python train_class_dsb.py  dsb_a_liox13_c3_s2_p8a1_spl
+    $ python train_class_dsb.py  dsb_a_lionoclip_c3_s5_p8a1_all
+    $ python train_class_dsb.py  dsb_a_liolme32_c3_s5_p8a1_all
+    $ python train_class_dsb.py  dsb_a_liox8_c3_s2_p8a1_all
+    $ python train_class_dsb.py  dsb_a_liox11_c3_s5_p8a1_all
+    $ python train_class_dsb.py  dsb_a_liox13_c3_s2_p8a1_all
+
+
+    $ cd ../matthias
+    $ python train_class_dsb.py dsb_af25lmelr10-1_mal2_s5_p8a1_spl
+    $ python train_class_dsb.py dsb_af25lmeaapm_mal2_s5_pa81_spl
+    $ python train_class_dsb.py dsb_af25lmelr10-3_mal2_s5_p8a1_spl
+    $ python train_class_dsb.py dsb_af25lmelr10-1_mal2_s5_p8a1_all
+    $ python train_class_dsb.py dsb_af25lmeaapm_mal2_s5_pa81_all
+    $ python train_class_dsb.py dsb_af25lmelr10-3_mal2_s5_p8a1_all
+
+
+    $ cd ../frederic
+    $ python train_class_dsb.py dsb_af27lme_mal2_s5_p8a1_all
+    $ python train_class_dsb.py dsb_af27lme_mal2_s5_p8a1_spl
+    $ python train_class_dsb_coords.py dsb_af30lme_mal2_s5_p8a1_all
+    $ python train_class_dsb_coords.py dsb_af30lme_mal2_s5_p8a1_spl
+    $ python train_class_dsb.py dsb_af31lme_mal8_s5_p8a1_all
+    $ python train_class_dsb.py dsb_af31lme_mal8_s5_p8a1_spl
+    $ python train_class_dsb.py dsb_af34lme_mal7_s5_p8a1_all
+    $ python train_class_dsb.py dsb_af34lme_mal7_s5_p8a1_spl
+    $ python train_class_dsb.py dsb_af35lme_mal7_s5_p8a1_all
+    $ python train_class_dsb.py dsb_af35lme_mal7_s5_p8a1_spl
+    $ python train_class_dsb.py dsb_af36_eq10_mal7_s5_p8a1_all
+    $ python train_class_dsb.py dsb_af36_eq10_mal7_s5_p8a1_spl
+
+
+12) Generate predictions for DSB stage 1 data from the split for ensemble weighing
+    $ cd ../elias
+    $ python test_class_dsb.py  dsb_a_eliasq1_mal2_s5_p8a1_spl valid
+    $ python test_class_dsb.py  dsb_a_eliasq3_mal2_s5_p8a1_spl valid
+    $ python test_class_dsb.py  dsb_a_eliasq4_mal2_s5_p8a1_spl valid
+    $ python test_class_dsb.py  dsb_a_eliasq5_mal2_s5_p8a1_spl valid
+    $ python test_class_dsb.py  dsb_a_eliasq6_mal2_s5_p8a1_spl valid
+    $ python test_class_dsb.py  dsb_a_eliasq10_mal2_s5_p8a1_spl valid
+    $ python test_class_dsb.py  dsb_a_eliasq11_mal2_s5_p8a1_spl valid
+    $ python test_class_dsb.py  dsb_a_eliasq14_mal2_s5_p8a1_spl valid
+    $ python test_class_dsb.py  dsb_a_eliasq15_mal7_s5_p8a1_spl valid
+
+
+    $ cd ../lio
+    $ python test_class_dsb.py  dsb_a_lionoclip_c3_s5_p8a1_spl valid
+    $ python test_class_dsb.py  dsb_a_liolme32_c3_s5_p8a1_spll valid
+    $ python test_class_dsb.py  dsb_a_liox8_c3_s2_p8a1_spl valid
+    $ python test_class_dsb.py  dsb_a_liox11_c3_s5_p8a1_spl valid
+    $ python test_class_dsb.py  dsb_a_liox13_c3_s2_p8a1_spl valid
+
+
+    $ cd ../matthias
+    $ python test_class_dsb.py dsb_af25lmelr10-1_mal2_s5_p8a1_spl valid
+    $ python test_class_dsb.py dsb_af25lmeaapm_mal2_s5_pa81_spl valid
+    $ python test_class_dsb.py dsb_af25lmelr10-3_mal2_s5_p8a1_spl valid
+
+
+    $ cd ../frederic
+    $ python test_class_dsb.py dsb_af27lme_mal2_s5_p8a1_spl valid
+    $ python test_class_dsb_coords.py dsb_af30lme_mal2_s5_p8a1_spl valid
+    $ python test_class_dsb.py dsb_af31lme_mal8_s5_p8a1_spl valid
+    $ python test_class_dsb.py dsb_af34lme_mal7_s5_p8a1_spl valid
+    $ python test_class_dsb.py dsb_af35lme_mal7_s5_p8a1_spl valid
+    $ python test_class_dsb.py dsb_af36_eq10_mal7_s5_p8a1_spl valid
+
+
+13) Generate predictions for the DSB final stage data
+    // change stage field in SETTINGS.json files in all branch folders
+    In SETTINGS.json set STAGE to 2:
+                "STAGE": 2
+
+
+    $ cd ../elias
+    $ python test_class_dsb.py  dsb_a_eliasq1_mal2_s5_p8a1_spl test
+    $ python test_class_dsb.py  dsb_a_eliasq3_mal2_s5_p8a1_spl test
+    $ python test_class_dsb.py  dsb_a_eliasq4_mal2_s5_p8a1_spl test
+    $ python test_class_dsb.py  dsb_a_eliasq5_mal2_s5_p8a1_spl test
+    $ python test_class_dsb.py  dsb_a_eliasq6_mal2_s5_p8a1_spl test
+    $ python test_class_dsb.py  dsb_a_eliasq10_mal2_s5_p8a1_spl test
+    $ python test_class_dsb.py  dsb_a_eliasq11_mal2_s5_p8a1_spl test
+    $ python test_class_dsb.py  dsb_a_eliasq14_mal2_s5_p8a1_spl test
+    $ python test_class_dsb.py  dsb_a_eliasq15_mal7_s5_p8a1_spl test
+    $ python test_class_dsb.py  dsb_a_eliasq1_mal2_s5_p8a1_all test
+    $ python test_class_dsb.py  dsb_a_eliasq3_mal2_s5_p8a1_all test
+    $ python test_class_dsb.py  dsb_a_eliasq4_mal2_s5_p8a1_all test
+    $ python test_class_dsb.py  dsb_a_eliasq5_mal2_s5_p8a1_all test
+    $ python test_class_dsb.py  dsb_a_eliasq6_mal2_s5_p8a1_all test
+    $ python test_class_dsb.py  dsb_a_eliasq10_mal2_s5_p8a1_all test
+    $ python test_class_dsb.py  dsb_a_eliasq11_mal2_s5_p8a1_all test
+    $ python test_class_dsb.py  dsb_a_eliasq14_mal2_s5_p8a1_all test
+    $ python test_class_dsb.py  dsb_a_eliasq15_mal7_s5_p8a1_all test
+
+
+    $ cd ../lio
+    $ python test_class_dsb.py  dsb_a_lionoclip_c3_s5_p8a1_spl test
+    $ python test_class_dsb.py  dsb_a_liolme32_c3_s5_p8a1_spl test
+    $ python test_class_dsb.py  dsb_a_liox8_c3_s2_p8a1_spl test
+    $ python test_class_dsb.py  dsb_a_liox11_c3_s5_p8a1_spl test
+    $ python test_class_dsb.py  dsb_a_liox13_c3_s2_p8a1_spl test
+    $ python test_class_dsb.py  dsb_a_lionoclip_c3_s5_p8a1_all test
+    $ python test_class_dsb.py  dsb_a_liolme32_c3_s5_p8a1_all test
+    $ python test_class_dsb.py  dsb_a_liox8_c3_s2_p8a1_all test
+    $ python test_class_dsb.py  dsb_a_liox11_c3_s5_p8a1_all test
+    $ python test_class_dsb.py  dsb_a_liox13_c3_s2_p8a1_all test
+
+
+    $ cd ../frederic
+    // replace dummy array with pids of stage2 data in configs
+    $ python test_class_dsb.py dsb_af27lme_mal2_s5_p8a1_all test
+    $ python test_class_dsb.py dsb_af27lme_mal2_s5_p8a1_spl test
+    $ python test_class_dsb_coords.py dsb_af30lme_mal2_s5_p8a1_all test
+    $ python test_class_dsb_coords.py dsb_af30lme_mal2_s5_p8a1_spl test
+    $ python test_class_dsb.py dsb_af31lme_mal8_s5_p8a1_all test
+    $ python test_class_dsb.py dsb_af31lme_mal8_s5_p8a1_spl test
+    $ python test_class_dsb.py dsb_af34lme_mal7_s5_p8a1_all test
+    $ python test_class_dsb.py dsb_af34lme_mal7_s5_p8a1_spl test
+    $ python test_class_dsb.py dsb_af35lme_mal7_s5_p8a1_all test
+    $ python test_class_dsb.py dsb_af35lme_mal7_s5_p8a1_spl test
+    $ python test_class_dsb.py dsb_af36_eq10_mal7_s5_p8a1_all test
+    $ python test_class_dsb.py dsb_af36_eq10_mal7_s5_p8a1_spl test
+
+
+    $ cd ../matthias
+    $ python test_class_dsb.py dsb_af25lmelr10-1_mal2_s5_p8a1_spl stage2
+    $ python test_class_dsb.py dsb_af25lmeaapm_mal2_s5_pa81_spl stage2
+    $ python test_class_dsb.py dsb_af25lmelr10-3_mal2_s5_p8a1_spl stage2
+    $ python test_class_dsb.py dsb_af25lmelr10-1_mal2_s5_p8a1_all stage2
+    $ python test_class_dsb.py dsb_af25lmeaapm_mal2_s5_pa81_all stage2
+    $ python test_class_dsb.py dsb_af25lmelr10-3_mal2_s5_p8a1_all stage2
+
+
+
+
+14) Making ensembles
+    $ cd ../andreas/ensemble
+    // make sure settings.json has stage = 2
+    $ python ensemble_main.py 
+    // This script will generate the two submissions
+
+
+
+
+
+
+
+
+
+
+Extra information to make it easier to check our approach:
+Results of the ensembling approaches:
+
+
+    DEFENSIVE ENSEMBLE
+    10-skf-cv: dsb_af36_eq10_mal7_s5_p8a1_spl is always the best.
+    Other configs that are used during CV are: ['dsb_a_eliasq5_mal2_s5_p8a1_spl', 'dsb_a_eliasq14_mal2_s5_p8a1_spl', 'dsb_a_eliasq15_mal7_s5_p8a1_spl', 'dsb_a_liolme32_c3_s5_p8a1_spl', 'dsb_af30lme_mal2_s5_p8a1_spl', 'dsb_af34lme_mal7_s5_p8a1_spl', 'dsb_af36_eq10_mal7_s5_p8a1_spl']
+    reoptimizing on full valid set will give dsb_af36_eq10_mal7_s5_p8a1_spl 100% weight
+    TLDR: defensive ensemble = dsb_af36_eq10_mal7_s5_p8a1_spl
+    
+    OFFENSIVE ENSEMBLE
+    will take the configs used by the defensive ensemble, assign equal weights, take those models trained on the full data set and average their predictions for stage2 LB. 
+    Here: average test set predictions of configs ['dsb_a_eliasq5_mal2_s5_p8a1_spl', 'dsb_a_eliasq14_mal2_s5_p8a1_spl', 'dsb_a_eliasq15_mal7_s5_p8a1_spl', 'dsb_a_liolme32_c3_s5_p8a1_spl', 'dsb_af30lme_mal2_s5_p8a1_spl', 'dsb_af34lme_mal7_s5_p8a1_spl', 'dsb_af36_eq10_mal7_s5_p8a1_spl']
+    So the following models are selected to make the offensive ensemble:
+    ['dsb_a_eliasq5_mal2_s5_p8a1_all', 'dsb_a_eliasq14_mal2_s5_p8a1_all', 'dsb_a_eliasq15_mal7_s5_p8a1_all', 'dsb_a_liolme32_c3_s5_p8a1_all', 'dsb_af30lme_mal2_s5_p8a1_all', 'dsb_af34lme_mal7_s5_p8a1_all', 'dsb_af36_eq10_mal7_s5_p8a1_all']
+
+
+All trained models can be found in metadata/models
